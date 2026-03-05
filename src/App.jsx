@@ -849,14 +849,21 @@ export default function App() {
     }
   }
 
-  // Mark pro after successful Stripe payment return
+  // Mark pro after successful Stripe payment return (upgrade all owned weddings)
   useEffect(() => {
-    if (!stripeSuccess || !weddingId || !session) return
-    supabase.from('weddings').update({ plan: 'pro' }).eq('id', weddingId).then(() => {
+    if (!stripeSuccess || !session) return
+    const ownedIds = myWeddings.filter(w => w.myRole === 'owner').map(w => w.id)
+    if (ownedIds.length === 0 && weddingId) {
+      // Fallback: at least upgrade the current wedding
+      ownedIds.push(weddingId)
+    }
+    if (ownedIds.length === 0) return
+    supabase.from('weddings').update({ plan: 'pro' }).in('id', ownedIds).then(() => {
       setWedding(prev => prev ? { ...prev, plan: 'pro' } : prev)
+      setMyWeddings(prev => prev.map(w => w.myRole === 'owner' ? { ...w, plan: 'pro' } : w))
       window.history.replaceState({}, '', window.location.pathname)
     })
-  }, [stripeSuccess, weddingId, session])
+  }, [stripeSuccess, session, myWeddings.length])
 
   // ── Sign out ─────────────────────────────────────────────────────────────────
   const handleSignOut = () => supabase.auth.signOut()
@@ -1006,6 +1013,56 @@ export default function App() {
     )
   }
 
+  // ── Dashboard loading spinner ───────────────────────────────────────────────
+  if (session && dashboardLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--cream)',
+      }}>
+        <div style={{
+          fontFamily: "'Cormorant Garamond', serif",
+          fontSize: 28,
+          fontStyle: 'italic',
+          color: 'var(--deep)',
+          opacity: 0.7,
+        }}>
+          ✦ Vow &amp; Venue
+        </div>
+      </div>
+    )
+  }
+
+  // ── My Weddings dashboard (logged in, no wedding selected) ─────────────────
+  if (session && activeWeddingId === null) {
+    const userPlan = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro') ? 'pro' : 'free'
+    return (
+      <div className="app">
+        <Header
+          session={session}
+          wedding={null}
+          myWeddings={myWeddings}
+          activeWeddingId={null}
+          onSignIn={() => setAuthOpen(true)}
+          onSignOut={handleSignOut}
+        />
+        <main className="main">
+          <MyWeddings
+            weddings={myWeddings}
+            userPlan={userPlan}
+            onSelectWedding={selectWedding}
+            onCreateWedding={handleCreateWedding}
+            onUpgrade={handleUpgrade}
+          />
+        </main>
+        <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
+      </div>
+    )
+  }
+
   // ── Onboarding — new user hasn't completed setup yet ─────────────────────────
   if (session && wedding && !wedding.setup_complete) {
     return <WeddingSetup onComplete={handleWeddingSetup} />
@@ -1017,6 +1074,10 @@ export default function App() {
       <Header
         session={session}
         wedding={wedding}
+        myWeddings={myWeddings}
+        activeWeddingId={activeWeddingId}
+        onSelectWedding={selectWedding}
+        onBackToDashboard={handleBackToDashboard}
         onSignIn={() => setAuthOpen(true)}
         onSignOut={handleSignOut}
       />
