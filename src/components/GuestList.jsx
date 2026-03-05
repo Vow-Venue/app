@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
 import Modal from './Modal'
+import SeatingChart from './SeatingChart'
 
 const BLANK_GUEST = { name: '', email: '', rsvp: 'pending', dietary: '', tableId: '', guestRole: '' }
 
 export default function GuestList({
   guests, tables,
   onAddGuest, onUpdateGuest, onDeleteGuest,
-  onAddTable, onDeleteTable,
+  onAddTable, onDeleteTable, onUpdateTable,
 }) {
   const [modalOpen, setModalOpen]       = useState(false)
   const [editingGuest, setEditingGuest] = useState(null)
   const [form, setForm]                 = useState(BLANK_GUEST)
   const [rsvpFilter, setRsvpFilter]     = useState('all')
   const [newTableName, setNewTableName] = useState('')
+  const [view, setView]                 = useState('list') // 'list' | 'seating'
 
   useEffect(() => {
     setForm(editingGuest
@@ -60,6 +62,28 @@ export default function GuestList({
   }))
   const unassigned = guests.filter(g => !g.tableId)
 
+  if (view === 'seating') {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <div className="section-title" style={{ marginBottom: 4 }}>Seating Chart</div>
+            <div className="section-subtitle">{guests.length} GUESTS · {guests.filter(g => g.tableId).length} SEATED · {guests.filter(g => !g.tableId).length} UNASSIGNED</div>
+          </div>
+          <button className="btn btn-ghost" onClick={() => setView('list')}>← GUEST LIST</button>
+        </div>
+        <SeatingChart
+          guests={guests}
+          tables={tables}
+          onUpdateGuest={onUpdateGuest}
+          onUpdateTable={onUpdateTable}
+          onAddTable={onAddTable}
+          onDeleteTable={onDeleteTable}
+        />
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="section-title">Guest List</div>
@@ -81,9 +105,14 @@ export default function GuestList({
             </button>
           ))}
         </div>
-        <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={openAdd}>
-          + ADD GUEST
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost" onClick={() => setView('seating')}>
+            ⬡ SEATING CHART
+          </button>
+          <button className="btn btn-primary" onClick={openAdd}>
+            + ADD GUEST
+          </button>
+        </div>
       </div>
 
       {/* Guest table */}
@@ -132,65 +161,6 @@ export default function GuestList({
             })}
           </tbody>
         </table>
-      </div>
-
-      {/* Seating Overview */}
-      <div style={{ marginTop: 32 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 16, flexWrap: 'wrap', gap: 12,
-        }}>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontStyle: 'italic' }}>
-            Seating Overview
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <input
-              type="text"
-              placeholder="New table name"
-              value={newTableName}
-              onChange={e => setNewTableName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddTable()}
-              style={{ width: 180, flex: 'none' }}
-            />
-            <button className="btn btn-ghost" onClick={handleAddTable}>+ TABLE</button>
-          </div>
-        </div>
-
-        <div className="seating-grid">
-          {seatMap.map(t => (
-            <div className="seating-table-card" key={t.id}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div className="seating-table-name">{t.name.toUpperCase()}</div>
-                <button
-                  className="btn-danger"
-                  style={{ fontSize: 14, padding: '0 4px' }}
-                  onClick={() => onDeleteTable(t.id)}
-                  title="Delete table"
-                >×</button>
-              </div>
-              {t.guests.length === 0 ? (
-                <div className="seating-empty">Empty</div>
-              ) : (
-                t.guests.map(g => (
-                  <div key={g.id} className="seating-guest-name">
-                    {g.name}
-                    {g.guestRole && (
-                      <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 6 }}>· {g.guestRole}</span>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          ))}
-          {unassigned.length > 0 && (
-            <div className="seating-table-card" style={{ borderStyle: 'dashed' }}>
-              <div className="seating-table-name" style={{ color: 'var(--muted)' }}>UNASSIGNED</div>
-              {unassigned.map(g => (
-                <div key={g.id} className="seating-guest-name" style={{ color: 'var(--muted)' }}>{g.name}</div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Add / Edit Modal */}

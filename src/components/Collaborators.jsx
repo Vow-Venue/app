@@ -1,15 +1,25 @@
 import { useState } from 'react'
 import Modal from './Modal'
 
-const BLANK_COLLAB = { name: '', role: '', access: 'view' }
+const appUrl = window.location.origin
+
+const BLANK_COLLAB = { name: '', email: '', role: '', access: 'view' }
 
 const initials = (name) =>
   name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 
-export default function Collaborators({ collaborators, onAddCollaborator, onDeleteCollaborator }) {
+export default function Collaborators({ collaborators, onAddCollaborator, onDeleteCollaborator, isAuthenticated }) {
   const [formOpen, setFormOpen]         = useState(false)
   const [upgradeOpen, setUpgradeOpen]   = useState(false)
   const [form, setForm]                 = useState(BLANK_COLLAB)
+  const [inviteUrl, setInviteUrl]       = useState(null)
+  const [copied, setCopied]             = useState(false)
+
+  const handleCopyLink = (url) => {
+    navigator.clipboard.writeText(url || appUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const FREE_PLAN_LIMIT = 2
 
@@ -25,10 +35,13 @@ export default function Collaborators({ collaborators, onAddCollaborator, onDele
   const handleChange = (e) =>
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return
-    onAddCollaborator({ ...form })
+    const token = await onAddCollaborator({ ...form })
+    if (token) {
+      setInviteUrl(`${appUrl}?invite=${token}`)
+    }
     setFormOpen(false)
     setForm(BLANK_COLLAB)
   }
@@ -67,7 +80,7 @@ export default function Collaborators({ collaborators, onAddCollaborator, onDele
             <div className="avatar">{initials(c.name)}</div>
             <div className="collab-info">
               <div className="collab-name">{c.name}</div>
-              <div className="collab-role">{c.role}</div>
+              <div className="collab-role">{[c.role, c.email].filter(Boolean).join(' · ')}</div>
             </div>
             <span className={`badge access-${c.access}`}>
               {c.access === 'full' ? 'FULL ACCESS' : 'VIEW ONLY'}
@@ -93,27 +106,99 @@ export default function Collaborators({ collaborators, onAddCollaborator, onDele
         <button className="btn-gold">UPGRADE TO PRO · $19/MO</button>
       </div>
 
+      {/* Invite URL card — shown after successfully adding a collaborator */}
+      {inviteUrl && (
+        <div style={{
+          marginBottom: 24,
+          background: 'rgba(184,151,90,0.08)',
+          border: '1px solid var(--gold)',
+          borderRadius: 12,
+          padding: '16px 20px',
+        }}>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontStyle: 'italic', marginBottom: 8 }}>
+            Invite link ready
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
+            Copy this link and send it to your collaborator via text or email. It works once.
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{
+              flex: 1, fontSize: 12, color: 'var(--deep)',
+              background: 'var(--white)', border: '1px solid var(--border)',
+              borderRadius: 6, padding: '8px 10px',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {inviteUrl}
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: 11, flexShrink: 0 }}
+              onClick={() => handleCopyLink(inviteUrl)}
+            >
+              {copied ? 'COPIED ✓' : 'COPY LINK'}
+            </button>
+          </div>
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: 11, marginTop: 10 }}
+            onClick={() => setInviteUrl(null)}
+          >
+            DISMISS
+          </button>
+        </div>
+      )}
+
       {/* Add Collaborator Modal */}
-      <Modal isOpen={formOpen} onClose={() => setFormOpen(false)} title="Invite Collaborator">
+      <Modal isOpen={formOpen} onClose={() => setFormOpen(false)} title="Add Collaborator">
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>FULL NAME *</label>
-            <input name="name" type="text" value={form.name} onChange={handleChange} required placeholder="e.g. Jessica Moore" />
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, lineHeight: 1.6 }}>
+            Add them to your team, then share the link below so they can sign in.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>FULL NAME *</label>
+              <input name="name" type="text" value={form.name} onChange={handleChange} required placeholder="e.g. Jessica Moore" autoFocus />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>EMAIL</label>
+              <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="jessica@example.com" />
+            </div>
           </div>
-          <div className="form-group">
-            <label>ROLE</label>
-            <input name="role" type="text" value={form.role} onChange={handleChange} placeholder="e.g. Maid of Honor, Planner" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>ROLE</label>
+              <input name="role" type="text" value={form.role} onChange={handleChange} placeholder="e.g. Maid of Honor" />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>ACCESS LEVEL</label>
+              <select name="access" value={form.access} onChange={handleChange}>
+                <option value="full">Full Access</option>
+                <option value="view">View Only</option>
+              </select>
+            </div>
           </div>
-          <div className="form-group">
-            <label>ACCESS LEVEL</label>
-            <select name="access" value={form.access} onChange={handleChange}>
-              <option value="full">Full Access</option>
-              <option value="view">View Only</option>
-            </select>
-          </div>
-          <div className="modal-actions">
+
+          {/* Invite link — only show if authenticated (invite tokens require DB) */}
+          {isAuthenticated && (
+            <div style={{
+              marginTop: 20,
+              background: 'rgba(184,151,90,0.08)',
+              border: '1px solid var(--border)',
+              borderRadius: 10,
+              padding: '12px 14px',
+            }}>
+              <div style={{ fontSize: 11, letterSpacing: 2, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>
+                HOW TO INVITE
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--deep)', lineHeight: 1.6 }}>
+                After clicking "Add to Team", an invite link will be generated. Copy it and send it to them via text or email. When they click it and sign in, they'll be added to your wedding automatically.
+              </div>
+            </div>
+          )}
+
+          <div className="modal-actions" style={{ marginTop: 20 }}>
             <button type="button" className="btn btn-ghost" onClick={() => setFormOpen(false)}>CANCEL</button>
-            <button type="submit" className="btn btn-primary">SEND INVITE</button>
+            <button type="submit" className="btn btn-primary">ADD TO TEAM</button>
           </div>
         </form>
       </Modal>

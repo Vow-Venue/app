@@ -134,6 +134,12 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [authOpen, setAuthOpen]       = useState(false)
 
+  // ── Invite token (read from URL on load)
+  const [pendingInviteToken] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('invite') || null
+  })
+
   // ── App view
   const [showApp, setShowApp]     = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
@@ -193,12 +199,51 @@ export default function App() {
   }, [session?.user?.id])
 
   const loadWeddingAndData = async (userId) => {
+    // ── Step 1: Redeem invite token if present in URL ─────────────────────────
+    if (pendingInviteToken) {
+      const { data: invite } = await supabase
+        .from('invite_tokens')
+        .select('*')
+        .eq('token', pendingInviteToken)
+        .eq('used', false)
+        .maybeSingle()
+
+      if (invite) {
+        // Mark token used + link collaborator to this user
+        await supabase.from('invite_tokens').update({ used: true }).eq('id', invite.id)
+        await supabase.from('collaborators')
+          .upsert({ wedding_id: invite.wedding_id, user_id: userId, name: invite.name, email: invite.email, role: invite.role, access: invite.access }, { onConflict: 'wedding_id,email' })
+        // Strip invite param from URL without reload
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+
+    // ── Step 2: Find wedding — own or shared via collaborator ─────────────────
     let { data: weddingRow } = await supabase
       .from('weddings')
       .select('*')
       .eq('user_id', userId)
       .maybeSingle()
 
+    // If no own wedding, check if invited as collaborator
+    if (!weddingRow) {
+      const { data: collab } = await supabase
+        .from('collaborators')
+        .select('wedding_id')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (collab) {
+        const { data: sharedWedding } = await supabase
+          .from('weddings')
+          .select('*')
+          .eq('id', collab.wedding_id)
+          .single()
+        weddingRow = sharedWedding
+      }
+    }
+
+    // New user with no invite — create a blank wedding
     if (!weddingRow) {
       const { data: created } = await supabase
         .from('weddings')
@@ -312,13 +357,25 @@ export default function App() {
     if (session && weddingId) {
       const { data } = await supabase
         .from('seating_tables')
-        .insert({ wedding_id: weddingId, name: table.name })
+        .insert({
+          wedding_id: weddingId,
+          name: table.name,
+          shape: table.shape ?? 'round',
+          x: table.x ?? 100,
+          y: table.y ?? 100,
+          capacity: table.capacity ?? 8,
+        })
         .select()
         .single()
       if (data) setTables(prev => [...prev, data])
     } else {
       setTables(prev => [...prev, { ...table, id: genId() }])
     }
+  }
+
+  const handleUpdateTable = async (id, updates) => {
+    setTables(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
+    if (session) await supabase.from('seating_tables').update(updates).eq('id', id)
   }
 
   const handleDeleteTable = async (id) => {
@@ -477,13 +534,27 @@ export default function App() {
       const { data } = await supabase.from('collaborators').insert({
         wedding_id: weddingId,
         name: collab.name,
+        email: collab.email || null,
         role: collab.role,
         access: collab.access,
       }).select().single()
       if (data) setCollaborators(prev => [...prev, data])
+
+      // Create invite token so they can actually join
+      if (collab.email) {
+        const { data: tokenRow } = await supabase.from('invite_tokens').insert({
+          wedding_id: weddingId,
+          email: collab.email,
+          name: collab.name,
+          role: collab.role,
+          access: collab.access,
+        }).select('token').single()
+        return tokenRow?.token ?? null
+      }
     } else {
       setCollaborators(prev => [...prev, { ...collab, id: genId() }])
     }
+    return null
   }
 
   const handleDeleteCollaborator = async (id) => {
@@ -528,6 +599,7 @@ export default function App() {
             onUpdateGuest={handleUpdateGuest}
             onDeleteGuest={handleDeleteGuest}
             onAddTable={handleAddTable}
+            onUpdateTable={handleUpdateTable}
             onDeleteTable={handleDeleteTable}
           />
         )
@@ -578,6 +650,7 @@ export default function App() {
             collaborators={collaborators}
             onAddCollaborator={handleAddCollaborator}
             onDeleteCollaborator={handleDeleteCollaborator}
+            isAuthenticated={!!session}
           />
         )
       case 'dayofcontacts':
