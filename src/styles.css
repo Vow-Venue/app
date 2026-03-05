@@ -1132,3 +1132,52 @@ label {
   .stats-row { grid-template-columns: repeat(2, 1fr); }
   .billing-summary { grid-template-columns: 1fr; }
 }
+
+/* ─── Print / PDF Export ────────────────────────── */
+
+@media print {
+  .no-print,
+  header, nav, .tabs, .header,
+  .chip-row, .chip,
+  .btn, .btn-primary, .btn-ghost, .btn-icon, .btn-danger,
+  .paywall-card, .guest-mode-banner,
+  [class*="modal"] {
+    display: none !important;
+  }
+
+  body { background: #fff; color: #000; font-size: 12px; }
+
+  .main { padding: 0; max-width: 100%; }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+
+  .section-subtitle {
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+  }
+
+  .card { box-shadow: none; border: 1px solid #ccc; }
+
+  .guest-table th,
+  .guest-table td {
+    font-size: 11px;
+    padding: 6px 10px;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .guest-table thead th { background: #f5f0e8; }
+
+  .badge {
+    font-size: 8px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid #999;
+  }
+
+  @page { margin: 1.5cm; }
+}

@@ -174,6 +174,14 @@ export default function GuestList({
             ⬡ SEATING CHART
           </button>
           <button
+            className="btn btn-ghost no-print"
+            style={{ fontSize: 11 }}
+            onClick={() => window.print()}
+            title="Print or save as PDF"
+          >
+            ↓ PRINT LIST
+          </button>
+          <button
             className="btn btn-ghost"
             style={{ fontSize: 11 }}
             onClick={() => fileInputRef.current?.click()}

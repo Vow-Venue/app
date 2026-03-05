@@ -50,7 +50,30 @@ create policy "invite_tokens_insert" on invite_tokens
 create policy "invite_tokens_update" on invite_tokens
   for update using (true);
 
--- 4. Weddings: add Stripe plan tracking
-alter table weddings add column if not exists plan                   text default 'free';
+-- 4. Weddings: add Stripe plan tracking + budget + RSVP slug
+alter table weddings add column if not exists plan                   text    default 'free';
 alter table weddings add column if not exists stripe_customer_id     text;
 alter table weddings add column if not exists stripe_subscription_id text;
+alter table weddings add column if not exists budget                 numeric default 0;
+alter table weddings add column if not exists rsvp_slug              text;
+
+-- Generate a unique 8-char slug for any wedding that doesn't have one yet
+update weddings set rsvp_slug = substr(encode(gen_random_bytes(6), 'hex'), 1, 8)
+where rsvp_slug is null;
+
+-- Ensure slugs are unique
+alter table weddings add constraint if not exists weddings_rsvp_slug_unique unique (rsvp_slug);
+
+-- 5. RLS: Allow public access for RSVP (anyone with the slug can read + submit)
+-- Read wedding by slug (slug acts as the access token)
+create policy "RSVP read wedding by slug" on weddings
+  for select using (rsvp_slug is not null);
+
+-- Allow anonymous guests to submit RSVP
+create policy "RSVP insert guest" on guests
+  for insert with check (
+    exists (select 1 from weddings where id = wedding_id and rsvp_slug is not null)
+  );
+
+create policy "RSVP update guest" on guests
+  for update using (true);

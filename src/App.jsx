@@ -13,6 +13,7 @@ import DayOfContacts from './components/DayOfContacts'
 import LandingPage from './components/LandingPage'
 import AuthModal from './components/AuthModal'
 import WeddingSetup from './components/WeddingSetup'
+import RSVPPage from './components/RSVPPage'
 
 const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 
@@ -134,10 +135,14 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [authOpen, setAuthOpen]       = useState(false)
 
-  // ── Invite token (read from URL on load)
+  // ── URL params (read once on load)
   const [pendingInviteToken] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     return params.get('invite') || null
+  })
+  const [rsvpSlug] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('rsvp') || null
   })
 
   // ── App view
@@ -604,6 +609,12 @@ export default function App() {
     setWedding(prev => ({ ...prev, partner1, partner2, wedding_date: weddingDate, setup_complete: true }))
   }
 
+  // ── Budget ───────────────────────────────────────────────────────────────────
+  const handleSetBudget = async (budget) => {
+    setWedding(prev => ({ ...prev, budget }))
+    if (session && weddingId) await supabase.from('weddings').update({ budget }).eq('id', weddingId)
+  }
+
   // ── Sign out ─────────────────────────────────────────────────────────────────
   const handleSignOut = () => supabase.auth.signOut()
 
@@ -674,6 +685,8 @@ export default function App() {
             onAddInvoice={handleAddInvoice}
             onUpdateInvoice={handleUpdateInvoice}
             onDeleteInvoice={handleDeleteInvoice}
+            budget={wedding?.budget ?? 0}
+            onSetBudget={handleSetBudget}
           />
         )
       case 'collaborators': {
@@ -702,6 +715,9 @@ export default function App() {
         return null
     }
   }
+
+  // ── Public RSVP page (no auth required) ─────────────────────────────────────
+  if (rsvpSlug) return <RSVPPage slug={rsvpSlug} />
 
   // ── Initial auth check spinner ───────────────────────────────────────────────
   if (authLoading) {
