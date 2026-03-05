@@ -1,57 +1,38 @@
 import { useState, useEffect, useRef } from 'react'
 import Modal from './Modal'
 import SeatingChart from './SeatingChart'
+import { parseCSVRaw, findColumn, toCSV, downloadCSV } from '../lib/csv'
 
 const BLANK_GUEST = { name: '', email: '', rsvp: 'pending', dietary: '', tableId: '', guestRole: '' }
 
-// ── CSV parser ────────────────────────────────────────────────────────────────
-function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/).filter(l => l.trim())
-  if (lines.length < 2) return []
+// ── CSV parser (uses shared utilities) ───────────────────────────────────────
+function parseGuestCSV(text) {
+  const { headers, rows } = parseCSVRaw(text)
+  if (!headers.length) return []
 
-  const parseLine = (line) => {
-    const result = []
-    let cell = '', inQuote = false
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i]
-      if (ch === '"') {
-        if (inQuote && line[i + 1] === '"') { cell += '"'; i++ }
-        else inQuote = !inQuote
-      } else if (ch === ',' && !inQuote) {
-        result.push(cell.trim()); cell = ''
-      } else {
-        cell += ch
-      }
-    }
-    result.push(cell.trim())
-    return result
-  }
-
-  const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/['"]/g, '').trim())
-
-  const find = (row, ...names) => {
-    for (const name of names) {
-      const i = headers.findIndex(h => h === name || h.includes(name))
-      if (i !== -1 && row[i] != null) return row[i].replace(/^"|"$/g, '').trim()
-    }
-    return ''
-  }
-
-  return lines.slice(1).map(line => {
-    const row = parseLine(line)
-    const rsvpRaw = find(row, 'rsvp', 'status', 'response', 'attending').toLowerCase()
+  return rows.map(row => {
+    const rsvpRaw = findColumn(headers, row, 'rsvp', 'status', 'response', 'attending').toLowerCase()
     const rsvp = ['yes', 'confirmed', 'accepted', 'attending', 'y'].includes(rsvpRaw) ? 'yes'
                : ['no', 'declined', 'not attending', 'regrets', 'n'].includes(rsvpRaw) ? 'no'
                : 'pending'
     return {
-      name:      find(row, 'name', 'full name', 'guest name', 'guest'),
-      email:     find(row, 'email', 'e-mail', 'email address'),
+      name:      findColumn(headers, row, 'name', 'full name', 'guest name', 'guest'),
+      email:     findColumn(headers, row, 'email', 'e-mail', 'email address'),
       rsvp,
-      dietary:   find(row, 'dietary', 'diet', 'food', 'restrictions', 'meal preference'),
-      guestRole: find(row, 'role', 'title', 'relationship', 'type', 'party'),
+      dietary:   findColumn(headers, row, 'dietary', 'diet', 'food', 'restrictions', 'meal preference'),
+      guestRole: findColumn(headers, row, 'role', 'title', 'relationship', 'type', 'party'),
     }
   }).filter(g => g.name)
 }
+
+const GUEST_CSV_COLUMNS = [
+  { key: 'name',      label: 'Name' },
+  { key: 'email',     label: 'Email' },
+  { key: 'rsvp',      label: 'RSVP' },
+  { key: 'dietary',   label: 'Dietary' },
+  { key: 'guestRole', label: 'Role' },
+  { key: 'tableName', label: 'Table' },
+]
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -100,7 +81,7 @@ export default function GuestList({
     if (!file) return
     const reader = new FileReader()
     reader.onload = (ev) => {
-      const parsed = parseCSV(ev.target.result)
+      const parsed = parseGuestCSV(ev.target.result)
       setImportPreview({ guests: parsed })
       e.target.value = '' // reset so same file can be re-selected
     }
@@ -111,6 +92,15 @@ export default function GuestList({
     if (!importPreview?.guests?.length) return
     if (onImportGuests) await onImportGuests(importPreview.guests)
     setImportPreview(null)
+  }
+
+  // ── CSV export ─────────────────────────────────────────────────────────────
+  const handleExport = () => {
+    const data = guests.map(g => ({
+      ...g,
+      tableName: tables.find(t => t.id === g.tableId)?.name ?? '',
+    }))
+    downloadCSV('guests.csv', toCSV(GUEST_CSV_COLUMNS, data))
   }
 
   // ── Stats ───────────────────────────────────────────────────────────────────
@@ -180,6 +170,14 @@ export default function GuestList({
             title="Print or save as PDF"
           >
             ↓ PRINT LIST
+          </button>
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: 11 }}
+            onClick={handleExport}
+            title="Export guests to CSV"
+          >
+            ↓ EXPORT CSV
           </button>
           <button
             className="btn btn-ghost"

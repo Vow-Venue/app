@@ -8,12 +8,18 @@ const BLANK_COLLAB = { name: '', email: '', role: '', access: 'view' }
 const initials = (name) =>
   name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 
-export default function Collaborators({ collaborators, onAddCollaborator, onDeleteCollaborator, isAuthenticated, canInvite = true }) {
+export default function Collaborators({
+  collaborators, onAddCollaborator, onDeleteCollaborator,
+  isAuthenticated, canInvite = true,
+  isPro = false, onUpgrade,
+  rsvpSlug = null,
+}) {
   const [formOpen, setFormOpen]         = useState(false)
   const [upgradeOpen, setUpgradeOpen]   = useState(false)
   const [form, setForm]                 = useState(BLANK_COLLAB)
   const [inviteUrl, setInviteUrl]       = useState(null)
   const [copied, setCopied]             = useState(false)
+  const [upgrading, setUpgrading]       = useState(false)
 
   const handleCopyLink = (url) => {
     navigator.clipboard.writeText(url || appUrl)
@@ -24,11 +30,20 @@ export default function Collaborators({ collaborators, onAddCollaborator, onDele
   const FREE_PLAN_LIMIT = 2
 
   const handleAddClick = () => {
-    if (collaborators.length >= FREE_PLAN_LIMIT) {
+    if (!isPro && collaborators.length >= FREE_PLAN_LIMIT) {
       setUpgradeOpen(true)
     } else {
       setForm(BLANK_COLLAB)
       setFormOpen(true)
+    }
+  }
+
+  const handleUpgradeClick = async () => {
+    setUpgrading(true)
+    try {
+      await onUpgrade?.()
+    } finally {
+      setUpgrading(false)
     }
   }
 
@@ -51,9 +66,9 @@ export default function Collaborators({ collaborators, onAddCollaborator, onDele
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
         <div className="section-title">Your Team</div>
         <div style={{
-          background: 'rgba(184,151,90,0.12)',
-          border: '1px solid var(--border)',
-          color: 'var(--gold)',
+          background: isPro ? 'rgba(46,125,50,0.1)' : 'rgba(184,151,90,0.12)',
+          border: `1px solid ${isPro ? '#2e7d32' : 'var(--border)'}`,
+          color: isPro ? '#2e7d32' : 'var(--gold)',
           padding: '5px 14px',
           borderRadius: 20,
           fontSize: 11,
@@ -61,11 +76,13 @@ export default function Collaborators({ collaborators, onAddCollaborator, onDele
           fontWeight: 500,
           marginTop: 8,
         }}>
-          FREE PLAN
+          {isPro ? '★ PRO PLAN' : 'FREE PLAN'}
         </div>
       </div>
       <div className="section-subtitle">
-        {collaborators.length}/{FREE_PLAN_LIMIT} COLLABORATORS · FREE PLAN
+        {isPro
+          ? `${collaborators.length} COLLABORATOR${collaborators.length !== 1 ? 'S' : ''} · PRO PLAN`
+          : `${collaborators.length}/${FREE_PLAN_LIMIT} COLLABORATORS · FREE PLAN`}
       </div>
 
       <div className="card" style={{ marginBottom: 24 }}>
@@ -102,15 +119,54 @@ export default function Collaborators({ collaborators, onAddCollaborator, onDele
         </div>
       </div>
 
-      {/* Paywall card — always visible */}
-      <div className="paywall-card">
-        <h3>Invite Your Whole Wedding Village</h3>
-        <p>
-          Upgrade to Pro to add unlimited collaborators — your wedding planner,<br />
-          photographer, both families, and anyone else who needs access.
-        </p>
-        <button className="btn-gold">UPGRADE TO PRO · $19/MO</button>
-      </div>
+      {/* RSVP link — shown when slug is available */}
+      {rsvpSlug && (
+        <div style={{
+          marginBottom: 24,
+          background: 'rgba(184,151,90,0.06)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '16px 20px',
+        }}>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, fontStyle: 'italic', marginBottom: 6 }}>
+            ✦ Public RSVP Link
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
+            Share this link with your guests so they can RSVP online. No sign-in required for them.
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{
+              flex: 1, fontSize: 12, color: 'var(--deep)',
+              background: 'var(--white)', border: '1px solid var(--border)',
+              borderRadius: 6, padding: '8px 10px',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {appUrl}?rsvp={rsvpSlug}
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: 11, flexShrink: 0 }}
+              onClick={() => handleCopyLink(`${appUrl}?rsvp=${rsvpSlug}`)}
+            >
+              {copied ? 'COPIED ✓' : 'COPY'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Paywall card — only shown on free plan */}
+      {!isPro && (
+        <div className="paywall-card">
+          <h3>Invite Your Whole Wedding Village</h3>
+          <p>
+            Upgrade to Pro to add unlimited collaborators — your wedding planner,<br />
+            photographer, both families, and anyone else who needs access.
+          </p>
+          <button className="btn-gold" onClick={handleUpgradeClick} disabled={upgrading}>
+            {upgrading ? 'REDIRECTING...' : 'UPGRADE TO PRO · $49/MO'}
+          </button>
+        </div>
+      )}
 
       {/* Invite URL card — shown after successfully adding a collaborator */}
       {inviteUrl && (
@@ -226,8 +282,8 @@ export default function Collaborators({ collaborators, onAddCollaborator, onDele
             Your free plan includes up to 2 collaborators.<br />
             Upgrade to Pro to invite your whole team — unlimited access for everyone.
           </div>
-          <button className="btn-gold" style={{ marginBottom: 12 }}>
-            UPGRADE TO PRO · $19/MO
+          <button className="btn-gold" style={{ marginBottom: 12 }} onClick={handleUpgradeClick} disabled={upgrading}>
+            {upgrading ? 'REDIRECTING TO STRIPE...' : 'UPGRADE TO PRO · $49/MO'}
           </button>
           <div>
             <button

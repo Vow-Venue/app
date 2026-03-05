@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Modal from './Modal'
+import { parseCSVRaw, findColumn, toCSV, downloadCSV } from '../lib/csv'
 
 const BLANK_INVOICE = {
   invoiceNumber: '', vendorName: '', amount: '', dueDate: '',
@@ -22,13 +23,58 @@ const isOverdue = (invoice) => {
   return new Date(invoice.dueDate + 'T00:00:00') < new Date()
 }
 
-export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDeleteInvoice, budget = 0, onSetBudget }) {
+const INVOICE_CSV_COLUMNS = [
+  { key: 'invoiceNumber', label: 'Invoice #' },
+  { key: 'vendorName',    label: 'Vendor' },
+  { key: 'amount',        label: 'Amount' },
+  { key: 'dueDate',       label: 'Due Date' },
+  { key: 'status',        label: 'Status' },
+  { key: 'notes',         label: 'Notes' },
+]
+
+function parseInvoiceCSV(text) {
+  const { headers, rows } = parseCSVRaw(text)
+  if (!headers.length) return []
+
+  return rows.map(row => {
+    const rawStatus = findColumn(headers, row, 'status', 'payment').toLowerCase()
+    const status = ['paid', 'complete', 'settled'].includes(rawStatus) ? 'paid'
+                 : ['overdue', 'late', 'past due'].includes(rawStatus) ? 'overdue'
+                 : 'unpaid'
+
+    const rawAmount = findColumn(headers, row, 'amount', 'total', 'price', 'cost', 'sum')
+      .replace(/[$,\s]/g, '')
+    const amount = Number(rawAmount) || 0
+
+    const rawDate = findColumn(headers, row, 'due date', 'due', 'date', 'deadline', 'payment date')
+    let dueDate = ''
+    if (rawDate) {
+      const d = new Date(rawDate)
+      if (!isNaN(d.getTime())) dueDate = d.toISOString().slice(0, 10)
+    }
+
+    return {
+      invoiceNumber: findColumn(headers, row, 'invoice', 'inv', 'number', '#', 'ref', 'reference'),
+      vendorName:    findColumn(headers, row, 'vendor', 'company', 'name', 'supplier', 'payee'),
+      amount,
+      dueDate,
+      status,
+      notes:         findColumn(headers, row, 'notes', 'note', 'description', 'details', 'memo'),
+      fileName:      null,
+      fileUrl:       null,
+    }
+  }).filter(inv => inv.vendorName)
+}
+
+export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDeleteInvoice, onImportInvoices, budget = 0, onSetBudget }) {
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingInvoice, setEditingInvoice] = useState(null)
   const [form, setForm]                   = useState(BLANK_INVOICE)
   const [filter, setFilter]               = useState('all')
   const [budgetInput, setBudgetInput]     = useState(budget || '')
   const [editingBudget, setEditingBudget] = useState(false)
+  const [importPreview, setImportPreview] = useState(null)
+  const csvInputRef                       = useRef(null)
 
   useEffect(() => {
     setBudgetInput(budget || '')
@@ -70,6 +116,29 @@ export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDel
   }
 
   const markPaid = (inv) => onUpdateInvoice(inv.id, { status: 'paid' })
+
+  // ── CSV import ─────────────────────────────────────────────────────────────
+  const handleCSVFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setImportPreview({ invoices: parseInvoiceCSV(ev.target.result) })
+      e.target.value = ''
+    }
+    reader.readAsText(file)
+  }
+
+  const handleConfirmImport = async () => {
+    if (!importPreview?.invoices?.length) return
+    if (onImportInvoices) await onImportInvoices(importPreview.invoices)
+    setImportPreview(null)
+  }
+
+  // ── CSV export ─────────────────────────────────────────────────────────────
+  const handleExport = () => {
+    downloadCSV('invoices.csv', toCSV(INVOICE_CSV_COLUMNS, invoices))
+  }
 
   // Totals
   const totalAll  = invoices.reduce((s, i) => s + Number(i.amount), 0)
@@ -207,9 +276,18 @@ export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDel
             </button>
           ))}
         </div>
-        <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={openAdd}>
-          + UPLOAD INVOICE
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={handleExport}>
+            ↓ EXPORT CSV
+          </button>
+          <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => csvInputRef.current?.click()}>
+            ↑ IMPORT CSV
+          </button>
+          <input ref={csvInputRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleCSVFileChange} />
+          <button className="btn btn-primary" onClick={openAdd}>
+            + UPLOAD INVOICE
+          </button>
+        </div>
       </div>
 
       {/* Invoice list */}
@@ -260,6 +338,65 @@ export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDel
       <div style={{ marginTop: 16, fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', textAlign: 'center' }}>
         Note: Attached files are stored in your browser session only and won't persist after refresh.
       </div>
+
+      {/* CSV Import Preview Modal */}
+      <Modal isOpen={!!importPreview} onClose={() => setImportPreview(null)} title="Import Invoices from CSV">
+        {importPreview && (
+          <div>
+            {importPreview.invoices.length === 0 ? (
+              <div>
+                <p style={{ color: 'var(--muted)', fontStyle: 'italic', textAlign: 'center', padding: '16px 0 8px' }}>
+                  No valid invoices found in this file.
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, marginBottom: 8 }}>
+                  Make sure your CSV has a <strong>Vendor</strong> column in the first row.<br />
+                  Other supported columns: Invoice #, Amount, Due Date, Status, Notes.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
+                  Found <strong>{importPreview.invoices.length} invoice{importPreview.invoices.length !== 1 ? 's' : ''}</strong> ready to import:
+                </p>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
+                  {importPreview.invoices.slice(0, 6).map((inv, i) => (
+                    <div key={i} style={{
+                      padding: '8px 12px',
+                      borderBottom: i < Math.min(5, importPreview.invoices.length - 1) ? '1px solid var(--border)' : 'none',
+                      display: 'flex', gap: 10, alignItems: 'center', fontSize: 12,
+                    }}>
+                      <span style={{ fontWeight: 500, flex: 1 }}>{inv.vendorName}</span>
+                      {inv.invoiceNumber && <span style={{ color: 'var(--muted)', fontSize: 11 }}>{inv.invoiceNumber}</span>}
+                      <span style={{ fontWeight: 600 }}>{fmt(inv.amount)}</span>
+                      <span className={`badge status-${inv.status}`} style={{ fontSize: 10 }}>{inv.status.toUpperCase()}</span>
+                    </div>
+                  ))}
+                  {importPreview.invoices.length > 6 && (
+                    <div style={{ padding: '7px 12px', color: 'var(--muted)', fontStyle: 'italic', fontSize: 11 }}>
+                      + {importPreview.invoices.length - 6} more...
+                    </div>
+                  )}
+                </div>
+                <div style={{
+                  background: 'rgba(184,151,90,0.07)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 12px', fontSize: 11,
+                  color: 'var(--muted)', lineHeight: 1.6, marginBottom: 4,
+                }}>
+                  <strong>CSV column headers recognised:</strong> Invoice #, Vendor, Amount, Due Date, Status (paid/unpaid/overdue), Notes.
+                </div>
+              </>
+            )}
+            <div className="modal-actions" style={{ marginTop: 20 }}>
+              <button className="btn btn-ghost" onClick={() => setImportPreview(null)}>CANCEL</button>
+              {importPreview.invoices.length > 0 && (
+                <button className="btn btn-primary" onClick={handleConfirmImport}>
+                  IMPORT {importPreview.invoices.length} INVOICE{importPreview.invoices.length !== 1 ? 'S' : ''}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Add / Edit Modal */}
       <Modal isOpen={modalOpen} onClose={close} title={editingInvoice ? 'Edit Invoice' : 'Add Invoice'}>

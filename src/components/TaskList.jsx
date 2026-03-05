@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Modal from './Modal'
+import { parseCSVRaw, findColumn, toCSV, downloadCSV } from '../lib/csv'
 
 const BLANK_TASK = { title: '', dueDate: '', assignedTo: '', priority: 'medium', completed: false }
 
@@ -8,6 +9,45 @@ const fmtDate = (dateStr) => {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   })
+}
+
+const TASK_CSV_COLUMNS = [
+  { key: 'title',      label: 'Title' },
+  { key: 'dueDate',    label: 'Due Date' },
+  { key: 'assignedTo', label: 'Assigned To' },
+  { key: 'priority',   label: 'Priority' },
+  { key: 'status',     label: 'Status' },
+]
+
+function parseTaskCSV(text) {
+  const { headers, rows } = parseCSVRaw(text)
+  if (!headers.length) return []
+
+  return rows.map(row => {
+    const rawPriority = findColumn(headers, row, 'priority', 'urgency', 'importance').toLowerCase()
+    const priority = ['high', 'urgent', 'critical'].includes(rawPriority) ? 'high'
+                   : ['low', 'optional', 'nice to have'].includes(rawPriority) ? 'low'
+                   : 'medium'
+
+    const rawStatus = findColumn(headers, row, 'status', 'completed', 'done', 'complete').toLowerCase()
+    const completed = ['yes', 'done', 'completed', 'true', '1', 'x'].includes(rawStatus)
+
+    // Try to parse due date in multiple formats
+    const rawDate = findColumn(headers, row, 'due date', 'due', 'date', 'deadline')
+    let dueDate = ''
+    if (rawDate) {
+      const d = new Date(rawDate)
+      if (!isNaN(d.getTime())) dueDate = d.toISOString().slice(0, 10)
+    }
+
+    return {
+      title:      findColumn(headers, row, 'title', 'task', 'name', 'description', 'to do', 'todo'),
+      dueDate,
+      assignedTo: findColumn(headers, row, 'assigned', 'assignee', 'owner', 'responsible', 'person'),
+      priority,
+      completed,
+    }
+  }).filter(t => t.title)
 }
 
 // ── Wedding checklist templates ────────────────────────────────────────────────
@@ -94,7 +134,7 @@ const TEMPLATES = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask }) {
+export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask, onImportTasks }) {
   const [modalOpen, setModalOpen]       = useState(false)
   const [editingTask, setEditingTask]   = useState(null)
   const [form, setForm]                 = useState(BLANK_TASK)
@@ -102,6 +142,8 @@ export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask 
   const [tmplOpen, setTmplOpen]         = useState(false)
   const [tmplChecked, setTmplChecked]   = useState({})     // { 'period:title': true }
   const [expandedPeriod, setExpandedPeriod] = useState(null)
+  const [importPreview, setImportPreview] = useState(null)
+  const fileInputRef                      = useRef(null)
 
   useEffect(() => {
     setForm(editingTask ?? BLANK_TASK)
@@ -169,6 +211,33 @@ export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask 
     setTmplOpen(false)
   }
 
+  // ── CSV import ─────────────────────────────────────────────────────────────
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setImportPreview({ tasks: parseTaskCSV(ev.target.result) })
+      e.target.value = ''
+    }
+    reader.readAsText(file)
+  }
+
+  const handleConfirmImport = async () => {
+    if (!importPreview?.tasks?.length) return
+    if (onImportTasks) await onImportTasks(importPreview.tasks)
+    setImportPreview(null)
+  }
+
+  // ── CSV export ─────────────────────────────────────────────────────────────
+  const handleExport = () => {
+    const data = tasks.map(t => ({
+      ...t,
+      status: t.completed ? 'Completed' : 'Pending',
+    }))
+    downloadCSV('tasks.csv', toCSV(TASK_CSV_COLUMNS, data))
+  }
+
   const total     = tasks.length
   const completed = tasks.filter(t => t.completed).length
   const pct       = total === 0 ? 0 : Math.round((completed / total) * 100)
@@ -214,7 +283,14 @@ export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask 
             </button>
           ))}
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={handleExport}>
+            ↓ EXPORT CSV
+          </button>
+          <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => fileInputRef.current?.click()}>
+            ↑ IMPORT CSV
+          </button>
+          <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleFileChange} />
           <button
             className="btn btn-ghost"
             style={{ fontSize: 11 }}
@@ -301,6 +377,65 @@ export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask 
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* CSV Import Preview Modal */}
+      <Modal isOpen={!!importPreview} onClose={() => setImportPreview(null)} title="Import Tasks from CSV">
+        {importPreview && (
+          <div>
+            {importPreview.tasks.length === 0 ? (
+              <div>
+                <p style={{ color: 'var(--muted)', fontStyle: 'italic', textAlign: 'center', padding: '16px 0 8px' }}>
+                  No valid tasks found in this file.
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, marginBottom: 8 }}>
+                  Make sure your CSV has a <strong>Title</strong> column in the first row.<br />
+                  Other supported columns: Due Date, Priority, Assigned To, Status.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
+                  Found <strong>{importPreview.tasks.length} task{importPreview.tasks.length !== 1 ? 's' : ''}</strong> ready to import:
+                </p>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
+                  {importPreview.tasks.slice(0, 6).map((t, i) => (
+                    <div key={i} style={{
+                      padding: '8px 12px',
+                      borderBottom: i < Math.min(5, importPreview.tasks.length - 1) ? '1px solid var(--border)' : 'none',
+                      display: 'flex', gap: 10, alignItems: 'center', fontSize: 12,
+                    }}>
+                      <span style={{ fontWeight: 500, flex: 1 }}>{t.title}</span>
+                      <span className={`badge priority-${t.priority}`} style={{ fontSize: 10 }}>{t.priority.toUpperCase()}</span>
+                      {t.dueDate && <span style={{ color: 'var(--muted)', fontSize: 11 }}>{fmtDate(t.dueDate)}</span>}
+                      {t.completed && <span style={{ color: '#2e7d32', fontSize: 10, fontWeight: 600 }}>DONE</span>}
+                    </div>
+                  ))}
+                  {importPreview.tasks.length > 6 && (
+                    <div style={{ padding: '7px 12px', color: 'var(--muted)', fontStyle: 'italic', fontSize: 11 }}>
+                      + {importPreview.tasks.length - 6} more...
+                    </div>
+                  )}
+                </div>
+                <div style={{
+                  background: 'rgba(184,151,90,0.07)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 12px', fontSize: 11,
+                  color: 'var(--muted)', lineHeight: 1.6, marginBottom: 4,
+                }}>
+                  <strong>CSV column headers recognised:</strong> Title, Due Date, Priority (high/medium/low), Assigned To, Status (done/pending).
+                </div>
+              </>
+            )}
+            <div className="modal-actions" style={{ marginTop: 20 }}>
+              <button className="btn btn-ghost" onClick={() => setImportPreview(null)}>CANCEL</button>
+              {importPreview.tasks.length > 0 && (
+                <button className="btn btn-primary" onClick={handleConfirmImport}>
+                  IMPORT {importPreview.tasks.length} TASK{importPreview.tasks.length !== 1 ? 'S' : ''}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Template Modal */}

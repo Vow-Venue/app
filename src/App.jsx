@@ -95,6 +95,7 @@ const mapGuest = r => ({
   dietary: r.dietary ?? '',
   guestRole: r.guest_role ?? '',
   tableId: r.table_id,
+  seatNumber: r.seat_number ?? null,
 })
 
 const mapTask = r => ({
@@ -143,6 +144,10 @@ export default function App() {
   const [rsvpSlug] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     return params.get('rsvp') || null
+  })
+  const [stripeSuccess] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('stripe_success') === '1'
   })
 
   // ── App view
@@ -355,6 +360,7 @@ export default function App() {
         dietary: m.dietary || null,
         guest_role: m.guestRole || null,
         table_id: m.tableId || null,
+        seat_number: m.seatNumber ?? null,
       }).eq('id', id)
     }
   }
@@ -421,6 +427,24 @@ export default function App() {
     // DB on delete set null handles guest.table_id automatically
   }
 
+  // ── Bulk import: Tasks ──────────────────────────────────────────────────────
+  const handleImportTasks = async (taskList) => {
+    if (session && weddingId) {
+      const rows = taskList.map(t => ({
+        wedding_id: weddingId,
+        title: t.title,
+        done: t.completed ?? false,
+        due_date: t.dueDate || null,
+        assigned_to: t.assignedTo || null,
+        priority: t.priority || 'medium',
+      }))
+      const { data } = await supabase.from('tasks').insert(rows).select()
+      if (data) setTasks(prev => [...prev, ...data.map(mapTask)])
+    } else {
+      setTasks(prev => [...prev, ...taskList.map(t => ({ ...t, id: genId() }))])
+    }
+  }
+
   // ── Task handlers ────────────────────────────────────────────────────────────
   const handleAddTask = async (task) => {
     if (session && weddingId) {
@@ -456,6 +480,24 @@ export default function App() {
   const handleDeleteTask = async (id) => {
     setTasks(prev => prev.filter(t => t.id !== id))
     if (session) await supabase.from('tasks').delete().eq('id', id)
+  }
+
+  // ── Bulk import: Vendors ────────────────────────────────────────────────────
+  const handleImportVendors = async (vendorList) => {
+    if (session && weddingId) {
+      const rows = vendorList.map(v => ({
+        wedding_id: weddingId,
+        name: v.name,
+        role: v.role || 'other',
+        phone: v.phone || null,
+        email: v.email || null,
+        notes: v.notes || null,
+      }))
+      const { data } = await supabase.from('vendors').insert(rows).select()
+      if (data) setVendors(prev => [...prev, ...data])
+    } else {
+      setVendors(prev => [...prev, ...vendorList.map(v => ({ ...v, id: genId() }))])
+    }
   }
 
   // ── Vendor handlers ──────────────────────────────────────────────────────────
@@ -518,6 +560,27 @@ export default function App() {
       if (data) setChannels(prev => [...prev, data])
     } else {
       setChannels(prev => [...prev, { ...channel, id: genId() }])
+    }
+  }
+
+  // ── Bulk import: Invoices ───────────────────────────────────────────────────
+  const handleImportInvoices = async (invoiceList) => {
+    if (session && weddingId) {
+      const rows = invoiceList.map(inv => ({
+        wedding_id: weddingId,
+        invoice_number: inv.invoiceNumber || null,
+        vendor_name: inv.vendorName,
+        amount: Number(inv.amount) || 0,
+        due_date: inv.dueDate || null,
+        status: inv.status || 'unpaid',
+        notes: inv.notes || null,
+        file_url: null,
+        file_name: null,
+      }))
+      const { data } = await supabase.from('invoices').insert(rows).select()
+      if (data) setInvoices(prev => [...prev, ...data.map(mapInvoice)])
+    } else {
+      setInvoices(prev => [...prev, ...invoiceList.map(inv => ({ ...inv, id: genId() }))])
     }
   }
 
@@ -615,6 +678,37 @@ export default function App() {
     if (session && weddingId) await supabase.from('weddings').update({ budget }).eq('id', weddingId)
   }
 
+  // ── Stripe upgrade ───────────────────────────────────────────────────────────
+  const handleUpgrade = async () => {
+    if (!session || !weddingId) { setAuthOpen(true); return }
+    try {
+      const origin = window.location.origin
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          weddingId,
+          successUrl: `${origin}?stripe_success=1`,
+          cancelUrl: `${origin}`,
+        },
+      })
+      if (error || !data?.url) {
+        alert('Could not start checkout. Make sure the create-checkout edge function is deployed.')
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      alert('Stripe checkout unavailable. Deploy the Supabase edge function first.')
+    }
+  }
+
+  // Mark pro after successful Stripe payment return
+  useEffect(() => {
+    if (!stripeSuccess || !weddingId || !session) return
+    supabase.from('weddings').update({ plan: 'pro' }).eq('id', weddingId).then(() => {
+      setWedding(prev => prev ? { ...prev, plan: 'pro' } : prev)
+      window.history.replaceState({}, '', window.location.pathname)
+    })
+  }, [stripeSuccess, weddingId, session])
+
   // ── Sign out ─────────────────────────────────────────────────────────────────
   const handleSignOut = () => supabase.auth.signOut()
 
@@ -653,6 +747,7 @@ export default function App() {
             onAddTask={handleAddTask}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
+            onImportTasks={handleImportTasks}
           />
         )
       case 'vendors':
@@ -662,6 +757,7 @@ export default function App() {
             onAddVendor={handleAddVendor}
             onUpdateVendor={handleUpdateVendor}
             onDeleteVendor={handleDeleteVendor}
+            onImportVendors={handleImportVendors}
           />
         )
       case 'messaging':
@@ -685,6 +781,7 @@ export default function App() {
             onAddInvoice={handleAddInvoice}
             onUpdateInvoice={handleUpdateInvoice}
             onDeleteInvoice={handleDeleteInvoice}
+            onImportInvoices={handleImportInvoices}
             budget={wedding?.budget ?? 0}
             onSetBudget={handleSetBudget}
           />
@@ -694,6 +791,7 @@ export default function App() {
         const myCollab = collaborators.find(c => c.user_id === session?.user?.id)
         const myRole = myCollab?.role?.toLowerCase() ?? ''
         const canInvite = !session || isOwner || myRole.includes('planner') || myRole === 'owner'
+        const isPro = wedding?.plan === 'pro'
         return (
           <Collaborators
             collaborators={collaborators}
@@ -701,6 +799,9 @@ export default function App() {
             onDeleteCollaborator={handleDeleteCollaborator}
             isAuthenticated={!!session}
             canInvite={canInvite}
+            isPro={isPro}
+            onUpgrade={handleUpgrade}
+            rsvpSlug={wedding?.rsvp_slug ?? null}
           />
         )
       }
