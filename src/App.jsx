@@ -14,6 +14,7 @@ import LandingPage from './components/LandingPage'
 import AuthModal from './components/AuthModal'
 import WeddingSetup from './components/WeddingSetup'
 import RSVPPage from './components/RSVPPage'
+import MyWeddings from './components/MyWeddings'
 
 const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 
@@ -154,7 +155,12 @@ export default function App() {
   const [showApp, setShowApp]     = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
 
-  // ── Wedding
+  // ── Multi-wedding
+  const [myWeddings, setMyWeddings]             = useState([])
+  const [activeWeddingId, setActiveWeddingId]   = useState(null)
+  const [dashboardLoading, setDashboardLoading] = useState(false)
+
+  // ── Wedding (currently selected)
   const [weddingId, setWeddingId] = useState(null)
   const [wedding, setWedding]     = useState(null)
 
@@ -184,6 +190,9 @@ export default function App() {
         setAuthOpen(false)
       } else {
         // Sign out — reset to seed data and return to landing page
+        setMyWeddings([])
+        setActiveWeddingId(null)
+        setDashboardLoading(false)
         setGuests(SEED_GUESTS)
         setTables(SEED_TABLES)
         setTasks(SEED_TASKS)
@@ -202,13 +211,24 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // ── Load wedding + all data when session arrives ─────────────────────────────
+  // ── Load weddings when session arrives ───────────────────────────────────────
   useEffect(() => {
     if (!session) return
-    loadWeddingAndData(session.user.id)
+    loadMyWeddings(session.user.id)
   }, [session?.user?.id])
 
-  const loadWeddingAndData = async (userId) => {
+  // Helper: map invite/collab role to wedding_members role
+  const mapMemberRole = (role) => {
+    const r = (role || '').toLowerCase()
+    if (r.includes('planner')) return 'planner'
+    if (r === 'bride' || r === 'groom' || r === 'family') return 'family'
+    if (r.includes('vendor')) return 'vendor'
+    return 'viewer'
+  }
+
+  const loadMyWeddings = async (userId) => {
+    setDashboardLoading(true)
+
     // ── Step 1: Redeem invite token if present in URL ─────────────────────────
     if (pendingInviteToken) {
       const { data: invite } = await supabase
@@ -219,71 +239,96 @@ export default function App() {
         .maybeSingle()
 
       if (invite) {
-        // Check 48-hour expiry
         const expiresAt = new Date(new Date(invite.created_at).getTime() + 48 * 60 * 60 * 1000)
         if (new Date() > expiresAt) {
           console.warn('Invite token has expired')
           window.history.replaceState({}, '', window.location.pathname)
         } else {
-        // Mark token used + link collaborator to this user
-        await supabase.from('invite_tokens').update({ used: true }).eq('id', invite.id)
-        await supabase.from('collaborators')
-          .upsert({ wedding_id: invite.wedding_id, user_id: userId, name: invite.name, email: invite.email, role: invite.role, access: invite.access }, { onConflict: 'wedding_id,email' })
-          // Strip invite param from URL without reload
+          await supabase.from('invite_tokens').update({ used: true }).eq('id', invite.id)
+          await supabase.from('collaborators')
+            .upsert({ wedding_id: invite.wedding_id, user_id: userId, name: invite.name, email: invite.email, role: invite.role, access: invite.access }, { onConflict: 'wedding_id,email' })
+          // Also create wedding_members row for access control
+          await supabase.from('wedding_members')
+            .upsert({ wedding_id: invite.wedding_id, user_id: userId, role: mapMemberRole(invite.role) }, { onConflict: 'wedding_id,user_id' })
           window.history.replaceState({}, '', window.location.pathname)
         }
       }
     }
 
-    // ── Step 2: Find wedding — own or shared via collaborator ─────────────────
-    let { data: weddingRow } = await supabase
-      .from('weddings')
-      .select('*')
+    // ── Step 2: Fetch all weddings this user is a member of ───────────────────
+    const { data: memberships } = await supabase
+      .from('wedding_members')
+      .select('wedding_id, role, weddings(*)')
       .eq('user_id', userId)
-      .maybeSingle()
 
-    // If no own wedding, check if invited as collaborator
-    if (!weddingRow) {
-      const { data: collab } = await supabase
-        .from('collaborators')
-        .select('wedding_id')
-        .eq('user_id', userId)
-        .maybeSingle()
+    let weddings = (memberships ?? [])
+      .filter(m => m.weddings)
+      .map(m => ({ ...m.weddings, myRole: m.role }))
 
-      if (collab) {
-        const { data: sharedWedding } = await supabase
-          .from('weddings')
-          .select('*')
-          .eq('id', collab.wedding_id)
-          .single()
-        weddingRow = sharedWedding
+    // ── Fallback for users not yet in wedding_members (pre-migration) ─────────
+    if (weddings.length === 0) {
+      const { data: ownedRow } = await supabase
+        .from('weddings').select('*').eq('user_id', userId).maybeSingle()
+      if (ownedRow) {
+        await supabase.from('wedding_members')
+          .upsert({ wedding_id: ownedRow.id, user_id: userId, role: 'owner' }, { onConflict: 'wedding_id,user_id' })
+        weddings = [{ ...ownedRow, myRole: 'owner' }]
+      } else {
+        const { data: collab } = await supabase
+          .from('collaborators').select('wedding_id, role').eq('user_id', userId).maybeSingle()
+        if (collab) {
+          const { data: sharedWedding } = await supabase
+            .from('weddings').select('*').eq('id', collab.wedding_id).single()
+          if (sharedWedding) {
+            const memberRole = mapMemberRole(collab.role)
+            await supabase.from('wedding_members')
+              .upsert({ wedding_id: sharedWedding.id, user_id: userId, role: memberRole }, { onConflict: 'wedding_id,user_id' })
+            weddings = [{ ...sharedWedding, myRole: memberRole }]
+          }
+        }
       }
     }
 
-    // New user with no invite — create a blank wedding
-    if (!weddingRow) {
+    // ── Step 3: No weddings at all — create a blank one ───────────────────────
+    if (weddings.length === 0) {
       const { data: created } = await supabase
-        .from('weddings')
-        .insert({ user_id: userId })
-        .select('*')
-        .single()
-      weddingRow = created
+        .from('weddings').insert({ user_id: userId }).select('*').single()
+      if (created) {
+        await supabase.from('wedding_members')
+          .insert({ wedding_id: created.id, user_id: userId, role: 'owner' })
+        weddings = [{ ...created, myRole: 'owner' }]
+      }
     }
 
+    setMyWeddings(weddings)
+
+    // ── Step 4: Auto-routing ──────────────────────────────────────────────────
+    if (weddings.length === 1) {
+      setActiveWeddingId(weddings[0].id)
+      await loadWeddingData(weddings[0].id, userId)
+    }
+    // else: multiple weddings — show dashboard (activeWeddingId stays null)
+
+    setDashboardLoading(false)
+  }
+
+  // ── Load all data for a single wedding ──────────────────────────────────────
+  const loadWeddingData = async (wId, userId) => {
+    const { data: weddingRow } = await supabase
+      .from('weddings').select('*').eq('id', wId).single()
     if (!weddingRow) return
+
     setWedding(weddingRow)
     setWeddingId(weddingRow.id)
-    // Use weddingRow below instead of wedding
-    const wedding = weddingRow
 
     const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes] = await Promise.all([
-      supabase.from('guests').select('*').eq('wedding_id', wedding.id),
-      supabase.from('seating_tables').select('*').eq('wedding_id', wedding.id),
-      supabase.from('tasks').select('*').eq('wedding_id', wedding.id).order('created_at'),
-      supabase.from('vendors').select('*').eq('wedding_id', wedding.id),
-      supabase.from('channels').select('*').eq('wedding_id', wedding.id),
-      supabase.from('invoices').select('*').eq('wedding_id', wedding.id),
-      supabase.from('collaborators').select('*').eq('wedding_id', wedding.id),
+      supabase.from('guests').select('*').eq('wedding_id', wId),
+      supabase.from('seating_tables').select('*').eq('wedding_id', wId),
+      supabase.from('tasks').select('*').eq('wedding_id', wId).order('created_at'),
+      supabase.from('vendors').select('*').eq('wedding_id', wId),
+      supabase.from('channels').select('*').eq('wedding_id', wId),
+      supabase.from('invoices').select('*').eq('wedding_id', wId),
+      supabase.from('collaborators').select('*').eq('wedding_id', wId),
     ])
 
     setGuests((gRes.data ?? []).map(mapGuest))
@@ -292,7 +337,7 @@ export default function App() {
     setVendors(vRes.data ?? [])
     setInvoices((invRes.data ?? []).map(mapInvoice))
     setCollaborators(collRes.data ?? [])
-    setCurrentUserId(userId)
+    setCurrentUserId(userId || session?.user?.id || 'c1')
 
     const fetchedChannels = chRes.data ?? []
     setChannels(fetchedChannels)
@@ -307,6 +352,50 @@ export default function App() {
     } else {
       setMessages([])
     }
+  }
+
+  // ── Select a wedding from the dashboard ─────────────────────────────────────
+  const selectWedding = async (wId) => {
+    setActiveWeddingId(wId)
+    setActiveTab('overview')
+    await loadWeddingData(wId)
+  }
+
+  // ── Back to My Weddings dashboard ───────────────────────────────────────────
+  const handleBackToDashboard = () => {
+    setActiveWeddingId(null)
+    setWeddingId(null)
+    setWedding(null)
+    setGuests([])
+    setTables([])
+    setTasks([])
+    setVendors([])
+    setChannels([])
+    setMessages([])
+    setInvoices([])
+    setCollaborators([])
+    setActiveTab('overview')
+  }
+
+  // ── Create a new wedding ────────────────────────────────────────────────────
+  const handleCreateWedding = async () => {
+    if (!session) return
+    const userId = session.user.id
+    const ownedCount = myWeddings.filter(w => w.myRole === 'owner').length
+    const isPro = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro')
+    if (!isPro && ownedCount >= 2) return
+
+    const { data: created } = await supabase
+      .from('weddings').insert({ user_id: userId }).select('*').single()
+    if (!created) return
+
+    await supabase.from('wedding_members')
+      .insert({ wedding_id: created.id, user_id: userId, role: 'owner' })
+
+    const newW = { ...created, myRole: 'owner' }
+    setMyWeddings(prev => [...prev, newW])
+    setActiveWeddingId(created.id)
+    await loadWeddingData(created.id, userId)
   }
 
   // ── Realtime: new messages ───────────────────────────────────────────────────
@@ -630,25 +719,65 @@ export default function App() {
   // ── Collaborator handlers ────────────────────────────────────────────────────
   const handleAddCollaborator = async (collab) => {
     if (session && weddingId) {
-      const { data } = await supabase.from('collaborators').insert({
+      // Enforce unique email — query DB directly so it works even if local state is stale
+      if (collab.email) {
+        const { data: existing } = await supabase
+          .from('collaborators')
+          .select('id')
+          .eq('wedding_id', weddingId)
+          .ilike('email', collab.email)
+          .maybeSingle()
+        if (existing) return { error: 'already_exists' }
+      }
+
+      const { data, error: insertError } = await supabase.from('collaborators').insert({
         wedding_id: weddingId,
         name: collab.name,
         email: collab.email || null,
         role: collab.role,
         access: collab.access,
       }).select().single()
+      if (insertError) return { error: insertError.message }
       if (data) setCollaborators(prev => [...prev, data])
 
       // Create invite token so they can actually join
       if (collab.email) {
-        const { data: tokenRow } = await supabase.from('invite_tokens').insert({
+        const { data: tokenRow, error: tokenError } = await supabase.from('invite_tokens').insert({
           wedding_id: weddingId,
           email: collab.email,
           name: collab.name,
           role: collab.role,
           access: collab.access,
         }).select('token').single()
-        return tokenRow?.token ?? null
+
+        if (tokenError) return { error: 'token_failed: ' + tokenError.message }
+
+        const token = tokenRow?.token ?? null
+        if (!token) return { error: 'no_token_returned' }
+
+        // Send invite email via Edge Function
+        const inviteUrl = `${window.location.origin}?invite=${token}`
+        const weddingTitle = wedding?.partner1 && wedding?.partner2
+          ? `${wedding.partner1} & ${wedding.partner2}'s Wedding`
+          : 'a wedding'
+        const inviterName = session.user.user_metadata?.full_name || session.user.email
+
+        try {
+          const { error: fnError } = await supabase.functions.invoke('send-invite', {
+            body: {
+              to: collab.email,
+              recipientName: collab.name,
+              inviterName,
+              weddingTitle,
+              inviteUrl,
+              role: collab.role,
+              access: collab.access,
+            },
+          })
+          return { token, emailSent: !fnError, emailError: fnError?.message ?? null }
+        } catch (err) {
+          return { token, emailSent: false, emailError: err.message }
+        }
       }
     } else {
       setCollaborators(prev => [...prev, { ...collab, id: genId() }])
@@ -657,8 +786,26 @@ export default function App() {
   }
 
   const handleDeleteCollaborator = async (id) => {
+    const collab = collaborators.find(c => c.id === id)
     setCollaborators(prev => prev.filter(c => c.id !== id))
-    if (session) await supabase.from('collaborators').delete().eq('id', id)
+    if (session) {
+      await supabase.from('collaborators').delete().eq('id', id)
+      // Also revoke any unused invite tokens for this email
+      if (collab?.email) {
+        await supabase.from('invite_tokens')
+          .delete()
+          .eq('wedding_id', weddingId)
+          .eq('email', collab.email)
+          .eq('used', false)
+      }
+      // Also remove from wedding_members
+      if (collab?.user_id) {
+        await supabase.from('wedding_members')
+          .delete()
+          .eq('wedding_id', weddingId)
+          .eq('user_id', collab.user_id)
+      }
+    }
   }
 
   // ── Wedding setup (onboarding) ───────────────────────────────────────────────
@@ -669,7 +816,9 @@ export default function App() {
       wedding_date: weddingDate,
       setup_complete: true,
     }).eq('id', weddingId)
-    setWedding(prev => ({ ...prev, partner1, partner2, wedding_date: weddingDate, setup_complete: true }))
+    const updated = { partner1, partner2, wedding_date: weddingDate, setup_complete: true }
+    setWedding(prev => ({ ...prev, ...updated }))
+    setMyWeddings(prev => prev.map(w => w.id === weddingId ? { ...w, ...updated } : w))
   }
 
   // ── Budget ───────────────────────────────────────────────────────────────────
@@ -795,6 +944,7 @@ export default function App() {
         return (
           <Collaborators
             collaborators={collaborators}
+            vendors={vendors}
             onAddCollaborator={handleAddCollaborator}
             onDeleteCollaborator={handleDeleteCollaborator}
             isAuthenticated={!!session}
