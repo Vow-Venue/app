@@ -209,12 +209,19 @@ export default function App() {
         .maybeSingle()
 
       if (invite) {
+        // Check 48-hour expiry
+        const expiresAt = new Date(new Date(invite.created_at).getTime() + 48 * 60 * 60 * 1000)
+        if (new Date() > expiresAt) {
+          console.warn('Invite token has expired')
+          window.history.replaceState({}, '', window.location.pathname)
+        } else {
         // Mark token used + link collaborator to this user
         await supabase.from('invite_tokens').update({ used: true }).eq('id', invite.id)
         await supabase.from('collaborators')
           .upsert({ wedding_id: invite.wedding_id, user_id: userId, name: invite.name, email: invite.email, role: invite.role, access: invite.access }, { onConflict: 'wedding_id,email' })
-        // Strip invite param from URL without reload
-        window.history.replaceState({}, '', window.location.pathname)
+          // Strip invite param from URL without reload
+          window.history.replaceState({}, '', window.location.pathname)
+        }
       }
     }
 
@@ -352,10 +359,28 @@ export default function App() {
     if (session) await supabase.from('guests').delete().eq('id', id)
   }
 
+  const handleImportGuests = async (guestList) => {
+    if (session && weddingId) {
+      const rows = guestList.map(g => ({
+        wedding_id: weddingId,
+        name: g.name,
+        email: g.email || null,
+        rsvp: g.rsvp || 'pending',
+        dietary: g.dietary || null,
+        guest_role: g.guestRole || null,
+        table_id: null,
+      }))
+      const { data } = await supabase.from('guests').insert(rows).select()
+      if (data) setGuests(prev => [...prev, ...data.map(mapGuest)])
+    } else {
+      setGuests(prev => [...prev, ...guestList.map(g => ({ ...g, id: genId(), tableId: null }))])
+    }
+  }
+
   // ── Table handlers ───────────────────────────────────────────────────────────
   const handleAddTable = async (table) => {
     if (session && weddingId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('seating_tables')
         .insert({
           wedding_id: weddingId,
@@ -367,7 +392,13 @@ export default function App() {
         })
         .select()
         .single()
-      if (data) setTables(prev => [...prev, data])
+      if (data) {
+        setTables(prev => [...prev, data])
+      } else {
+        // Columns may not exist yet — add locally so the UI still works
+        console.warn('seating_tables insert failed (run SQL migration):', error?.message)
+        setTables(prev => [...prev, { ...table, id: genId() }])
+      }
     } else {
       setTables(prev => [...prev, { ...table, id: genId() }])
     }
@@ -601,6 +632,7 @@ export default function App() {
             onAddTable={handleAddTable}
             onUpdateTable={handleUpdateTable}
             onDeleteTable={handleDeleteTable}
+            onImportGuests={handleImportGuests}
           />
         )
       case 'tasks':
@@ -644,15 +676,21 @@ export default function App() {
             onDeleteInvoice={handleDeleteInvoice}
           />
         )
-      case 'collaborators':
+      case 'collaborators': {
+        const isOwner = !!(session && wedding && session.user.id === wedding.user_id)
+        const myCollab = collaborators.find(c => c.user_id === session?.user?.id)
+        const myRole = myCollab?.role?.toLowerCase() ?? ''
+        const canInvite = !session || isOwner || myRole.includes('planner') || myRole === 'owner'
         return (
           <Collaborators
             collaborators={collaborators}
             onAddCollaborator={handleAddCollaborator}
             onDeleteCollaborator={handleDeleteCollaborator}
             isAuthenticated={!!session}
+            canInvite={canInvite}
           />
         )
+      }
       case 'dayofcontacts':
         return (
           <DayOfContacts

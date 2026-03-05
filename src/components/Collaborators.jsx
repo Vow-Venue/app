@@ -8,7 +8,7 @@ const BLANK_COLLAB = { name: '', email: '', role: '', access: 'view' }
 const initials = (name) =>
   name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 
-export default function Collaborators({ collaborators, onAddCollaborator, onDeleteCollaborator, isAuthenticated }) {
+export default function Collaborators({ collaborators, onAddCollaborator, onDeleteCollaborator, isAuthenticated, canInvite = true }) {
   const [formOpen, setFormOpen]         = useState(false)
   const [upgradeOpen, setUpgradeOpen]   = useState(false)
   const [form, setForm]                 = useState(BLANK_COLLAB)
@@ -90,9 +90,15 @@ export default function Collaborators({ collaborators, onAddCollaborator, onDele
         ))}
 
         <div style={{ marginTop: 20 }}>
-          <button className="btn btn-primary" onClick={handleAddClick}>
-            + INVITE COLLABORATOR
-          </button>
+          {canInvite ? (
+            <button className="btn btn-primary" onClick={handleAddClick}>
+              + INVITE COLLABORATOR
+            </button>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', padding: '4px 0' }}>
+              Only the wedding owner or Planner role can invite team members.
+            </div>
+          )}
         </div>
       </div>
 
