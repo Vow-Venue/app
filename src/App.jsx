@@ -173,7 +173,6 @@ export default function App() {
   const [messages, setMessages]         = useState(SEED_MESSAGES)
   const [invoices, setInvoices]         = useState(SEED_INVOICES)
   const [collaborators, setCollaborators] = useState(SEED_COLLABORATORS)
-  const [currentUserId, setCurrentUserId] = useState('c1')
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -756,7 +755,8 @@ export default function App() {
         if (!token) return { error: 'no_token_returned' }
 
         // Send invite email via Edge Function
-        const inviteUrl = `${window.location.origin}?invite=${token}`
+        const appBase = import.meta.env.VITE_APP_URL || window.location.origin
+        const inviteUrl = `${appBase}?invite=${token}`
         const weddingTitle = wedding?.partner1 && wedding?.partner2
           ? `${wedding.partner1} & ${wedding.partner2}'s Wedding`
           : 'a wedding'
@@ -831,7 +831,7 @@ export default function App() {
   const handleUpgrade = async () => {
     if (!session || !weddingId) { setAuthOpen(true); return }
     try {
-      const origin = window.location.origin
+      const origin = import.meta.env.VITE_APP_URL || window.location.origin
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           weddingId,
@@ -916,20 +916,27 @@ export default function App() {
             onImportVendors={handleImportVendors}
           />
         )
-      case 'messaging':
+      case 'messaging': {
+        const me = session
+          ? {
+              id: session.user.id,
+              name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'You',
+              email: session.user.email,
+            }
+          : (collaborators[0] || { id: 'owner', name: 'You', email: '' })
         return (
           <Messaging
             channels={channels}
             messages={messages}
             collaborators={collaborators}
-            currentUserId={currentUserId}
+            me={me}
             tasks={tasks}
             onAddMessage={handleAddMessage}
             onAddChannel={handleAddChannel}
-            onSetCurrentUser={setCurrentUserId}
             onNavigate={setActiveTab}
           />
         )
+      }
       case 'billing':
         return (
           <Billing

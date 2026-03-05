@@ -17,9 +17,7 @@ const fmtTime = (ts) => {
   const d = new Date(ts)
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
-  if (isToday) {
-    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-  }
+  if (isToday) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
@@ -29,25 +27,22 @@ const dmConvId = (a, b) => {
 }
 
 export default function Messaging({
-  channels, messages, collaborators, currentUserId, tasks,
-  onAddMessage, onAddChannel, onSetCurrentUser, onNavigate,
+  channels, messages, collaborators, me,
+  tasks, onAddMessage, onAddChannel, onNavigate,
 }) {
-  const [activeConvId, setActiveConvId]   = useState(channels[0]?.id ?? null)
-  const [activeConvType, setActiveConvType] = useState('channel')
-  const [inputText, setInputText]         = useState('')
+  const [activeConvId, setActiveConvId]     = useState(channels[0]?.id ?? null)
+  const [activeConvType, setActiveConvType] = useState(channels[0] ? 'channel' : null)
+  const [inputText, setInputText]           = useState('')
   const [newChannelName, setNewChannelName] = useState('')
-  const [addingChannel, setAddingChannel] = useState(false)
-  const [newDmTarget, setNewDmTarget]     = useState('')
-  const [addingDm, setAddingDm]           = useState(false)
-  const messagesEndRef                    = useRef(null)
+  const [addingChannel, setAddingChannel]   = useState(false)
+  const [addingDm, setAddingDm]             = useState(false)
+  const [newDmTarget, setNewDmTarget]       = useState('')
+  const messagesEndRef                      = useRef(null)
 
-  const currentUser = collaborators.find(c => c.id === currentUserId) || collaborators[0]
+  // All participants: me + collaborators (for name lookup in messages)
+  const allPeople = [me, ...collaborators]
 
-  // Active conversation messages
-  const convMessages = messages.filter(m => {
-    if (activeConvType === 'channel') return m.channelId === activeConvId
-    return m.channelId === activeConvId
-  })
+  const convMessages = messages.filter(m => m.channelId === activeConvId)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -55,10 +50,11 @@ export default function Messaging({
 
   const sendMessage = () => {
     const text = inputText.trim()
-    if (!text || !activeConvId || !currentUser) return
+    if (!text || !activeConvId) return
     onAddMessage({
       channelId: activeConvId,
-      senderId: currentUser.id,
+      senderId: me.id,
+      senderName: me.name,
       text,
       timestamp: new Date().toISOString(),
     })
@@ -75,45 +71,51 @@ export default function Messaging({
   const handleAddChannel = () => {
     const name = newChannelName.trim().toLowerCase().replace(/\s+/g, '-')
     if (!name) return
-    const newCh = { name }
-    onAddChannel(newCh)
+    onAddChannel({ name })
     setNewChannelName('')
     setAddingChannel(false)
   }
 
   const handleStartDm = () => {
     if (!newDmTarget) return
-    const convId = dmConvId(currentUser.id, newDmTarget)
+    const convId = dmConvId(me.id, newDmTarget)
     setActiveConvId(convId)
     setActiveConvType('dm')
     setNewDmTarget('')
     setAddingDm(false)
   }
 
-  // Build DM conversations this user is part of
+  // DM conversations this user is part of (has at least one message)
   const userDmConvIds = [...new Set(
     messages
-      .filter(m => m.channelId.startsWith('dm:') && m.channelId.includes(currentUser?.id ?? ''))
+      .filter(m => m.channelId.startsWith('dm:') && m.channelId.includes(me.id))
       .map(m => m.channelId)
   )]
 
   const getDmPartner = (convId) => {
     const parts = convId.replace('dm:', '').split(':')
-    const partnerId = parts.find(p => p !== currentUser?.id)
+    const partnerId = parts.find(p => p !== me.id)
     return collaborators.find(c => c.id === partnerId)
   }
 
-  // Active conv display name
+  // People available to DM (all collaborators except those already in a DM with me)
+  const availableForDm = collaborators.filter(c => {
+    const convId = dmConvId(me.id, c.id)
+    return !userDmConvIds.includes(convId)
+  })
+
   const convName = () => {
     if (activeConvType === 'channel') {
       const ch = channels.find(c => c.id === activeConvId)
       return ch ? `# ${ch.name}` : ''
     }
-    const partner = getDmPartner(activeConvId)
-    return partner ? partner.name : 'Direct Message'
+    if (activeConvType === 'dm') {
+      const partner = getDmPartner(activeConvId)
+      return partner ? partner.name : 'Direct Message'
+    }
+    return ''
   }
 
-  // Task progress
   const totalTasks     = tasks.length
   const completedTasks = tasks.filter(t => t.completed).length
   const taskPct        = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100)
@@ -122,11 +124,8 @@ export default function Messaging({
     .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
     .slice(0, 2)
 
-  // Unread counts (messages since last visit — we approximate with total per channel)
-  const unreadCount = (convId) => {
-    // Simple: count messages in channel that aren't from current user
-    return messages.filter(m => m.channelId === convId && m.senderId !== currentUser?.id).length
-  }
+  const unreadCount = (convId) =>
+    messages.filter(m => m.channelId === convId && m.senderId !== me.id).length
 
   return (
     <div>
@@ -138,21 +137,9 @@ export default function Messaging({
         <div className="chat-sidebar">
           <div className="chat-sidebar-header">
             <div className="chat-workspace-name">Vow &amp; Venue</div>
-            {collaborators.length > 0 ? (
-              <select
-                className="chat-user-switch"
-                value={currentUser?.id ?? ''}
-                onChange={e => onSetCurrentUser(e.target.value)}
-              >
-                {collaborators.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.role})</option>
-                ))}
-              </select>
-            ) : (
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 8 }}>
-                Add collaborators to chat
-              </div>
-            )}
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+              Signed in as <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{me.name}</strong>
+            </div>
           </div>
 
           <div className="chat-sidebar-section">
@@ -179,7 +166,10 @@ export default function Messaging({
                   placeholder="channel-name"
                   value={newChannelName}
                   onChange={e => setNewChannelName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleAddChannel(); if (e.key === 'Escape') setAddingChannel(false) }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleAddChannel()
+                    if (e.key === 'Escape') setAddingChannel(false)
+                  }}
                   autoFocus
                 />
               </div>
@@ -191,6 +181,13 @@ export default function Messaging({
 
             {/* Direct Messages */}
             <div className="sidebar-group-label" style={{ marginTop: 16 }}>DIRECT MESSAGES</div>
+
+            {collaborators.length === 0 && (
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', padding: '4px 10px', lineHeight: 1.5 }}>
+                Add collaborators to start a direct message.
+              </div>
+            )}
+
             {userDmConvIds.map(convId => {
               const partner = getDmPartner(convId)
               if (!partner) return null
@@ -213,69 +210,77 @@ export default function Messaging({
               )
             })}
 
-            {addingDm ? (
-              <div style={{ padding: '4px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <select
-                  className="chat-user-switch"
-                  value={newDmTarget}
-                  onChange={e => setNewDmTarget(e.target.value)}
-                >
-                  <option value="">Select person...</option>
-                  {collaborators
-                    .filter(c => c.id !== currentUser?.id)
-                    .map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+            {collaborators.length > 0 && (
+              addingDm ? (
+                <div style={{ padding: '4px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <select
+                    className="chat-user-switch"
+                    value={newDmTarget}
+                    onChange={e => setNewDmTarget(e.target.value)}
+                    autoFocus
+                  >
+                    <option value="">Select collaborator...</option>
+                    {collaborators.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}{c.role ? ` — ${c.role}` : ''}</option>
                     ))}
-                </select>
-                <button
-                  onClick={handleStartDm}
-                  style={{
-                    background: 'rgba(255,255,255,0.1)', border: 'none',
-                    color: 'rgba(255,255,255,0.7)', borderRadius: 6,
-                    padding: '5px', cursor: 'pointer', fontSize: 12,
-                    fontFamily: 'Jost, sans-serif',
-                  }}
-                >
-                  Start DM
+                  </select>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button
+                      onClick={handleStartDm}
+                      disabled={!newDmTarget}
+                      style={{
+                        flex: 1, background: newDmTarget ? 'rgba(184,151,90,0.4)' : 'rgba(255,255,255,0.08)',
+                        border: 'none', color: 'rgba(255,255,255,0.8)', borderRadius: 6,
+                        padding: '5px', cursor: newDmTarget ? 'pointer' : 'default',
+                        fontSize: 12, fontFamily: 'Jost, sans-serif',
+                      }}
+                    >
+                      Open DM
+                    </button>
+                    <button
+                      onClick={() => { setAddingDm(false); setNewDmTarget('') }}
+                      style={{
+                        background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+                        cursor: 'pointer', padding: '0 6px', fontSize: 14,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button className="sidebar-add-btn" onClick={() => setAddingDm(true)}>
+                  + New direct message
                 </button>
-              </div>
-            ) : (
-              <button className="sidebar-add-btn" onClick={() => setAddingDm(true)}>
-                + New direct message
-              </button>
+              )
             )}
           </div>
         </div>
 
         {/* ── Main area ── */}
         <div className="chat-main">
-          {/* Header */}
           <div className="chat-main-header">
             <div style={{ fontWeight: 400, fontSize: 13, color: 'var(--muted)' }}>
-              {activeConvType === 'channel' ? '#' : '⊕'}
+              {activeConvType === 'channel' ? '#' : activeConvType === 'dm' ? '⊕' : ''}
             </div>
             <div className="chat-main-title">{convName()}</div>
           </div>
 
-          {/* Messages */}
           <div className="chat-messages">
             {!activeConvId && (
               <div style={{ textAlign: 'center', color: 'var(--muted)', marginTop: 40, fontStyle: 'italic' }}>
-                Select a channel or DM to start chatting.
+                Select a channel or start a direct message.
               </div>
             )}
-
             {convMessages.length === 0 && activeConvId && (
               <div style={{ textAlign: 'center', color: 'var(--muted)', marginTop: 40, fontStyle: 'italic' }}>
                 No messages yet. Say hello!
               </div>
             )}
-
             {convMessages.map((msg, i) => {
-              const sender     = collaborators.find(c => c.id === msg.senderId)
+              const sender     = allPeople.find(p => p.id === msg.senderId)
               const senderName = msg.senderName ?? sender?.name ?? 'Unknown'
-              const isSelf     = msg.senderId === currentUserId
-              // Group consecutive messages from same sender
+              const isSelf     = msg.senderId === me.id
               const prevMsg    = i > 0 ? convMessages[i - 1] : null
               const showMeta   = !prevMsg || prevMsg.senderId !== msg.senderId
 
@@ -285,11 +290,11 @@ export default function Messaging({
                     <div className="msg-meta">
                       <div
                         className="msg-avatar"
-                        style={{ background: sender ? avatarColor(senderName) : 'var(--muted)' }}
+                        style={{ background: avatarColor(senderName) }}
                       >
                         {initials(senderName)}
                       </div>
-                      <span className="msg-sender-name">{senderName}</span>
+                      <span className="msg-sender-name">{isSelf ? 'You' : senderName}</span>
                       <span className="msg-time">{fmtTime(msg.timestamp)}</span>
                     </div>
                   )}
@@ -302,21 +307,20 @@ export default function Messaging({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
           <div className="chat-input-area">
             <textarea
               className="chat-input"
-              placeholder={currentUser ? `Message as ${currentUser.name}...` : 'Add a collaborator to message'}
+              placeholder={activeConvId ? `Message as ${me.name}...` : 'Select a conversation'}
               value={inputText}
               onChange={e => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={!currentUser || !activeConvId}
+              disabled={!activeConvId}
               rows={1}
             />
             <button
               className="chat-send-btn"
               onClick={sendMessage}
-              disabled={!currentUser || !activeConvId || !inputText.trim()}
+              disabled={!activeConvId || !inputText.trim()}
             >
               SEND
             </button>
