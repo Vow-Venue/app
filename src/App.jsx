@@ -869,8 +869,9 @@ export default function App() {
           cancelUrl: `${origin}`,
         },
       })
+      console.error('Checkout response:', { data, error })
       if (error || !data?.url) {
-        alert('Could not start checkout. Make sure the create-checkout edge function is deployed.')
+        alert(`Checkout error: ${error?.message || JSON.stringify(data) || 'No response from edge function'}`)
         return
       }
       window.location.href = data.url
