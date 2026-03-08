@@ -869,9 +869,16 @@ export default function App() {
           cancelUrl: `${origin}`,
         },
       })
-      console.error('Checkout response:', { data, error })
-      if (error || !data?.url) {
-        alert(`Checkout error: ${error?.message || JSON.stringify(data) || 'No response from edge function'}`)
+      if (error) {
+        let errMsg = error.message
+        try { const b = await error.context.json(); errMsg = b.error || errMsg } catch {}
+        console.error('Checkout error:', errMsg)
+        alert(`Checkout error: ${errMsg}`)
+        return
+      }
+      if (!data?.url) {
+        console.error('Checkout response missing url:', data)
+        alert(`Checkout error: no URL returned — ${JSON.stringify(data)}`)
         return
       }
       window.location.href = data.url
