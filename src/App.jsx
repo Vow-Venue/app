@@ -861,12 +861,15 @@ export default function App() {
     if (!session || !weddingId) { setAuthOpen(true); return }
     try {
       const origin = import.meta.env.VITE_APP_URL || window.location.origin
+      // Get fresh token (session in state may be stale/expired)
+      const { data: { session: fresh } } = await supabase.auth.getSession()
+      if (!fresh) { setAuthOpen(true); return }
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const res = await fetch(`${supabaseUrl}/functions/v1/create-checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${fresh.access_token}`,
           'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
