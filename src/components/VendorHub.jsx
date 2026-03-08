@@ -332,7 +332,7 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
               ))}
             </select>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label>PHONE</label>
               <input name="phone" type="tel" value={form.phone} onChange={handleChange} placeholder="555-0101" />
@@ -342,7 +342,7 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
               <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="vendor@example.com" />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label>AMOUNT ($)</label>
               <input name="amount" type="number" min="0" step="1" value={form.amount} onChange={handleChange} placeholder="0" />

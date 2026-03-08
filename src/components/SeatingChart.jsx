@@ -601,7 +601,7 @@ export default function SeatingChart({
                 onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="form-grid-2">
               <div className="form-group">
                 <label>SEATS</label>
                 <input

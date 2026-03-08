@@ -36,17 +36,7 @@ export default function LandingPage({ onStart, onSignIn }) {
     <div style={{ minHeight: '100vh', background: 'var(--cream)', fontFamily: "'Jost', sans-serif", color: 'var(--deep)' }}>
 
       {/* ── Nav ── */}
-      <nav style={{
-        background: 'var(--deep)',
-        padding: '0 48px',
-        height: 72,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
+      <nav className="landing-nav">
         <div style={{
           fontFamily: "'Cormorant Garamond', serif",
           fontSize: 26,
@@ -67,12 +57,7 @@ export default function LandingPage({ onStart, onSignIn }) {
       </nav>
 
       {/* ── Hero ── */}
-      <section style={{
-        textAlign: 'center',
-        padding: '100px 40px 80px',
-        maxWidth: 760,
-        margin: '0 auto',
-      }}>
+      <section className="landing-hero">
         <div style={{
           display: 'inline-block',
           background: 'rgba(184,151,90,0.12)',
@@ -140,7 +125,7 @@ export default function LandingPage({ onStart, onSignIn }) {
       <div style={{ borderTop: '1px solid var(--border)', maxWidth: 800, margin: '0 auto' }} />
 
       {/* ── Features ── */}
-      <section style={{ padding: '80px 40px', maxWidth: 1000, margin: '0 auto' }}>
+      <section className="landing-features">
         <div style={{ textAlign: 'center', marginBottom: 52 }}>
           <div style={{ fontSize: 11, letterSpacing: 3, color: 'var(--gold)', fontWeight: 600, marginBottom: 12 }}>
             EVERYTHING IN ONE PLACE
@@ -156,11 +141,7 @@ export default function LandingPage({ onStart, onSignIn }) {
           </h2>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 20,
-        }}>
+        <div className="landing-features-grid">
           {FEATURES.map(f => (
             <div key={f.title} style={{
               background: 'var(--white)',
@@ -188,12 +169,7 @@ export default function LandingPage({ onStart, onSignIn }) {
       </section>
 
       {/* ── CTA Banner ── */}
-      <section style={{
-        background: 'var(--deep)',
-        padding: '64px 40px',
-        textAlign: 'center',
-        margin: '0 0 0 0',
-      }}>
+      <section className="landing-cta">
         <h2 style={{
           fontFamily: "'Cormorant Garamond', serif",
           fontSize: 'clamp(26px, 4vw, 40px)',
@@ -217,16 +193,7 @@ export default function LandingPage({ onStart, onSignIn }) {
       </section>
 
       {/* ── Footer ── */}
-      <footer style={{
-        background: 'var(--deep)',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        padding: '24px 40px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 12,
-      }}>
+      <footer className="landing-footer">
         <div style={{
           fontFamily: "'Cormorant Garamond', serif",
           fontSize: 18,

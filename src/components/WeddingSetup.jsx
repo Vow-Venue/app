@@ -97,7 +97,7 @@ export default function WeddingSetup({ onComplete }) {
           }}>
             <form onSubmit={handleSubmit}>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div className="form-grid-2" style={{ marginBottom: 20 }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>YOUR NAME *</label>
                   <input

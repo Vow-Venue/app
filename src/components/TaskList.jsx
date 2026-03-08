@@ -367,7 +367,7 @@ export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask,
             <label>TASK TITLE *</label>
             <input name="title" type="text" value={form.title} onChange={handleChange} required placeholder="e.g. Confirm florist" autoFocus />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label>DUE DATE</label>
               <input name="dueDate" type="date" value={form.dueDate} onChange={handleChange} />

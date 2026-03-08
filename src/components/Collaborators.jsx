@@ -266,7 +266,7 @@ export default function Collaborators({
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, lineHeight: 1.6 }}>
             Add them to your team, then share the link below so they can sign in.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-grid-2">
             <div className="form-group" style={{ margin: 0 }}>
               <label>FULL NAME *</label>
               <input name="name" type="text" value={form.name} onChange={handleChange} required placeholder="e.g. Jessica Moore" autoFocus />
@@ -276,7 +276,7 @@ export default function Collaborators({
               <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="jessica@example.com" />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+          <div className="form-grid-2" style={{ marginTop: 16 }}>
             <div className="form-group" style={{ margin: 0 }}>
               <label>ROLE</label>
               <input name="role" type="text" value={form.role} onChange={handleChange} placeholder="e.g. Maid of Honor" />

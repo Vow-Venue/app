@@ -1563,22 +1563,130 @@ label {
   border-color: var(--deep);
 }
 
+/* ─── Form grid (2-col → 1-col on mobile) ───────── */
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ─── Landing Page ──────────────────────────────── */
+
+.landing-nav {
+  background: var(--deep);
+  padding: 0 48px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.landing-hero {
+  text-align: center;
+  padding: 100px 40px 80px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.landing-features {
+  padding: 80px 40px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.landing-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.landing-cta {
+  background: var(--deep);
+  padding: 64px 40px;
+  text-align: center;
+}
+
+.landing-footer {
+  background: var(--deep);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 24px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 /* ─── Responsive ────────────────────────────────── */
 
 @media (max-width: 768px) {
-  .main { padding: 20px; }
-  .header { padding: 0 20px; }
-  .tabs { padding: 0 20px; }
-  .stats-row { grid-template-columns: repeat(3, 1fr); }
+  /* Layout */
+  .main { padding: 20px 16px; }
+  .header { padding: 0 16px; }
+  .tabs { padding: 0 8px; }
+  .tab { padding: 12px 12px; letter-spacing: 1px; }
+
+  /* Section headings */
+  .section-title { font-size: 28px; }
+
+  /* Cards */
+  .card { padding: 20px 16px; }
+  .card-grid { grid-template-columns: 1fr; }
+
+  /* Stats */
+  .stats-row { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+  /* Billing */
   .billing-summary { grid-template-columns: repeat(2, 1fr); }
+
+  /* Invoice rows — stack on mobile */
+  .invoice-row { flex-direction: column; gap: 8px; }
+  .invoice-right { text-align: left; }
+  .invoice-actions { justify-content: flex-start; }
+
+  /* Chat */
   .chat-layout { grid-template-columns: 1fr; height: auto; }
   .chat-sidebar { height: 200px; }
   .chat-main { height: 500px; }
+
+  /* Form grids */
+  .form-grid-2 { grid-template-columns: 1fr; }
+
+  /* Modals — slide up from bottom on phones */
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+  .modal-box { border-radius: 16px 16px 0 0; padding: 24px 20px; }
+
+  /* Guest / data tables — horizontal scroll */
+  .guest-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; min-width: 520px; }
+
+  /* Header badge — truncate */
+  .wedding-badge { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Landing */
+  .landing-nav { padding: 0 20px; }
+  .landing-hero { padding: 60px 20px 48px; }
+  .landing-features { padding: 48px 20px; }
+  .landing-cta { padding: 48px 20px; }
+  .landing-footer { padding: 20px; flex-direction: column; text-align: center; }
 }
 
-@media (max-width: 500px) {
+@media (max-width: 480px) {
+  .main { padding: 16px 12px; }
+  .header { padding: 0 12px; height: 56px; }
+  .logo { font-size: 20px; }
+  .wedding-badge { max-width: 110px; font-size: 10px; }
   .stats-row { grid-template-columns: repeat(2, 1fr); }
   .billing-summary { grid-template-columns: 1fr; }
+  .section-title { font-size: 24px; }
+  .card { padding: 16px 12px; }
+  .tab { padding: 10px 10px; font-size: 10px; }
+  .landing-features-grid { grid-template-columns: 1fr; }
+  .collab-item { flex-wrap: wrap; }
+  .paywall-card { padding: 24px 16px; }
 }
 
 /* ─── Print / PDF Export ────────────────────────── */

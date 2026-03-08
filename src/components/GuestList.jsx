@@ -255,7 +255,7 @@ export default function GuestList({
             <label>FULL NAME *</label>
             <input name="name" type="text" value={form.name} onChange={handleChange} required placeholder="e.g. Emma Wilson" autoFocus />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label>ROLE / TITLE</label>
               <input name="guestRole" type="text" value={form.guestRole} onChange={handleChange} placeholder="e.g. Groomsman, Maid of Honor" />
@@ -265,7 +265,7 @@ export default function GuestList({
               <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="guest@example.com" />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label>RSVP STATUS</label>
               <select name="rsvp" value={form.rsvp} onChange={handleChange}>

@@ -401,7 +401,7 @@ export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDel
       {/* Add / Edit Modal */}
       <Modal isOpen={modalOpen} onClose={close} title={editingInvoice ? 'Edit Invoice' : 'Add Invoice'}>
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label>INVOICE # *</label>
               <input name="invoiceNumber" type="text" value={form.invoiceNumber} onChange={handleChange} required placeholder="INV-006" autoFocus />
@@ -411,7 +411,7 @@ export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDel
               <input name="vendorName" type="text" value={form.vendorName} onChange={handleChange} required placeholder="e.g. Blossom Florals" />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label>AMOUNT ($)</label>
               <input name="amount" type="number" min="0" step="0.01" value={form.amount} onChange={handleChange} placeholder="0.00" />
