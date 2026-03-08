@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Modal from './Modal'
 
-const appUrl = window.location.origin
+const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
 
 const BLANK_COLLAB = { name: '', email: '', role: '', access: 'view' }
 

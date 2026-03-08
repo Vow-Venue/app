@@ -493,6 +493,28 @@ body {
   color: var(--deep);
 }
 
+.btn-gcal {
+  display: inline-block;
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 2px 8px;
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  border-radius: 10px;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: 'Jost', sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-gcal:hover {
+  background: rgba(184, 151, 90, 0.1);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
 /* ─── Form inputs ───────────────────────────────── */
 
 .input-row {

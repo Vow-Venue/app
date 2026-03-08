@@ -228,128 +228,150 @@ export default function App() {
   const loadMyWeddings = async (userId) => {
     setDashboardLoading(true)
 
-    // ── Step 1: Redeem invite token if present in URL ─────────────────────────
-    if (pendingInviteToken) {
-      const { data: invite } = await supabase
-        .from('invite_tokens')
-        .select('*')
-        .eq('token', pendingInviteToken)
-        .eq('used', false)
-        .maybeSingle()
+    try {
+      // ── Step 1: Redeem invite token if present in URL ───────────────────────
+      if (pendingInviteToken) {
+        const { data: invite } = await supabase
+          .from('invite_tokens')
+          .select('*')
+          .eq('token', pendingInviteToken)
+          .eq('used', false)
+          .maybeSingle()
 
-      if (invite) {
-        const expiresAt = new Date(new Date(invite.created_at).getTime() + 48 * 60 * 60 * 1000)
-        if (new Date() > expiresAt) {
-          console.warn('Invite token has expired')
-          window.history.replaceState({}, '', window.location.pathname)
-        } else {
-          await supabase.from('invite_tokens').update({ used: true }).eq('id', invite.id)
-          await supabase.from('collaborators')
-            .upsert({ wedding_id: invite.wedding_id, user_id: userId, name: invite.name, email: invite.email, role: invite.role, access: invite.access }, { onConflict: 'wedding_id,email' })
-          // Also create wedding_members row for access control
-          await supabase.from('wedding_members')
-            .upsert({ wedding_id: invite.wedding_id, user_id: userId, role: mapMemberRole(invite.role) }, { onConflict: 'wedding_id,user_id' })
-          window.history.replaceState({}, '', window.location.pathname)
-        }
-      }
-    }
-
-    // ── Step 2: Fetch all weddings this user is a member of ───────────────────
-    const { data: memberships } = await supabase
-      .from('wedding_members')
-      .select('wedding_id, role, weddings(*)')
-      .eq('user_id', userId)
-
-    let weddings = (memberships ?? [])
-      .filter(m => m.weddings)
-      .map(m => ({ ...m.weddings, myRole: m.role }))
-
-    // ── Fallback for users not yet in wedding_members (pre-migration) ─────────
-    if (weddings.length === 0) {
-      const { data: ownedRow } = await supabase
-        .from('weddings').select('*').eq('user_id', userId).maybeSingle()
-      if (ownedRow) {
-        await supabase.from('wedding_members')
-          .upsert({ wedding_id: ownedRow.id, user_id: userId, role: 'owner' }, { onConflict: 'wedding_id,user_id' })
-        weddings = [{ ...ownedRow, myRole: 'owner' }]
-      } else {
-        const { data: collab } = await supabase
-          .from('collaborators').select('wedding_id, role').eq('user_id', userId).maybeSingle()
-        if (collab) {
-          const { data: sharedWedding } = await supabase
-            .from('weddings').select('*').eq('id', collab.wedding_id).single()
-          if (sharedWedding) {
-            const memberRole = mapMemberRole(collab.role)
-            await supabase.from('wedding_members')
-              .upsert({ wedding_id: sharedWedding.id, user_id: userId, role: memberRole }, { onConflict: 'wedding_id,user_id' })
-            weddings = [{ ...sharedWedding, myRole: memberRole }]
+        if (invite) {
+          const expiresAt = new Date(new Date(invite.created_at).getTime() + 48 * 60 * 60 * 1000)
+          if (new Date() > expiresAt) {
+            console.warn('Invite token has expired')
+            window.history.replaceState({}, '', window.location.pathname)
+          } else {
+            await supabase.from('invite_tokens').update({ used: true }).eq('id', invite.id)
+            await supabase.from('collaborators')
+              .upsert({ wedding_id: invite.wedding_id, user_id: userId, name: invite.name, email: invite.email, role: invite.role, access: invite.access }, { onConflict: 'wedding_id,email' })
+            // Also create wedding_members row for access control (safe — ignores if table missing)
+            try {
+              await supabase.from('wedding_members')
+                .upsert({ wedding_id: invite.wedding_id, user_id: userId, role: mapMemberRole(invite.role) }, { onConflict: 'wedding_id,user_id' })
+            } catch { /* table may not exist yet */ }
+            window.history.replaceState({}, '', window.location.pathname)
           }
         }
       }
-    }
 
-    // ── Step 3: No weddings at all — create a blank one ───────────────────────
-    if (weddings.length === 0) {
-      const { data: created } = await supabase
-        .from('weddings').insert({ user_id: userId }).select('*').single()
-      if (created) {
-        await supabase.from('wedding_members')
-          .insert({ wedding_id: created.id, user_id: userId, role: 'owner' })
-        weddings = [{ ...created, myRole: 'owner' }]
+      // ── Step 2: Fetch all weddings this user is a member of ─────────────────
+      let weddings = []
+
+      const { data: memberships, error: wmError } = await supabase
+        .from('wedding_members')
+        .select('wedding_id, role, weddings(*)')
+        .eq('user_id', userId)
+
+      if (!wmError && memberships) {
+        weddings = memberships
+          .filter(m => m.weddings)
+          .map(m => ({ ...m.weddings, myRole: m.role }))
       }
+
+      // ── Fallback: wedding_members table missing or empty ────────────────────
+      if (weddings.length === 0) {
+        const { data: ownedRow } = await supabase
+          .from('weddings').select('*').eq('user_id', userId).maybeSingle()
+        if (ownedRow) {
+          // Try to backfill wedding_members (safe — ignores if table missing)
+          try {
+            await supabase.from('wedding_members')
+              .upsert({ wedding_id: ownedRow.id, user_id: userId, role: 'owner' }, { onConflict: 'wedding_id,user_id' })
+          } catch { /* ignore */ }
+          weddings = [{ ...ownedRow, myRole: 'owner' }]
+        } else {
+          const { data: collab } = await supabase
+            .from('collaborators').select('wedding_id, role').eq('user_id', userId).maybeSingle()
+          if (collab) {
+            const { data: sharedWedding } = await supabase
+              .from('weddings').select('*').eq('id', collab.wedding_id).single()
+            if (sharedWedding) {
+              const memberRole = mapMemberRole(collab.role)
+              try {
+                await supabase.from('wedding_members')
+                  .upsert({ wedding_id: sharedWedding.id, user_id: userId, role: memberRole }, { onConflict: 'wedding_id,user_id' })
+              } catch { /* ignore */ }
+              weddings = [{ ...sharedWedding, myRole: memberRole }]
+            }
+          }
+        }
+      }
+
+      // ── Step 3: No weddings at all — create a blank one ─────────────────────
+      if (weddings.length === 0) {
+        const { data: created } = await supabase
+          .from('weddings').insert({ user_id: userId }).select('*').single()
+        if (created) {
+          try {
+            await supabase.from('wedding_members')
+              .insert({ wedding_id: created.id, user_id: userId, role: 'owner' })
+          } catch { /* ignore */ }
+          weddings = [{ ...created, myRole: 'owner' }]
+        }
+      }
+
+      setMyWeddings(weddings)
+
+      // ── Step 4: Auto-routing ────────────────────────────────────────────────
+      if (weddings.length === 1) {
+        setActiveWeddingId(weddings[0].id)
+        await loadWeddingData(weddings[0].id, userId)
+      }
+      // else: multiple weddings — show dashboard (activeWeddingId stays null)
+
+    } catch (err) {
+      console.error('loadMyWeddings failed:', err)
+    } finally {
+      setDashboardLoading(false)
     }
-
-    setMyWeddings(weddings)
-
-    // ── Step 4: Auto-routing ──────────────────────────────────────────────────
-    if (weddings.length === 1) {
-      setActiveWeddingId(weddings[0].id)
-      await loadWeddingData(weddings[0].id, userId)
-    }
-    // else: multiple weddings — show dashboard (activeWeddingId stays null)
-
-    setDashboardLoading(false)
   }
 
   // ── Load all data for a single wedding ──────────────────────────────────────
   const loadWeddingData = async (wId, userId) => {
-    const { data: weddingRow } = await supabase
-      .from('weddings').select('*').eq('id', wId).single()
-    if (!weddingRow) return
+    try {
+      const { data: weddingRow } = await supabase
+        .from('weddings').select('*').eq('id', wId).single()
+      if (!weddingRow) return
 
-    setWedding(weddingRow)
-    setWeddingId(weddingRow.id)
+      setWedding(weddingRow)
+      setWeddingId(weddingRow.id)
 
-    const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes] = await Promise.all([
-      supabase.from('guests').select('*').eq('wedding_id', wId),
-      supabase.from('seating_tables').select('*').eq('wedding_id', wId),
-      supabase.from('tasks').select('*').eq('wedding_id', wId).order('created_at'),
-      supabase.from('vendors').select('*').eq('wedding_id', wId),
-      supabase.from('channels').select('*').eq('wedding_id', wId),
-      supabase.from('invoices').select('*').eq('wedding_id', wId),
-      supabase.from('collaborators').select('*').eq('wedding_id', wId),
-    ])
+      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes] = await Promise.all([
+        supabase.from('guests').select('*').eq('wedding_id', wId),
+        supabase.from('seating_tables').select('*').eq('wedding_id', wId),
+        supabase.from('tasks').select('*').eq('wedding_id', wId).order('created_at'),
+        supabase.from('vendors').select('*').eq('wedding_id', wId),
+        supabase.from('channels').select('*').eq('wedding_id', wId),
+        supabase.from('invoices').select('*').eq('wedding_id', wId),
+        supabase.from('collaborators').select('*').eq('wedding_id', wId),
+      ])
 
-    setGuests((gRes.data ?? []).map(mapGuest))
-    setTables(tRes.data ?? [])
-    setTasks((tkRes.data ?? []).map(mapTask))
-    setVendors(vRes.data ?? [])
-    setInvoices((invRes.data ?? []).map(mapInvoice))
-    setCollaborators(collRes.data ?? [])
-    setCurrentUserId(userId || session?.user?.id || 'c1')
+      setGuests((gRes.data ?? []).map(mapGuest))
+      setTables(tRes.data ?? [])
+      setTasks((tkRes.data ?? []).map(mapTask))
+      setVendors(vRes.data ?? [])
+      setInvoices((invRes.data ?? []).map(mapInvoice))
+      setCollaborators(collRes.data ?? [])
+      setCurrentUserId(userId || session?.user?.id || 'c1')
 
-    const fetchedChannels = chRes.data ?? []
-    setChannels(fetchedChannels)
+      const fetchedChannels = chRes.data ?? []
+      setChannels(fetchedChannels)
 
-    if (fetchedChannels.length > 0) {
-      const { data: msgs } = await supabase
-        .from('messages')
-        .select('*')
-        .in('channel_id', fetchedChannels.map(c => c.id))
-        .order('created_at')
-      setMessages((msgs ?? []).map(mapMessage))
-    } else {
-      setMessages([])
+      if (fetchedChannels.length > 0) {
+        const { data: msgs } = await supabase
+          .from('messages')
+          .select('*')
+          .in('channel_id', fetchedChannels.map(c => c.id))
+          .order('created_at')
+        setMessages((msgs ?? []).map(mapMessage))
+      } else {
+        setMessages([])
+      }
+    } catch (err) {
+      console.error('loadWeddingData failed:', err)
     }
   }
 

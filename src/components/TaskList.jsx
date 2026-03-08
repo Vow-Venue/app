@@ -11,6 +11,18 @@ const fmtDate = (dateStr) => {
   })
 }
 
+const gcalUrl = (title, dateStr) => {
+  if (!dateStr) return null
+  const d = dateStr.replace(/-/g, '')
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${d}/${d}`,
+    details: 'Wedding planning task — Vow & Venue',
+  })
+  return `https://calendar.google.com/calendar/render?${params}`
+}
+
 const TASK_CSV_COLUMNS = [
   { key: 'title',      label: 'Title' },
   { key: 'dueDate',    label: 'Due Date' },
@@ -331,6 +343,17 @@ export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask,
             </div>
             <span className={`badge priority-${t.priority}`}>{t.priority.toUpperCase()}</span>
             <div className="task-assignee">{t.assignedTo || 'Unassigned'}</div>
+            {t.dueDate && (
+              <a
+                className="btn-icon btn-gcal"
+                href={gcalUrl(t.title, t.dueDate)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Add to Google Calendar"
+              >
+                +Cal
+              </a>
+            )}
             <button className="btn-icon" onClick={() => openEdit(t)}>Edit</button>
             <button className="btn-danger" onClick={() => onDeleteTask(t.id)}>×</button>
           </div>

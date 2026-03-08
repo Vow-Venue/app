@@ -22,6 +22,17 @@ const fmtDate = (dateStr) => {
   })
 }
 
+const gcalUrl = (title, dateStr) => {
+  if (!dateStr) return null
+  const d = dateStr.replace(/-/g, '')
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${d}/${d}`,
+  })
+  return `https://calendar.google.com/calendar/render?${params}`
+}
+
 const CountdownUnit = ({ value, label }) => (
   <div style={{
     background: 'var(--white)',
@@ -96,8 +107,17 @@ export default function Overview({ guests, tasks, vendors, invoices, onNavigate,
             {weddingPassed ? 'The Big Day Has Arrived!' : 'Days Until the Big Day'}
           </div>
           {weddingDate && (
-            <div style={{ fontSize: 11, letterSpacing: 2, color: 'var(--muted)', fontWeight: 500 }}>
+            <div style={{ fontSize: 11, letterSpacing: 2, color: 'var(--muted)', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               {new Date(weddingDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase()}
+              <a
+                className="btn-gcal"
+                href={gcalUrl('Wedding Day', weddingDate)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Add to Google Calendar"
+              >
+                +Cal
+              </a>
             </div>
           )}
         </div>
@@ -162,6 +182,17 @@ export default function Overview({ guests, tasks, vendors, invoices, onNavigate,
                     <div style={{ fontSize: 11, color: 'var(--muted)' }}>{fmtDate(t.dueDate)}</div>
                   )}
                   <div className="task-assignee">{t.assignedTo}</div>
+                  {t.dueDate && (
+                    <a
+                      className="btn-gcal"
+                      href={gcalUrl(t.title, t.dueDate)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Add to Google Calendar"
+                    >
+                      +Cal
+                    </a>
+                  )}
                 </div>
               </div>
             ))
