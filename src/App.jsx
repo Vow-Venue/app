@@ -864,6 +864,7 @@ export default function App() {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           weddingId,
+          userId: session.user.id,
           successUrl: `${origin}?stripe_success=1`,
           cancelUrl: `${origin}`,
         },

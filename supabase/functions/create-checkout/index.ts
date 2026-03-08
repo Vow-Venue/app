@@ -16,7 +16,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { weddingId, successUrl, cancelUrl } = await req.json()
+    const { weddingId, userId, successUrl, cancelUrl } = await req.json()
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
       // @ts-ignore — Stripe JS supports fetch in Deno
@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
       }],
       success_url: successUrl,
       cancel_url: cancelUrl,
-      metadata: { weddingId },
+      metadata: { weddingId, userId },
     })
 
     return new Response(JSON.stringify({ url: session.url }), {
