@@ -49,11 +49,11 @@ const SEED_TASKS = [
 ]
 
 const SEED_VENDORS = [
-  { id: 'v1', name: 'Lumière Photography',  role: 'photographer', phone: '555-0101', email: 'hello@lumiere.co',    notes: '8-hour package, 2 shooters. Deposit paid.' },
-  { id: 'v2', name: 'Blossom Florals',      role: 'florist',      phone: '555-0202', email: 'orders@blossom.com',  notes: 'White roses and peonies. Setup at 3pm.' },
-  { id: 'v3', name: 'Harvest Table Co.',    role: 'caterer',      phone: '555-0303', email: 'harvest@example.com', notes: 'Tasting booked Apr 15. 3-course menu.' },
-  { id: 'v4', name: 'DJ Marcus B.',         role: 'dj',           phone: '555-0404', email: 'marcusb@djmix.com',   notes: 'Ceremony + reception. 6-hour set.' },
-  { id: 'v5', name: 'Rosewood Manor',       role: 'venue',        phone: '555-0505', email: 'events@rosewood.com', notes: 'Capacity 200. Indoor & garden. Deposit paid.' },
+  { id: 'v1', name: 'Lumière Photography',  role: 'photographer', phone: '555-0101', email: 'hello@lumiere.co',    notes: '8-hour package, 2 shooters. Deposit paid.', amount: 3500, dueDate: '2026-02-15', paid: true },
+  { id: 'v2', name: 'Blossom Florals',      role: 'florist',      phone: '555-0202', email: 'orders@blossom.com',  notes: 'White roses and peonies. Setup at 3pm.',     amount: 1200, dueDate: '2026-04-15', paid: false },
+  { id: 'v3', name: 'Harvest Table Co.',    role: 'caterer',      phone: '555-0303', email: 'harvest@example.com', notes: 'Tasting booked Apr 15. 3-course menu.',      amount: 2800, dueDate: '2026-03-01', paid: true },
+  { id: 'v4', name: 'DJ Marcus B.',         role: 'dj',           phone: '555-0404', email: 'marcusb@djmix.com',   notes: 'Ceremony + reception. 6-hour set.',          amount: 800,  dueDate: '2026-05-15', paid: false },
+  { id: 'v5', name: 'Rosewood Manor',       role: 'venue',        phone: '555-0505', email: 'events@rosewood.com', notes: 'Capacity 200. Indoor & garden. Deposit paid.', amount: 5000, dueDate: '2026-05-01', paid: false },
 ]
 
 const SEED_CHANNELS = [
@@ -602,6 +602,9 @@ export default function App() {
         phone: v.phone || null,
         email: v.email || null,
         notes: v.notes || null,
+        amount: Number(v.amount) || 0,
+        due_date: v.dueDate || null,
+        paid: !!v.paid,
       }))
       const { data } = await supabase.from('vendors').insert(rows).select()
       if (data) setVendors(prev => [...prev, ...data])
@@ -614,7 +617,10 @@ export default function App() {
   const handleAddVendor = async (vendor) => {
     if (session && weddingId) {
       const { data } = await supabase.from('vendors').insert({
-        wedding_id: weddingId, ...vendor,
+        wedding_id: weddingId,
+        name: vendor.name, role: vendor.role, phone: vendor.phone || null,
+        email: vendor.email || null, notes: vendor.notes || null,
+        amount: Number(vendor.amount) || 0, due_date: vendor.dueDate || null, paid: !!vendor.paid,
       }).select().single()
       if (data) setVendors(prev => [...prev, data])
     } else {
@@ -630,6 +636,7 @@ export default function App() {
       await supabase.from('vendors').update({
         name: m.name, role: m.role, phone: m.phone || null,
         email: m.email || null, notes: m.notes || null,
+        amount: Number(m.amount) || 0, due_date: m.dueDate || null, paid: !!m.paid,
       }).eq('id', id)
     }
   }
@@ -936,6 +943,8 @@ export default function App() {
             onUpdateVendor={handleUpdateVendor}
             onDeleteVendor={handleDeleteVendor}
             onImportVendors={handleImportVendors}
+            budget={wedding?.budget ?? 0}
+            onSetBudget={handleSetBudget}
           />
         )
       case 'messaging': {
