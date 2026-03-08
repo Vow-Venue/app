@@ -861,29 +861,31 @@ export default function App() {
     if (!session || !weddingId) { setAuthOpen(true); return }
     try {
       const origin = import.meta.env.VITE_APP_URL || window.location.origin
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
           weddingId,
           userId: session.user.id,
           successUrl: `${origin}?stripe_success=1`,
           cancelUrl: `${origin}`,
-        },
+        }),
       })
-      if (error) {
-        let errMsg = error.message
-        try { const b = await error.context.json(); errMsg = b.error || errMsg } catch {}
-        console.error('Checkout error:', errMsg)
-        alert(`Checkout error: ${errMsg}`)
+      const body = await res.json()
+      if (!res.ok || !body.url) {
+        console.error('Checkout error:', res.status, body)
+        alert(`Checkout error (${res.status}): ${body.error || body.msg || JSON.stringify(body)}`)
         return
       }
-      if (!data?.url) {
-        console.error('Checkout response missing url:', data)
-        alert(`Checkout error: no URL returned — ${JSON.stringify(data)}`)
-        return
-      }
-      window.location.href = data.url
-    } catch {
-      alert('Stripe checkout unavailable. Deploy the Supabase edge function first.')
+      window.location.href = body.url
+    } catch (err) {
+      console.error('Checkout exception:', err)
+      alert(`Stripe checkout error: ${err.message}`)
     }
   }
 
