@@ -150,7 +150,7 @@ export default function App() {
         setNotes([])
         setWeddingId(null)
         setWedding(null)
-        navigate('/', { replace: true })
+        if (!window.location.pathname.startsWith('/admin-')) navigate('/', { replace: true })
       }
     })
 
