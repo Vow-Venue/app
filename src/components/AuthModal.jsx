@@ -9,6 +9,18 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
   const [error, setError]     = useState('')
 
   const isSignUp = mode === 'signup'
+  const isDev = import.meta.env.VITE_DEV_MODE === 'true'
+
+  const handleDevLogin = async () => {
+    const devEmail = import.meta.env.VITE_DEV_EMAIL
+    const devPassword = import.meta.env.VITE_DEV_PASSWORD
+    if (!devEmail || !devPassword) return
+    setLoading(true)
+    setError('')
+    const { error } = await supabase.auth.signInWithPassword({ email: devEmail, password: devPassword })
+    setLoading(false)
+    if (error) setError(error.message)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -94,6 +106,29 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
               {loading ? 'SENDING...' : (isSignUp ? 'CREATE ACCOUNT →' : 'SEND MAGIC LINK →')}
             </button>
           </div>
+          {isDev && (
+            <button
+              type="button"
+              onClick={handleDevLogin}
+              disabled={loading}
+              style={{
+                marginTop: 16,
+                width: '100%',
+                padding: '10px',
+                background: 'rgba(184, 151, 90, 0.1)',
+                border: '1px dashed var(--gold)',
+                borderRadius: 8,
+                color: 'var(--gold)',
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: 2,
+                cursor: 'pointer',
+                fontFamily: "'Jost', sans-serif",
+              }}
+            >
+              {loading ? 'SIGNING IN...' : 'DEV LOGIN →'}
+            </button>
+          )}
         </form>
       )}
     </Modal>
