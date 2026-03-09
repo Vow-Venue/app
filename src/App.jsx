@@ -184,6 +184,7 @@ export default function App() {
   const [notes, setNotes]                   = useState([])
   const [timelineDays, setTimelineDays]     = useState([])
   const [timelineEvents, setTimelineEvents] = useState([])
+  const [roomElements, setRoomElements]     = useState([])
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -375,7 +376,7 @@ export default function App() {
       setWedding(weddingRow)
       setWeddingId(weddingRow.id)
 
-      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes, notesRes, tdRes, teRes] = await Promise.all([
+      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes, notesRes, tdRes, teRes, reRes] = await Promise.all([
         supabase.from('guests').select('*').eq('wedding_id', wId),
         supabase.from('seating_tables').select('*').eq('wedding_id', wId),
         supabase.from('tasks').select('*').eq('wedding_id', wId).order('created_at'),
@@ -386,6 +387,7 @@ export default function App() {
         supabase.from('notes').select('*').eq('wedding_id', wId).order('updated_at', { ascending: false }),
         supabase.from('timeline_days').select('*').eq('wedding_id', wId).order('sort_order'),
         supabase.from('timeline_events').select('*').eq('wedding_id', wId).order('sort_order'),
+        supabase.from('room_elements').select('*').eq('wedding_id', wId),
       ])
 
       setGuests((gRes.data ?? []).map(mapGuest))
@@ -397,6 +399,7 @@ export default function App() {
       setNotes((notesRes.data ?? []).map(mapNote))
       setTimelineDays(tdRes.data ?? [])
       setTimelineEvents(teRes.data ?? [])
+      setRoomElements(reRes.data ?? [])
 
       const fetchedChannels = chRes.data ?? []
       setChannels(fetchedChannels)
@@ -622,6 +625,35 @@ export default function App() {
     setGuests(prev => prev.map(g => g.tableId === id ? { ...g, tableId: null } : g))
     if (session) await supabase.from('seating_tables').delete().eq('id', id)
     // DB on delete set null handles guest.table_id automatically
+  }
+
+  // ── Room element handlers ──────────────────────────────────────────────────
+  const handleAddRoomElement = async (element) => {
+    if (!requireEdit()) return
+    if (session && weddingId) {
+      const { data, error } = await supabase.from('room_elements')
+        .insert({ wedding_id: weddingId, ...element }).select().single()
+      if (error) { console.error('Add room element failed:', error.message); return }
+      if (data) setRoomElements(prev => [...prev, data])
+    }
+  }
+
+  const handleUpdateRoomElement = async (id, updates) => {
+    if (!requireEdit()) return
+    setRoomElements(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e))
+    if (session) {
+      const { error } = await supabase.from('room_elements').update(updates).eq('id', id)
+      if (error) console.error('Update room element failed:', error.message)
+    }
+  }
+
+  const handleDeleteRoomElement = async (id) => {
+    if (!requireEdit()) return
+    setRoomElements(prev => prev.filter(e => e.id !== id))
+    if (session) {
+      const { error } = await supabase.from('room_elements').delete().eq('id', id)
+      if (error) console.error('Delete room element failed:', error.message)
+    }
   }
 
   // ── Bulk import: Tasks ──────────────────────────────────────────────────────
@@ -1265,6 +1297,10 @@ export default function App() {
             onImportGuests={handleImportGuests}
             canEdit={permissions.canEditGuests}
             rsvpSlug={wedding?.rsvp_slug ?? null}
+            roomElements={roomElements}
+            onAddRoomElement={handleAddRoomElement}
+            onUpdateRoomElement={handleUpdateRoomElement}
+            onDeleteRoomElement={handleDeleteRoomElement}
           />
         )
       case 'tasks':

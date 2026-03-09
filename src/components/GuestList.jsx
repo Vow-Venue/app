@@ -45,6 +45,7 @@ export default function GuestList({
   onImportGuests,
   canEdit = true,
   rsvpSlug = null,
+  roomElements = [], onAddRoomElement, onUpdateRoomElement, onDeleteRoomElement,
 }) {
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingGuest, setEditingGuest]   = useState(null)
@@ -146,6 +147,10 @@ export default function GuestList({
           onAddTable={onAddTable}
           onDeleteTable={onDeleteTable}
           canEdit={canEdit}
+          roomElements={roomElements}
+          onAddRoomElement={onAddRoomElement}
+          onUpdateRoomElement={onUpdateRoomElement}
+          onDeleteRoomElement={onDeleteRoomElement}
         />
       </div>
     )
