@@ -456,6 +456,362 @@ body {
   .weddings-grid { grid-template-columns: 1fr; max-width: 320px; margin: 0 auto; }
 }
 
+/* ─── Org Dashboard ─────────────────────────────── */
+
+.org-dashboard {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 0;
+}
+
+.org-dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.org-dashboard-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.org-sort-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.org-sort-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.org-sort-select {
+  border: 1px solid var(--border);
+  background: var(--white);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: 'Jost', sans-serif;
+  color: var(--deep);
+  cursor: pointer;
+}
+
+.org-view-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.org-view-btn {
+  border: none;
+  background: var(--white);
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+
+.org-view-btn.active {
+  background: var(--deep);
+  color: var(--gold-light);
+}
+
+.org-view-btn:not(.active):hover {
+  background: var(--cream);
+}
+
+/* Shared Resources */
+
+.org-shared-section {
+  margin-bottom: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  overflow: hidden;
+}
+
+.org-shared-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: none;
+  border: none;
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: 'Jost', sans-serif;
+  transition: color 0.15s;
+}
+
+.org-shared-toggle:hover { color: var(--deep); }
+
+.org-shared-content { padding: 0 20px 20px; }
+
+.org-shared-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.org-shared-vendor-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--cream);
+}
+
+.org-shared-vendor-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--deep);
+  margin-bottom: 2px;
+}
+
+.org-shared-vendor-role {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--gold);
+  font-weight: 500;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.org-shared-vendor-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.org-shared-vendor-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.org-shared-vendor-count {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.org-shared-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.org-coming-soon {
+  font-size: 9px;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(184, 151, 90, 0.1);
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* Wedding card stats row */
+
+.wedding-card-countdown {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.wedding-card-countdown::before {
+  content: '·';
+  color: var(--border-solid);
+  margin-right: 12px;
+}
+
+.wedding-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.wedding-card-task-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(184, 151, 90, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.wedding-card-task-fill {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.wedding-card-task-pct {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--gold);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* List view */
+
+.org-weddings-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.org-list-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border: none;
+  background: var(--white);
+  cursor: pointer;
+  font-family: 'Jost', sans-serif;
+  text-align: left;
+  width: 100%;
+  transition: background 0.15s;
+}
+
+.org-list-row:hover { background: var(--cream); }
+
+.org-list-row + .org-list-row {
+  border-top: 1px solid rgba(184, 151, 90, 0.1);
+}
+
+.org-list-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+.org-list-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.org-list-couple {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--deep);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-list-date {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+}
+
+.org-list-stat {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 60px;
+  text-align: center;
+}
+
+.org-list-pct {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.wedding-card-role-inline {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+}
+
+.wedding-card-role-inline.role-owner   { background: rgba(184,151,90,0.15); color: var(--gold); }
+.wedding-card-role-inline.role-planner { background: rgba(184,151,90,0.12); color: var(--gold); }
+.wedding-card-role-inline.role-couple  { background: rgba(200,132,122,0.15); color: var(--rose); }
+.wedding-card-role-inline.role-family  { background: rgba(200,132,122,0.12); color: var(--rose); }
+.wedding-card-role-inline.role-vendor  { background: rgba(122,156,184,0.15); color: #6a8fa8; }
+.wedding-card-role-inline.role-viewer  { background: rgba(138,122,114,0.12); color: var(--muted); }
+
+.org-list-new-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px;
+  border: 2px dashed rgba(184,151,90,0.3);
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: 'Jost', sans-serif;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.org-list-new-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* Header breadcrumb text */
+
+.header-back-text {
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin-left: 4px;
+}
+
+@media (max-width: 768px) {
+  .header-back-text { display: none; }
+  .org-dashboard-header { flex-direction: column; }
+  .org-dashboard-controls { width: 100%; justify-content: space-between; }
+  .org-list-stat:nth-child(n+5) { display: none; }
+}
+
+@media (max-width: 480px) {
+  .org-shared-grid { grid-template-columns: 1fr; }
+  .org-view-toggle { display: none; }
+}
+
 /* ─── Tabs ──────────────────────────────────────── */
 
 .tabs {

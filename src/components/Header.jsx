@@ -48,22 +48,25 @@ export default function Header({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [switcherOpen, menuOpen])
 
-  const badge = session && wedding && wedding.partner1 && wedding.partner2
+  const badge = session && activeWeddingId && wedding?.partner1 && wedding?.partner2
     ? `${wedding.partner1.toUpperCase()} & ${wedding.partner2.toUpperCase()} · ${fmtDate(wedding.wedding_date)}`
-    : 'VOW & VENUE'
+    : session && !activeWeddingId
+      ? (profile?.display_name ? `${profile.display_name.toUpperCase()}'S STUDIO` : 'MY STUDIO')
+      : 'VOW & VENUE'
 
-  const showSwitcher = session && activeWeddingId && myWeddings.length > 1
+  const showBackButton = session && activeWeddingId
+  const showSwitcher = showBackButton && myWeddings.length > 1
 
   return (
     <header className="header">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {showSwitcher && (
+        {showBackButton && (
           <button
             className="header-back-btn"
             onClick={onBackToDashboard}
-            title="Back to My Weddings"
+            title="Back to All Weddings"
           >
-            &larr;
+            &larr; <span className="header-back-text">All Weddings</span>
           </button>
         )}
         <div className="logo"><span>✦</span> Vow &amp; Venue</div>

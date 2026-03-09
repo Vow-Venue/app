@@ -16,7 +16,7 @@ import Notes from './components/Notes'
 import AuthModal from './components/AuthModal'
 import WeddingSetup from './components/WeddingSetup'
 import RSVPPage from './components/RSVPPage'
-import MyWeddings from './components/MyWeddings'
+import OrgDashboard from './components/OrgDashboard'
 import MarketingLayout from './layouts/MarketingLayout'
 import HomePage from './pages/HomePage'
 import FeaturesPage from './pages/FeaturesPage'
@@ -166,6 +166,8 @@ export default function App() {
   const [activeWeddingId, setActiveWeddingId]   = useState(null)
   const [dashboardLoading, setDashboardLoading] = useState(false)
   const [showProBanner, setShowProBanner]       = useState(false)
+  const [dashboardTaskStats, setDashboardTaskStats] = useState({})
+  const [sharedVendors, setSharedVendors]           = useState([])
 
   // ── Wedding (currently selected)
   const [weddingId, setWeddingId] = useState(null)
@@ -350,14 +352,56 @@ export default function App() {
         }
       }
 
+      // ── Step 3c: Fetch task stats per wedding ──────────────────────────────
+      if (weddings.length > 0) {
+        const weddingIds = weddings.map(w => w.id)
+        const { data: taskRows } = await supabase
+          .from('tasks')
+          .select('wedding_id, done')
+          .in('wedding_id', weddingIds)
+        if (taskRows) {
+          const stats = {}
+          taskRows.forEach(r => {
+            if (!stats[r.wedding_id]) stats[r.wedding_id] = { total: 0, done: 0 }
+            stats[r.wedding_id].total++
+            if (r.done) stats[r.wedding_id].done++
+          })
+          setDashboardTaskStats(stats)
+        }
+      }
+
+      // ── Step 3d: Fetch shared vendor contacts ───────────────────────────────
+      if (weddings.length > 1) {
+        const weddingIds = weddings.map(w => w.id)
+        const { data: allVendors } = await supabase
+          .from('vendors')
+          .select('name, role, phone, email, wedding_id')
+          .in('wedding_id', weddingIds)
+        if (allVendors) {
+          const vendorMap = {}
+          allVendors.forEach(v => {
+            const key = `${(v.name || '').toLowerCase()}|${v.role}`
+            if (!vendorMap[key]) vendorMap[key] = { name: v.name, role: v.role, phone: v.phone, email: v.email, weddingIds: new Set() }
+            vendorMap[key].weddingIds.add(v.wedding_id)
+          })
+          setSharedVendors(
+            Object.values(vendorMap)
+              .filter(v => v.weddingIds.size >= 2)
+              .map(v => ({ name: v.name, role: v.role, phone: v.phone, email: v.email, weddingCount: v.weddingIds.size }))
+          )
+        }
+      }
+
       setMyWeddings(weddings)
 
       // ── Step 4: Auto-routing ────────────────────────────────────────────────
-      if (weddings.length === 1) {
+      // Collaborators (couple/family/vendor) with 1 wedding: auto-jump
+      // Planners/owners: always land on org dashboard
+      if (weddings.length === 1 && !['owner', 'planner'].includes(weddings[0].myRole)) {
         setActiveWeddingId(weddings[0].id)
         await loadWeddingData(weddings[0].id, userId)
       }
-      // else: multiple weddings — show dashboard (activeWeddingId stays null)
+      // else: show org dashboard (activeWeddingId stays null)
 
     } catch (err) {
       console.error('loadMyWeddings failed:', err)
@@ -428,7 +472,7 @@ export default function App() {
     await loadWeddingData(wId)
   }
 
-  // ── Back to My Weddings dashboard ───────────────────────────────────────────
+  // ── Back to org dashboard ───────────────────────────────────────────────────
   const handleBackToDashboard = () => {
     setActiveWeddingId(null)
     setWeddingId(null)
@@ -444,6 +488,8 @@ export default function App() {
     setCollaborators([])
     setNotes([])
     setActiveTab('overview')
+    // Re-fetch dashboard data so stats are fresh
+    if (session) loadMyWeddings(session.user.id)
   }
 
   // ── Create a new wedding ────────────────────────────────────────────────────
@@ -1439,7 +1485,7 @@ export default function App() {
 
     if (!session) return <Navigate to="/" replace />
 
-    // My Weddings dashboard (no wedding selected)
+    // Org dashboard (no wedding selected)
     if (activeWeddingId === null) {
       const userPlan = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro') ? 'pro' : 'free'
       return (
@@ -1462,10 +1508,13 @@ export default function App() {
             deleteAccountOpen={deleteAccountOpen}
             setDeleteAccountOpen={setDeleteAccountOpen}
           />
-          <main className="main">
-            <MyWeddings
+          <main className="main" style={{ maxWidth: 1200 }}>
+            <OrgDashboard
               weddings={myWeddings}
               userPlan={userPlan}
+              taskStats={dashboardTaskStats}
+              sharedVendors={sharedVendors}
+              profile={profile}
               onSelectWedding={selectWedding}
               onCreateWedding={handleCreateWedding}
               onUpgrade={handleUpgrade}
