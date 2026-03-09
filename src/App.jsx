@@ -685,12 +685,13 @@ export default function App() {
   const handleAddVendor = async (vendor) => {
     if (!requireEdit()) return
     if (session && weddingId) {
-      const { data } = await supabase.from('vendors').insert({
+      const { data, error } = await supabase.from('vendors').insert({
         wedding_id: weddingId,
         name: vendor.name, role: vendor.role, phone: vendor.phone || null,
         email: vendor.email || null, notes: vendor.notes || null,
         amount: Number(vendor.amount) || 0, due_date: vendor.dueDate || null, paid: !!vendor.paid,
       }).select().single()
+      if (error) { console.error('Add vendor failed:', error.message); return }
       if (data) setVendors(prev => [...prev, data])
     }
   }

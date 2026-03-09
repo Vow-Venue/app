@@ -339,11 +339,19 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
           </div>
           <div className="form-group">
             <label>CATEGORY</label>
-            <select name="role" value={form.role} onChange={handleChange}>
+            <input
+              name="role"
+              type="text"
+              list="vendor-role-options"
+              value={form.role}
+              onChange={handleChange}
+              placeholder="e.g. Photographer, Florist, or custom"
+            />
+            <datalist id="vendor-role-options">
               {ROLES.map(r => (
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
-            </select>
+            </datalist>
           </div>
           <div className="form-grid-2">
             <div className="form-group">
