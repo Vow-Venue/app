@@ -155,6 +155,11 @@ export default function App() {
   // ── App view
   const [activeTab, setActiveTab] = useState('overview')
   const [helpOpen, setHelpOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+
+  // ── Profile
+  const [profile, setProfile] = useState(null)
 
   // ── Multi-wedding
   const [myWeddings, setMyWeddings]             = useState([])
@@ -217,11 +222,18 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // ── Load weddings when session arrives ───────────────────────────────────────
+  // ── Load weddings + profile when session arrives ─────────────────────────────
   useEffect(() => {
     if (!session) return
     loadMyWeddings(session.user.id)
+    loadProfile(session.user.id)
   }, [session?.user?.id])
+
+  const loadProfile = async (userId) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+    if (data) setProfile(data)
+    else setProfile({ id: userId, display_name: null, avatar_url: null })
+  }
 
   // Helper: map invite/collab role to wedding_members role
   const mapMemberRole = (role) => {
@@ -1074,6 +1086,40 @@ export default function App() {
   // ── Sign out ─────────────────────────────────────────────────────────────────
   const handleSignOut = () => supabase.auth.signOut()
 
+  // ── Profile handlers ────────────────────────────────────────────────────────
+  const handleUpdateProfile = async (displayName) => {
+    if (!session?.user) return
+    const userId = session.user.id
+    const { data, error } = await supabase.from('profiles').upsert({
+      id: userId, display_name: displayName, updated_at: new Date().toISOString(),
+    }).select().single()
+    if (error) { console.error('Profile update failed:', error.message); return }
+    if (data) setProfile(data)
+  }
+
+  const handleUploadAvatar = async (file) => {
+    if (!session?.user || !file) return
+    const userId = session.user.id
+    const ext = file.name.split('.').pop()
+    const path = `${userId}/avatar.${ext}`
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (upErr) { console.error('Avatar upload failed:', upErr.message); return }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    const url = publicUrl + '?t=' + Date.now()
+    const { data, error } = await supabase.from('profiles').upsert({
+      id: userId, avatar_url: url, updated_at: new Date().toISOString(),
+    }).select().single()
+    if (error) { console.error('Avatar URL save failed:', error.message); return }
+    if (data) setProfile(data)
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!session?.user) return
+    const { error } = await supabase.rpc('delete_own_account')
+    if (error) { console.error('Delete account failed:', error.message); return }
+    await supabase.auth.signOut()
+  }
+
   const handleSubmitTicket = async (subject, message) => {
     if (!session?.user) return
     const { error } = await supabase.from('support_tickets').insert({
@@ -1284,6 +1330,14 @@ export default function App() {
             onSignIn={() => setAuthOpen(true)}
             onSignOut={handleSignOut}
             onHelp={() => setHelpOpen(true)}
+            profile={profile}
+            onUpdateProfile={handleUpdateProfile}
+            onUploadAvatar={handleUploadAvatar}
+            onDeleteAccount={handleDeleteAccount}
+            profileOpen={profileOpen}
+            setProfileOpen={setProfileOpen}
+            deleteAccountOpen={deleteAccountOpen}
+            setDeleteAccountOpen={setDeleteAccountOpen}
           />
           <main className="main">
             <MyWeddings
@@ -1320,6 +1374,14 @@ export default function App() {
           onSignIn={() => setAuthOpen(true)}
           onSignOut={handleSignOut}
           onHelp={() => setHelpOpen(true)}
+          profile={profile}
+          onUpdateProfile={handleUpdateProfile}
+          onUploadAvatar={handleUploadAvatar}
+          onDeleteAccount={handleDeleteAccount}
+          profileOpen={profileOpen}
+          setProfileOpen={setProfileOpen}
+          deleteAccountOpen={deleteAccountOpen}
+          setDeleteAccountOpen={setDeleteAccountOpen}
         />
         <NavTabs activeTab={activeTab} onTabChange={setActiveTab} hiddenTabs={hiddenTabs} />
 

@@ -103,6 +103,8 @@ npm run db:push             # Apply pending migrations to remote
 npm run db:status           # Check local vs remote migration state
 ```
 
+Always run migrations via the Supabase MCP tool (`apply_migration`) after creating them — never ask the user to do it manually.
+
 ## Multi-Wedding Model
 
 The app supports multiple weddings per user. After login:
@@ -139,6 +141,19 @@ Each tab corresponds to one component in `src/components/`. `Modal.jsx` is a thi
 - Invite tokens: 48h expiry, one-time use, sent via Resend email (Edge Function)
 - Invite redemption creates rows in both `collaborators` and `wedding_members`
 - `VITE_APP_URL` env var ensures invite links always point to production
+
+## Supabase Error Handling
+
+Always check and log Supabase errors on every insert/update/delete. Never destructure only `{ data }` — always `{ data, error }` and handle the error:
+
+```js
+// WRONG
+const { data } = await supabase.from('table').insert({...}).select().single()
+
+// RIGHT
+const { data, error } = await supabase.from('table').insert({...}).select().single()
+if (error) { console.error('Insert failed:', error.message); return }
+```
 
 ## Bash Rules
 
