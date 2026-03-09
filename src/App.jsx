@@ -57,20 +57,16 @@ const SEED_VENDORS = [
 ]
 
 const SEED_CHANNELS = [
-  { id: 'ch1', name: 'general' },
-  { id: 'ch2', name: 'vendors' },
-  { id: 'ch3', name: 'ceremony' },
+  { id: 'ch1', name: 'general', type: 'channel' },
+]
+
+const SEED_CHANNEL_MEMBERS = [
+  { channelId: 'ch1', userId: 'c1' },
+  { channelId: 'ch1', userId: 'c2' },
 ]
 
 const SEED_MESSAGES = [
-  { id: 'm1', channelId: 'ch1', senderId: 'c1', text: 'Welcome to Vow & Venue! So excited for this journey together. 🌸', timestamp: '2026-02-20T09:00:00' },
-  { id: 'm2', channelId: 'ch1', senderId: 'c2', text: "Let's make this the most beautiful day! Can't wait.", timestamp: '2026-02-20T09:08:00' },
-  { id: 'm3', channelId: 'ch1', senderId: 'c1', text: "I've added all the vendors we've confirmed so far. Check the Vendors tab!", timestamp: '2026-02-21T10:15:00' },
-  { id: 'm4', channelId: 'ch2', senderId: 'c2', text: 'Has everyone reviewed the florist quote from Blossom Florals?', timestamp: '2026-02-21T11:00:00' },
-  { id: 'm5', channelId: 'ch2', senderId: 'c1', text: 'Yes — white roses and peonies look perfect. Approved!', timestamp: '2026-02-21T11:12:00' },
-  { id: 'm6', channelId: 'ch2', senderId: 'c2', text: "Great. I'll confirm with them today and make sure the deposit goes through.", timestamp: '2026-02-21T11:18:00' },
-  { id: 'm7', channelId: 'ch3', senderId: 'c1', text: 'Ceremony run-through scheduled for June 12th at 4pm. Please mark your calendars.', timestamp: '2026-02-22T14:00:00' },
-  { id: 'm8', channelId: 'ch3', senderId: 'c2', text: "Confirmed. I'll let the officiant know as well.", timestamp: '2026-02-22T14:20:00' },
+  { id: 'm1', channelId: 'ch1', senderId: 'system', senderName: 'System', text: 'Welcome to your wedding workspace! This is the #general channel where your whole team can communicate.', timestamp: '2026-02-20T09:00:00' },
 ]
 
 const SEED_INVOICES = [
@@ -169,10 +165,11 @@ export default function App() {
   const [tables, setTables]             = useState(SEED_TABLES)
   const [tasks, setTasks]               = useState(SEED_TASKS)
   const [vendors, setVendors]           = useState(SEED_VENDORS)
-  const [channels, setChannels]         = useState(SEED_CHANNELS)
-  const [messages, setMessages]         = useState(SEED_MESSAGES)
-  const [invoices, setInvoices]         = useState(SEED_INVOICES)
-  const [collaborators, setCollaborators] = useState(SEED_COLLABORATORS)
+  const [channels, setChannels]             = useState(SEED_CHANNELS)
+  const [channelMembers, setChannelMembers] = useState(SEED_CHANNEL_MEMBERS)
+  const [messages, setMessages]             = useState(SEED_MESSAGES)
+  const [invoices, setInvoices]             = useState(SEED_INVOICES)
+  const [collaborators, setCollaborators]   = useState(SEED_COLLABORATORS)
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -197,6 +194,7 @@ export default function App() {
         setTasks(SEED_TASKS)
         setVendors(SEED_VENDORS)
         setChannels(SEED_CHANNELS)
+        setChannelMembers(SEED_CHANNEL_MEMBERS)
         setMessages(SEED_MESSAGES)
         setInvoices(SEED_INVOICES)
         setCollaborators(SEED_COLLABORATORS)
@@ -361,14 +359,16 @@ export default function App() {
       setChannels(fetchedChannels)
 
       if (fetchedChannels.length > 0) {
-        const { data: msgs } = await supabase
-          .from('messages')
-          .select('*')
-          .in('channel_id', fetchedChannels.map(c => c.id))
-          .order('created_at')
-        setMessages((msgs ?? []).map(mapMessage))
+        const chIds = fetchedChannels.map(c => c.id)
+        const [msgsRes, cmRes] = await Promise.all([
+          supabase.from('messages').select('*').in('channel_id', chIds).order('created_at'),
+          supabase.from('channel_members').select('*').in('channel_id', chIds),
+        ])
+        setMessages((msgsRes.data ?? []).map(mapMessage))
+        setChannelMembers((cmRes.data ?? []).map(r => ({ channelId: r.channel_id, userId: r.user_id })))
       } else {
         setMessages([])
+        setChannelMembers([])
       }
     } catch (err) {
       console.error('loadWeddingData failed:', err)
@@ -392,6 +392,7 @@ export default function App() {
     setTasks([])
     setVendors([])
     setChannels([])
+    setChannelMembers([])
     setMessages([])
     setInvoices([])
     setCollaborators([])
@@ -413,6 +414,18 @@ export default function App() {
     await supabase.from('wedding_members')
       .insert({ wedding_id: created.id, user_id: userId, role: 'owner' })
 
+    // Auto-create #general channel with welcome message
+    const { data: genCh } = await supabase.from('channels').insert({
+      wedding_id: created.id, name: 'general', type: 'channel', created_by: userId,
+    }).select().single()
+    if (genCh) {
+      await supabase.from('channel_members').insert({ channel_id: genCh.id, user_id: userId })
+      await supabase.from('messages').insert({
+        channel_id: genCh.id, sender_id: 'system', sender_name: 'System',
+        body: 'Welcome to your wedding workspace! This is the #general channel where your whole team can communicate.',
+      })
+    }
+
     const newW = { ...created, myRole: 'owner' }
     setMyWeddings(prev => [...prev, newW])
     setActiveWeddingId(created.id)
@@ -421,14 +434,17 @@ export default function App() {
 
   // ── Realtime: new messages ───────────────────────────────────────────────────
   useEffect(() => {
-    if (!weddingId || !session || channels.filter(c => c.type !== 'dm').length === 0) return
-
-    const channelIds = new Set(channels.filter(c => c.type !== 'dm').map(c => c.id))
+    if (!weddingId || !session) return
+    const myUserId = session.user.id
+    const myChannelIds = new Set(
+      channelMembers.filter(m => m.userId === myUserId).map(m => m.channelId)
+    )
+    if (myChannelIds.size === 0) return
 
     const sub = supabase
       .channel('rt-messages-' + weddingId)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        if (channelIds.has(payload.new.channel_id)) {
+        if (myChannelIds.has(payload.new.channel_id)) {
           setMessages(prev => {
             if (prev.some(m => m.id === payload.new.id)) return prev
             return [...prev, mapMessage(payload.new)]
@@ -438,7 +454,7 @@ export default function App() {
       .subscribe()
 
     return () => supabase.removeChannel(sub)
-  }, [weddingId, channels.length, session])
+  }, [weddingId, channelMembers, session])
 
   // ── Guest handlers ───────────────────────────────────────────────────────────
   const handleAddGuest = async (guest) => {
@@ -668,15 +684,69 @@ export default function App() {
   }
 
   const handleAddChannel = async (channel) => {
+    const creatorId = session?.user?.id || 'c1'
+
     if (session && weddingId && channel.type !== 'dm') {
       const { data } = await supabase.from('channels').insert({
         wedding_id: weddingId,
         name: channel.name,
         type: 'channel',
+        created_by: creatorId,
       }).select().single()
-      if (data) setChannels(prev => [...prev, data])
+      if (!data) return
+
+      setChannels(prev => [...prev, data])
+
+      // Add creator + selected members
+      const memberIds = [...new Set([creatorId, ...(channel.members || [])])]
+      const memberRows = memberIds.map(uid => ({ channel_id: data.id, user_id: uid }))
+      await supabase.from('channel_members').insert(memberRows)
+      setChannelMembers(prev => [...prev, ...memberIds.map(uid => ({ channelId: data.id, userId: uid }))])
+
+      // System message
+      await supabase.from('messages').insert({
+        channel_id: data.id, sender_id: 'system', sender_name: 'System',
+        body: `Channel #${channel.name} was created.`,
+      })
     } else {
-      setChannels(prev => [...prev, { ...channel, id: genId() }])
+      const newId = genId()
+      setChannels(prev => [...prev, { ...channel, id: newId, type: channel.type || 'channel' }])
+      const memberIds = [...new Set([creatorId, ...(channel.members || [])])]
+      setChannelMembers(prev => [...prev, ...memberIds.map(uid => ({ channelId: newId, userId: uid }))])
+      setMessages(prev => [...prev, {
+        id: genId(), channelId: newId, senderId: 'system', senderName: 'System',
+        text: `Channel #${channel.name} was created.`, timestamp: new Date().toISOString(),
+      }])
+    }
+  }
+
+  const handleAddChannelMembers = async (channelId, userIds) => {
+    const existing = new Set(channelMembers.filter(m => m.channelId === channelId).map(m => m.userId))
+    const newIds = userIds.filter(uid => !existing.has(uid))
+    if (newIds.length === 0) return
+
+    if (session && weddingId) {
+      await supabase.from('channel_members').insert(newIds.map(uid => ({ channel_id: channelId, user_id: uid })))
+    }
+    setChannelMembers(prev => [...prev, ...newIds.map(uid => ({ channelId, userId: uid }))])
+
+    // System message
+    const names = newIds.map(uid => {
+      const c = collaborators.find(co => co.id === uid || co.user_id === uid)
+      return c?.name || 'Someone'
+    }).join(', ')
+    const sysMsg = { channelId, senderId: 'system', senderName: 'System', text: `${names} joined the channel.` }
+    if (session && weddingId) {
+      await supabase.from('messages').insert({ channel_id: channelId, sender_id: 'system', sender_name: 'System', body: sysMsg.text })
+    } else {
+      setMessages(prev => [...prev, { ...sysMsg, id: genId(), timestamp: new Date().toISOString() }])
+    }
+  }
+
+  const handleRemoveChannelMember = async (channelId, userId) => {
+    setChannelMembers(prev => prev.filter(m => !(m.channelId === channelId && m.userId === userId)))
+    if (session && weddingId) {
+      await supabase.from('channel_members').delete().eq('channel_id', channelId).eq('user_id', userId)
     }
   }
 
@@ -766,7 +836,15 @@ export default function App() {
         access: collab.access,
       }).select().single()
       if (insertError) return { error: insertError.message }
-      if (data) setCollaborators(prev => [...prev, data])
+      if (data) {
+        setCollaborators(prev => [...prev, data])
+        // Auto-add to #general channel
+        const generalCh = channels.find(c => c.name === 'general' && c.type !== 'dm')
+        if (generalCh) {
+          const memberId = data.user_id || data.id
+          handleAddChannelMembers(generalCh.id, [memberId])
+        }
+      }
 
       // Create invite token so they can actually join
       if (collab.email) {
@@ -809,7 +887,13 @@ export default function App() {
         }
       }
     } else {
-      setCollaborators(prev => [...prev, { ...collab, id: genId() }])
+      const newId = genId()
+      setCollaborators(prev => [...prev, { ...collab, id: newId }])
+      // Auto-add to #general in guest mode
+      const generalCh = channels.find(c => c.name === 'general' && c.type !== 'dm')
+      if (generalCh) {
+        setChannelMembers(prev => [...prev, { channelId: generalCh.id, userId: newId }])
+      }
     }
     return null
   }
@@ -972,12 +1056,15 @@ export default function App() {
         return (
           <Messaging
             channels={channels}
+            channelMembers={channelMembers}
             messages={messages}
             collaborators={collaborators}
             me={me}
             tasks={tasks}
             onAddMessage={handleAddMessage}
             onAddChannel={handleAddChannel}
+            onAddChannelMembers={handleAddChannelMembers}
+            onRemoveChannelMember={handleRemoveChannelMember}
             onNavigate={setActiveTab}
           />
         )

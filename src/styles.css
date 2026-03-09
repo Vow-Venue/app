@@ -1039,19 +1039,7 @@ label {
   font-weight: 400;
 }
 
-.chat-user-switch {
-  margin-top: 8px;
-  font-family: 'Jost', sans-serif;
-  font-size: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.75);
-  border-radius: 6px;
-  padding: 6px 10px;
-  width: 100%;
-  cursor: pointer;
-  outline: none;
-}
+/* (chat-user-switch removed — replaced by sidebar search) */
 
 .chat-sidebar-section {
   padding: 16px 0 8px;
@@ -1132,22 +1120,7 @@ label {
   color: rgba(255, 255, 255, 0.65);
 }
 
-.sidebar-new-input {
-  margin: 4px 10px;
-  font-family: 'Jost', sans-serif;
-  font-size: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: white;
-  border-radius: 6px;
-  padding: 6px 10px;
-  width: calc(100% - 20px);
-  outline: none;
-}
-
-.sidebar-new-input::placeholder {
-  color: rgba(255,255,255,0.3);
-}
+/* (sidebar-new-input removed — replaced by Modal) */
 
 .chat-main {
   display: flex;
@@ -1362,6 +1335,341 @@ label {
 
 .task-progress-link:hover {
   text-decoration: underline;
+}
+
+/* ── Sidebar Search ── */
+
+.sidebar-search {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-search-input {
+  width: 100%;
+  font-family: 'Jost', sans-serif;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: white;
+  border-radius: 6px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border 0.2s;
+  box-sizing: border-box;
+}
+
+.sidebar-search-input:focus {
+  border-color: rgba(184, 151, 90, 0.5);
+}
+
+.sidebar-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Sidebar DM Avatars ── */
+
+.sidebar-dm-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: white;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── DM People Picker ── */
+
+.dm-people-picker {
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dm-search-input {
+  width: 100%;
+  font-family: 'Jost', sans-serif;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  border-radius: 6px;
+  padding: 6px 10px;
+  outline: none;
+  margin-bottom: 6px;
+  box-sizing: border-box;
+}
+
+.dm-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.dm-people-list {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.dm-person-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: 'Jost', sans-serif;
+  transition: background 0.15s;
+}
+
+.dm-person-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dm-person-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+.dm-person-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dm-person-name {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dm-person-role {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: auto;
+}
+
+.dm-picker-close {
+  width: 100%;
+  margin-top: 6px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: 'Jost', sans-serif;
+  text-align: center;
+  padding: 4px;
+}
+
+.dm-picker-close:hover {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ── Channel Members Button (Header) ── */
+
+.channel-members-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-family: 'Jost', sans-serif;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.channel-members-btn:hover {
+  background: var(--cream);
+  border-color: var(--border-solid);
+}
+
+/* ── Members Panel (Right Side) ── */
+
+.chat-layout.with-members-panel {
+  grid-template-columns: 220px 1fr 220px;
+}
+
+.channel-members-panel {
+  width: 220px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--white);
+  flex-shrink: 0;
+}
+
+.channel-members-panel-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.channel-members-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.channel-member-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 13px;
+}
+
+.channel-member-remove {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 0 4px;
+}
+
+.channel-member-item:hover .channel-member-remove {
+  opacity: 1;
+}
+
+.channel-member-remove:hover {
+  color: var(--rose);
+}
+
+.channel-add-member-section {
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+  flex-shrink: 0;
+}
+
+.channel-add-member-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 0 16px 6px;
+}
+
+.channel-add-members-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.channel-add-member-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  font-size: 12px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Jost', sans-serif;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.channel-add-member-item:hover {
+  background: var(--cream);
+}
+
+.channel-add-member-plus {
+  margin-left: auto;
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* ── Member Picker (Channel Creation Modal) ── */
+
+.member-picker {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.member-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.member-pick-item:hover {
+  background: var(--cream);
+}
+
+.member-pick-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+.member-pick-role {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ── System Messages ── */
+
+.msg-system {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.msg-system-text {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.msg-system-time {
+  font-size: 10px;
+  color: var(--border-solid);
 }
 
 /* ─── Billing ───────────────────────────────────── */
@@ -1650,8 +1958,10 @@ label {
 
   /* Chat */
   .chat-layout { grid-template-columns: 1fr; height: auto; }
+  .chat-layout.with-members-panel { grid-template-columns: 1fr; }
   .chat-sidebar { height: 200px; }
   .chat-main { height: 500px; }
+  .channel-members-panel { display: none; }
 
   /* Form grids */
   .form-grid-2 { grid-template-columns: 1fr; }
