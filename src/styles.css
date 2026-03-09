@@ -200,6 +200,59 @@ body {
   vertical-align: middle;
 }
 
+/* Header PRO badge */
+.header-pro-badge {
+  display: inline-block;
+  background: var(--gold);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* Pro success banner */
+.pro-success-banner {
+  background: linear-gradient(135deg, var(--gold) 0%, #c9a84c 100%);
+  color: #fff;
+  padding: 12px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  animation: bannerSlide 0.4s ease-out;
+}
+@keyframes bannerSlide {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+/* Plan status card on Overview */
+.plan-status-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  margin-bottom: 24px;
+}
+.plan-status-card.plan-pro {
+  background: rgba(184, 151, 90, 0.1);
+  color: var(--gold);
+  border: 1px solid rgba(184, 151, 90, 0.2);
+}
+.plan-status-card.plan-free {
+  background: rgba(74, 54, 49, 0.05);
+  color: var(--muted);
+  border: 1px dashed rgba(74, 54, 49, 0.2);
+}
+
 .weddings-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

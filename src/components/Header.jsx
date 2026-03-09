@@ -13,7 +13,7 @@ const weddingLabel = (w) => {
 }
 
 export default function Header({
-  session, wedding,
+  session, wedding, isPro,
   myWeddings = [], activeWeddingId = null,
   onSelectWedding, onBackToDashboard,
   onSignIn, onSignOut,
@@ -95,6 +95,8 @@ export default function Header({
         ) : (
           <div className="wedding-badge">{badge}</div>
         )}
+
+        {isPro && <span className="header-pro-badge">PRO</span>}
 
         <button
           className="btn btn-ghost"

@@ -155,6 +155,7 @@ export default function App() {
   const [myWeddings, setMyWeddings]             = useState([])
   const [activeWeddingId, setActiveWeddingId]   = useState(null)
   const [dashboardLoading, setDashboardLoading] = useState(false)
+  const [showProBanner, setShowProBanner]       = useState(false)
 
   // ── Wedding (currently selected)
   const [weddingId, setWeddingId] = useState(null)
@@ -965,14 +966,12 @@ export default function App() {
       })
       const body = await res.json()
       if (!res.ok || !body.url) {
-        console.error('Checkout error:', res.status, body)
-        alert(`Checkout error (${res.status}): ${body.error || body.msg || JSON.stringify(body)}`)
+        alert(`Checkout error: ${body.error || 'Could not start checkout. Please try again.'}`)
         return
       }
       window.location.href = body.url
-    } catch (err) {
-      console.error('Checkout exception:', err)
-      alert(`Stripe checkout error: ${err.message}`)
+    } catch {
+      alert('Stripe checkout unavailable. Please try again.')
     }
   }
 
@@ -988,6 +987,8 @@ export default function App() {
     supabase.from('weddings').update({ plan: 'pro' }).in('id', ownedIds).then(() => {
       setWedding(prev => prev ? { ...prev, plan: 'pro' } : prev)
       setMyWeddings(prev => prev.map(w => w.myRole === 'owner' ? { ...w, plan: 'pro' } : w))
+      setShowProBanner(true)
+      setTimeout(() => setShowProBanner(false), 8000)
       window.history.replaceState({}, '', window.location.pathname)
     })
   }, [stripeSuccess, session, myWeddings.length])
@@ -1007,6 +1008,8 @@ export default function App() {
             invoices={invoices}
             onNavigate={setActiveTab}
             weddingDate={wedding?.wedding_date ?? null}
+            isPro={wedding?.plan === 'pro'}
+            onUpgrade={handleUpgrade}
           />
         )
       case 'guests':
@@ -1183,6 +1186,7 @@ export default function App() {
         <Header
           session={session}
           wedding={null}
+          isPro={userPlan === 'pro'}
           myWeddings={myWeddings}
           activeWeddingId={null}
           onSignIn={() => setAuthOpen(true)}
@@ -1213,6 +1217,7 @@ export default function App() {
       <Header
         session={session}
         wedding={wedding}
+        isPro={wedding?.plan === 'pro'}
         myWeddings={myWeddings}
         activeWeddingId={activeWeddingId}
         onSelectWedding={selectWedding}
@@ -1245,6 +1250,13 @@ export default function App() {
           >
             SIGN IN
           </button>
+        </div>
+      )}
+
+      {showProBanner && (
+        <div className="pro-success-banner">
+          <span>✦ WELCOME TO PRO — Unlimited weddings, unlimited collaborators, priority support</span>
+          <button onClick={() => setShowProBanner(false)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>&times;</button>
         </div>
       )}
 

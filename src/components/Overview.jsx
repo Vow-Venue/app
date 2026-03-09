@@ -59,7 +59,7 @@ const CountdownUnit = ({ value, label }) => (
   </div>
 )
 
-export default function Overview({ guests, tasks, vendors, invoices, onNavigate, weddingDate }) {
+export default function Overview({ guests, tasks, vendors, invoices, onNavigate, weddingDate, isPro, onUpgrade }) {
   const target = weddingDate ? new Date(weddingDate + 'T00:00:00') : null
   const [timeLeft, setTimeLeft] = useState(() => calcTimeLeft(target))
 
@@ -161,6 +161,20 @@ export default function Overview({ guests, tasks, vendors, invoices, onNavigate,
           <div className="stat-num" style={{ fontSize: 26 }}>{fmt(outstanding)}</div>
           <div className="stat-label">OUTSTANDING</div>
         </div>
+      </div>
+
+      {/* ── Plan status ── */}
+      <div className={`plan-status-card ${isPro ? 'plan-pro' : 'plan-free'}`}>
+        {isPro ? (
+          <span>✦ PRO PLAN · Unlimited weddings · Unlimited collaborators</span>
+        ) : (
+          <>
+            <span>FREE PLAN · 2 weddings · 2 collaborators per wedding</span>
+            <button className="btn btn-primary" style={{ fontSize: 10, padding: '6px 18px', marginLeft: 16 }} onClick={onUpgrade}>
+              UPGRADE TO PRO
+            </button>
+          </>
+        )}
       </div>
 
       <div className="card-grid">
