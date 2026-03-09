@@ -2,11 +2,9 @@ import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 
 const PRICING_FAQ = [
-  { q: 'Can I switch plans anytime?', a: 'Yes. Upgrade to Pro whenever you need more weddings, or stay on the free plan as long as you like. No pressure, no lock-in.' },
-  { q: 'What counts as a seat?', a: 'A seat is one user account. Each person who logs into Vow & Venue and actively uses the platform counts as one seat. Collaborators you invite count as seats on the Pro plan.' },
-  { q: 'Is there a contract?', a: 'No contracts. Pro is billed monthly and you can cancel anytime. Your data stays available even after downgrading.' },
-  { q: 'What happens if I downgrade?', a: 'You keep access to all your data. If you have more than 2 weddings, you\'ll be able to view them all but won\'t be able to create new ones until you\'re back under the limit.' },
-  { q: 'Do I lose data if I cancel Pro?', a: 'Never. Your weddings, guests, vendors, and everything else stays exactly as you left it. You just won\'t be able to create more than 2 weddings on the free plan.' },
+  { q: 'What\u2019s a seat?', a: 'Each paying planner needs their own seat. Collaborators (couples, vendors, family) are always free and don\u2019t count toward your seat total.' },
+  { q: 'Can I collaborate with other planners on Free?', a: 'No, planner collaboration requires both planners to be on Pro. Collaborators like couples, vendors, and family members can always be invited for free on any plan.' },
+  { q: 'What happens if I hit 2 weddings on Free?', a: 'You\u2019ll be prompted to upgrade when you try to create a third wedding. Your existing data is completely safe \u2014 nothing is deleted or locked.' },
 ]
 
 const COMPARISON_ROWS = [
@@ -48,15 +46,13 @@ export default function PricingPage() {
           <div className="pricing-card">
             <h3 className="pricing-plan-name">Free</h3>
             <div className="pricing-amount">$0</div>
-            <div className="pricing-period">forever</div>
+            <div className="pricing-period">to start</div>
             <ul className="pricing-features">
               <li><span className="pricing-check">✓</span> Up to 2 weddings</li>
-              <li><span className="pricing-check">✓</span> All features included</li>
-              <li><span className="pricing-check">✓</span> Unlimited guests per wedding</li>
-              <li><span className="pricing-check">✓</span> Team messaging</li>
-              <li><span className="pricing-check">✓</span> Seating chart</li>
+              <li><span className="pricing-check">✓</span> All planning features (guests, tasks, vendors, budget, seating chart, messaging, notes, day-of timeline)</li>
+              <li><span className="pricing-check">✓</span> Unlimited guests, vendors, and collaborators per wedding</li>
+              <li><span className="pricing-check">✓</span> Collaborator invites (couple, family, vendor — always free)</li>
               <li><span className="pricing-check">✓</span> CSV import &amp; export</li>
-              <li><span className="pricing-check">✓</span> Collaborator invites</li>
             </ul>
             <button className="btn-gold" style={{ width: '100%' }} onClick={onStartFree}>
               START FREE
@@ -68,17 +64,21 @@ export default function PricingPage() {
             <div className="pricing-amount">$39</div>
             <div className="pricing-period">per seat / month</div>
             <ul className="pricing-features">
-              <li><span className="pricing-check">✓</span> Unlimited weddings</li>
               <li><span className="pricing-check">✓</span> Everything in Free</li>
+              <li><span className="pricing-check">✓</span> Unlimited weddings</li>
+              <li><span className="pricing-check">✓</span> Planner collaboration (invite co-planners — both must be Pro)</li>
+              <li><span className="pricing-check">✓</span> Studio/org creation and management</li>
               <li><span className="pricing-check">✓</span> Priority support</li>
               <li><span className="pricing-check">✓</span> Advanced exports</li>
-              <li><span className="pricing-check">✓</span> BEO generator (coming soon)</li>
             </ul>
             <button className="btn-gold" style={{ width: '100%' }} onClick={onStartFree}>
               START FREE, UPGRADE LATER
             </button>
           </div>
         </div>
+        <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--muted)', fontStyle: 'italic', marginTop: 20 }}>
+          Collaborators (couples, vendors, family) are always free and don&apos;t require a seat.
+        </p>
       </section>
 
       <div className="marketing-divider" />
