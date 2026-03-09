@@ -243,6 +243,20 @@ export default function App() {
         }
       }
 
+      // ── Step 3b: Fetch guest counts per wedding ──────────────────────────────
+      if (weddings.length > 0) {
+        const weddingIds = weddings.map(w => w.id)
+        const { data: guestRows } = await supabase
+          .from('guests')
+          .select('wedding_id')
+          .in('wedding_id', weddingIds)
+        if (guestRows) {
+          const counts = {}
+          guestRows.forEach(r => { counts[r.wedding_id] = (counts[r.wedding_id] || 0) + 1 })
+          weddings = weddings.map(w => ({ ...w, guestCount: counts[w.id] || 0 }))
+        }
+      }
+
       setMyWeddings(weddings)
 
       // ── Step 4: Auto-routing ────────────────────────────────────────────────
@@ -357,10 +371,36 @@ export default function App() {
       })
     }
 
-    const newW = { ...created, myRole: 'owner' }
+    const newW = { ...created, myRole: 'owner', guestCount: 0 }
     setMyWeddings(prev => [...prev, newW])
     setActiveWeddingId(created.id)
     await loadWeddingData(created.id, userId)
+  }
+
+  // ── Cover photo upload ────────────────────────────────────────────────────
+  const handleUploadCover = async (wId, file) => {
+    if (!session || !file) return
+    const ext = file.name.split('.').pop()
+    const path = `${wId}/cover.${ext}`
+
+    // Upload to Supabase Storage
+    const { error: upErr } = await supabase.storage
+      .from('wedding-covers')
+      .upload(path, file, { upsert: true })
+    if (upErr) { console.error('Cover upload failed:', upErr.message); return }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('wedding-covers')
+      .getPublicUrl(path)
+
+    // Bust cache with timestamp
+    const url = `${publicUrl}?t=${Date.now()}`
+
+    // Update wedding record
+    await supabase.from('weddings').update({ cover_url: url }).eq('id', wId)
+    setMyWeddings(prev => prev.map(w => w.id === wId ? { ...w, cover_url: url } : w))
+    if (wedding?.id === wId) setWedding(prev => ({ ...prev, cover_url: url }))
   }
 
   // ── Realtime: new messages ───────────────────────────────────────────────────
@@ -1060,6 +1100,7 @@ export default function App() {
               onSelectWedding={selectWedding}
               onCreateWedding={handleCreateWedding}
               onUpgrade={handleUpgrade}
+              onUploadCover={handleUploadCover}
             />
           </main>
           <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
