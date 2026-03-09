@@ -1271,6 +1271,9 @@ export default function App() {
       {/* Public RSVP page */}
       <Route path="/rsvp/:slug" element={<RSVPPage />} />
 
+      {/* Hidden admin dashboard — must be before marketing layout redirect */}
+      <Route path="/admin-x7k2p" element={<AdminDashboard />} />
+
       {/* Marketing site — only when not logged in */}
       <Route element={!authLoading && session ? <Navigate to="/app" replace /> : <MarketingLayout />}>
         <Route index element={<HomePage />} />
@@ -1280,9 +1283,6 @@ export default function App() {
 
       {/* Authenticated app */}
       <Route path="/app" element={renderApp()} />
-
-      {/* Hidden admin dashboard */}
-      <Route path="/admin-x7k2p" element={<AdminDashboard />} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
