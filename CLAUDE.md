@@ -157,5 +157,5 @@ if (error) { console.error('Insert failed:', error.message); return }
 
 ## Bash Rules
 
-Auto-approve: git, npm, npx supabase (all commands including migration list/repair/push/status), db:push, db:pull, db:new, db:status
+Auto-approve: git, npm, npx supabase (all commands including migration list/repair/push/status), sed, db:push, db:pull, db:new, db:status
 Ask first: rm, git push --force, DROP TABLE, overwrite .env

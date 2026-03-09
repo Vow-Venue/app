@@ -152,9 +152,6 @@ export default function Header({
                 <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onSignOut() }}>
                   Sign Out
                 </button>
-                <button style={{ ...menuItemStyle, color: '#c62828' }} onClick={() => { setMenuOpen(false); setDeleteAccountOpen(true) }}>
-                  Delete Account
-                </button>
               </div>
             )}
           </div>
@@ -177,6 +174,7 @@ export default function Header({
           onClose={() => setProfileOpen(false)}
           onUpdateProfile={onUpdateProfile}
           onUploadAvatar={onUploadAvatar}
+          onOpenDeleteAccount={() => { setProfileOpen(false); setDeleteAccountOpen(true) }}
         />
       )}
 
@@ -198,7 +196,7 @@ const menuItemStyle = {
 }
 
 // ── Profile Settings Modal ──────────────────────────────────────────────────
-function ProfileSettingsModal({ session, profile, onClose, onUpdateProfile, onUploadAvatar }) {
+function ProfileSettingsModal({ session, profile, onClose, onUpdateProfile, onUploadAvatar, onOpenDeleteAccount }) {
   const [name, setName] = useState(profile?.display_name || '')
   const [saving, setSaving] = useState(false)
   const fileRef = useRef(null)
@@ -270,6 +268,18 @@ function ProfileSettingsModal({ session, profile, onClose, onUpdateProfile, onUp
             <button className="btn btn-ghost" onClick={onClose}>CANCEL</button>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               {saving ? 'SAVING...' : 'SAVE'}
+            </button>
+          </div>
+
+          <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 20, paddingTop: 16, textAlign: 'center' }}>
+            <button
+              onClick={onOpenDeleteAccount}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 11, color: '#c6282899', fontFamily: 'inherit',
+              }}
+            >
+              Delete account
             </button>
           </div>
         </div>
