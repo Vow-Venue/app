@@ -11,6 +11,7 @@ import Messaging from './components/Messaging'
 import Billing from './components/Billing'
 import Collaborators from './components/Collaborators'
 import DayOfContacts from './components/DayOfContacts'
+import Notes from './components/Notes'
 import AuthModal from './components/AuthModal'
 import WeddingSetup from './components/WeddingSetup'
 import RSVPPage from './components/RSVPPage'
@@ -65,6 +66,16 @@ const mapInvoice = r => ({
   fileUrl: r.file_url,
 })
 
+const mapNote = r => ({
+  id: r.id,
+  title: r.title,
+  body: r.body ?? '',
+  visibility: r.visibility ?? 'shared',
+  createdBy: r.created_by,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+})
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -103,6 +114,7 @@ export default function App() {
   const [messages, setMessages]             = useState([])
   const [invoices, setInvoices]             = useState([])
   const [collaborators, setCollaborators]   = useState([])
+  const [notes, setNotes]                   = useState([])
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -131,6 +143,7 @@ export default function App() {
         setMessages([])
         setInvoices([])
         setCollaborators([])
+        setNotes([])
         setWeddingId(null)
         setWedding(null)
         navigate('/', { replace: true })
@@ -283,7 +296,7 @@ export default function App() {
       setWedding(weddingRow)
       setWeddingId(weddingRow.id)
 
-      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes] = await Promise.all([
+      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes, notesRes] = await Promise.all([
         supabase.from('guests').select('*').eq('wedding_id', wId),
         supabase.from('seating_tables').select('*').eq('wedding_id', wId),
         supabase.from('tasks').select('*').eq('wedding_id', wId).order('created_at'),
@@ -291,6 +304,7 @@ export default function App() {
         supabase.from('channels').select('*').eq('wedding_id', wId),
         supabase.from('invoices').select('*').eq('wedding_id', wId),
         supabase.from('collaborators').select('*').eq('wedding_id', wId),
+        supabase.from('notes').select('*').eq('wedding_id', wId).order('updated_at', { ascending: false }),
       ])
 
       setGuests((gRes.data ?? []).map(mapGuest))
@@ -299,6 +313,7 @@ export default function App() {
       setVendors(vRes.data ?? [])
       setInvoices((invRes.data ?? []).map(mapInvoice))
       setCollaborators(collRes.data ?? [])
+      setNotes((notesRes.data ?? []).map(mapNote))
 
       const fetchedChannels = chRes.data ?? []
       setChannels(fetchedChannels)
@@ -341,6 +356,7 @@ export default function App() {
     setMessages([])
     setInvoices([])
     setCollaborators([])
+    setNotes([])
     setActiveTab('overview')
   }
 
@@ -617,6 +633,39 @@ export default function App() {
   const handleDeleteVendor = async (id) => {
     setVendors(prev => prev.filter(v => v.id !== id))
     if (session) await supabase.from('vendors').delete().eq('id', id)
+  }
+
+  // ── Notes handlers ─────────────────────────────────────────────────────────
+  const handleAddNote = async (note) => {
+    if (session && weddingId) {
+      const { data } = await supabase.from('notes').insert({
+        wedding_id: weddingId,
+        title: note.title,
+        body: note.body || '',
+        visibility: note.visibility || 'shared',
+        created_by: session.user.id,
+      }).select().single()
+      if (data) setNotes(prev => [mapNote(data), ...prev])
+    }
+  }
+
+  const handleUpdateNote = async (id, updates) => {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...updates } : n))
+    if (session) {
+      const current = notes.find(n => n.id === id)
+      const m = { ...current, ...updates }
+      await supabase.from('notes').update({
+        title: m.title,
+        body: m.body,
+        visibility: m.visibility,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id)
+    }
+  }
+
+  const handleDeleteNote = async (id) => {
+    setNotes(prev => prev.filter(n => n.id !== id))
+    if (session) await supabase.from('notes').delete().eq('id', id)
   }
 
   // ── Messaging handlers ───────────────────────────────────────────────────────
@@ -1048,6 +1097,21 @@ export default function App() {
             vendors={vendors}
           />
         )
+      case 'notes': {
+        const isOwnerN = !!(session && wedding && session.user.id === wedding.user_id)
+        const myCollabN = collaborators.find(c => c.user_id === session?.user?.id)
+        const myRoleN = myCollabN?.role?.toLowerCase() ?? ''
+        const canSeePrivate = isOwnerN || myRoleN.includes('planner') || myRoleN === 'owner'
+        return (
+          <Notes
+            notes={notes}
+            onAddNote={handleAddNote}
+            onUpdateNote={handleUpdateNote}
+            onDeleteNote={handleDeleteNote}
+            canSeePrivate={canSeePrivate}
+          />
+        )
+      }
       default:
         return null
     }

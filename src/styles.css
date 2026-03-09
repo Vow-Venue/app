@@ -2869,6 +2869,166 @@ label {
   .paywall-card { padding: 24px 16px; }
 }
 
+/* ─── Notes ───────────────────────────────────────── */
+
+.note-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.note-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+.note-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.note-card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--deep);
+  line-height: 1.2;
+}
+
+.note-visibility-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(184,151,90,0.12);
+  color: var(--gold);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.note-vis-private {
+  background: rgba(198,40,40,0.08);
+  color: #c62828;
+}
+
+.note-card-preview {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 14px;
+  min-height: 42px;
+}
+
+.note-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.note-card-date {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+
+.note-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.note-view-body {
+  padding: 16px 24px 24px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--deep);
+}
+
+.note-view-body ul, .note-view-body ol {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.note-view-body li {
+  margin-bottom: 4px;
+}
+
+/* Rich text editor */
+.rich-text-wrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rich-text-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--cream);
+  border-bottom: 1px solid var(--border);
+}
+
+.rich-text-toolbar button {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--deep);
+  font-family: inherit;
+  line-height: 1;
+}
+
+.rich-text-toolbar button:hover {
+  background: rgba(184,151,90,0.1);
+  border-color: var(--border);
+}
+
+.rich-text-separator {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.rich-text-editor {
+  min-height: 160px;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--deep);
+  outline: none;
+  font-family: 'Jost', sans-serif;
+}
+
+.rich-text-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  font-style: italic;
+  pointer-events: none;
+}
+
+.rich-text-editor ul, .rich-text-editor ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+
 /* ─── Print / PDF Export ────────────────────────── */
 
 @media print {

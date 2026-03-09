@@ -7,6 +7,7 @@ const TABS = [
   { id: 'billing',        label: 'BILLING' },
   { id: 'collaborators',  label: 'TEAM' },
   { id: 'dayofcontacts',  label: 'DAY-OF' },
+  { id: 'notes',          label: 'NOTES' },
 ]
 
 export default function NavTabs({ activeTab, onTabChange }) {
