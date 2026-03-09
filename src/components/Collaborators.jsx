@@ -29,7 +29,7 @@ const avatarColor = (name) => {
 
 export default function Collaborators({
   collaborators, vendors = [], onAddCollaborator, onDeleteCollaborator,
-  isAuthenticated, canInvite = true,
+  isAuthenticated, canInvite = true, canEdit = true,
   isPro = false, onUpgrade,
   rsvpSlug = null,
 }) {
@@ -141,7 +141,7 @@ export default function Collaborators({
             <span className={`badge access-${c.access}`}>
               {c.access === 'full' ? 'FULL ACCESS' : 'VIEW ONLY'}
             </span>
-            <button className="btn-danger" onClick={() => onDeleteCollaborator(c.id)}>×</button>
+            {canEdit && <button className="btn-danger" onClick={() => onDeleteCollaborator(c.id)}>×</button>}
           </div>
         ))}
 

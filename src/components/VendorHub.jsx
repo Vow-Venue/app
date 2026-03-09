@@ -70,7 +70,7 @@ function parseVendorCSV(text) {
   }).filter(v => v.name)
 }
 
-export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDeleteVendor, onImportVendors, budget, onSetBudget }) {
+export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDeleteVendor, onImportVendors, budget, onSetBudget, canEdit = true, vendorFilterEmail = null }) {
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingVendor, setEditingVendor] = useState(null)
   const [form, setForm]                   = useState(BLANK_VENDOR)
@@ -79,6 +79,11 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
   const [editingBudget, setEditingBudget] = useState(false)
   const [budgetInput, setBudgetInput]     = useState('')
   const fileInputRef                      = useRef(null)
+
+  // Filter vendors for vendor-role users (only see their own card)
+  const displayVendors = vendorFilterEmail
+    ? vendors.filter(v => v.email && v.email.toLowerCase() === vendorFilterEmail.toLowerCase())
+    : vendors
 
   useEffect(() => {
     setForm(editingVendor ? { ...editingVendor, amount: editingVendor.amount || '' } : BLANK_VENDOR)
@@ -129,8 +134,8 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
   }
 
   // ── Budget summary calcs ──────────────────────────────────────────────────
-  const totalCommitted = vendors.reduce((sum, v) => sum + (Number(v.amount) || 0), 0)
-  const totalPaid      = vendors.filter(v => v.paid).reduce((sum, v) => sum + (Number(v.amount) || 0), 0)
+  const totalCommitted = displayVendors.reduce((sum, v) => sum + (Number(v.amount) || 0), 0)
+  const totalPaid      = displayVendors.filter(v => v.paid).reduce((sum, v) => sum + (Number(v.amount) || 0), 0)
   const totalUnpaid    = totalCommitted - totalPaid
   const remaining      = budget - totalPaid
   const paidPct        = budget > 0 ? Math.min((totalPaid / budget) * 100, 100) : 0
@@ -143,22 +148,22 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
   }
 
   // Count per role
-  const roleCounts = vendors.reduce((acc, v) => {
+  const roleCounts = displayVendors.reduce((acc, v) => {
     acc[v.role] = (acc[v.role] || 0) + 1
     return acc
   }, {})
 
   const filtered = activeRole === 'all'
-    ? vendors
-    : vendors.filter(v => v.role === activeRole)
+    ? displayVendors
+    : displayVendors.filter(v => v.role === activeRole)
 
   return (
     <div>
       <div className="section-title">Vendor Hub</div>
-      <div className="section-subtitle">{vendors.length} VENDORS HIRED</div>
+      <div className="section-subtitle">{displayVendors.length} VENDOR{displayVendors.length !== 1 ? 'S' : ''}{vendorFilterEmail ? '' : ' HIRED'}</div>
 
       {/* ── Budget Summary ─────────────────────────────────────────────────── */}
-      <div className="vendor-budget-card">
+      {!vendorFilterEmail && <div className="vendor-budget-card">
         <div className="vendor-budget-header">
           <div>
             <div className="vendor-budget-label">WEDDING BUDGET</div>
@@ -180,9 +185,11 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
             ) : (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
                 <span className="vendor-budget-amount">{budget > 0 ? fmt(budget) : 'Not set'}</span>
-                <button className="btn btn-ghost" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => { setBudgetInput(budget > 0 ? budget.toString() : ''); setEditingBudget(true) }}>
-                  {budget > 0 ? 'EDIT' : 'SET BUDGET'}
-                </button>
+                {canEdit && (
+                  <button className="btn btn-ghost" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => { setBudgetInput(budget > 0 ? budget.toString() : ''); setEditingBudget(true) }}>
+                    {budget > 0 ? 'EDIT' : 'SET BUDGET'}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -225,7 +232,7 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Category chips */}
       <div className="chip-row">
@@ -250,14 +257,18 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
 
       {/* Actions */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 20 }}>
-        <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={handleExport}>
-          ↓ EXPORT CSV
-        </button>
-        <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => fileInputRef.current?.click()}>
-          ↑ IMPORT CSV
-        </button>
-        <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleFileChange} />
-        <button className="btn btn-primary" onClick={openAdd}>+ ADD VENDOR</button>
+        {canEdit && (
+          <>
+            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={handleExport}>
+              ↓ EXPORT CSV
+            </button>
+            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => fileInputRef.current?.click()}>
+              ↑ IMPORT CSV
+            </button>
+            <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleFileChange} />
+            <button className="btn btn-primary" onClick={openAdd}>+ ADD VENDOR</button>
+          </>
+        )}
       </div>
 
       {/* Vendor grid */}
@@ -299,18 +310,20 @@ export default function VendorHub({ vendors, onAddVendor, onUpdateVendor, onDele
                 )}
 
                 {/* Actions row */}
-                <div className="vendor-card-actions">
-                  <button
-                    className={`vendor-paid-toggle ${v.paid ? 'vendor-paid-active' : ''}`}
-                    onClick={() => onUpdateVendor(v.id, { paid: !v.paid })}
-                    title={v.paid ? 'Mark as unpaid' : 'Mark as paid'}
-                  >
-                    {v.paid ? 'PAID' : 'MARK PAID'}
-                  </button>
-                  <div style={{ flex: 1 }} />
-                  <button className="btn btn-ghost" onClick={() => openEdit(v)}>EDIT</button>
-                  <button className="btn-danger" onClick={() => onDeleteVendor(v.id)}>×</button>
-                </div>
+                {canEdit && (
+                  <div className="vendor-card-actions">
+                    <button
+                      className={`vendor-paid-toggle ${v.paid ? 'vendor-paid-active' : ''}`}
+                      onClick={() => onUpdateVendor(v.id, { paid: !v.paid })}
+                      title={v.paid ? 'Mark as unpaid' : 'Mark as paid'}
+                    >
+                      {v.paid ? 'PAID' : 'MARK PAID'}
+                    </button>
+                    <div style={{ flex: 1 }} />
+                    <button className="btn btn-ghost" onClick={() => openEdit(v)}>EDIT</button>
+                    <button className="btn-danger" onClick={() => onDeleteVendor(v.id)}>×</button>
+                  </div>
+                )}
               </div>
             )
           })}

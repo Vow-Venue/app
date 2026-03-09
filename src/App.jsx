@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from './lib/supabase'
+import usePermissions from './hooks/usePermissions'
 import Header from './components/Header'
 import NavTabs from './components/NavTabs'
 import Overview from './components/Overview'
@@ -163,7 +164,8 @@ export default function App() {
   const mapMemberRole = (role) => {
     const r = (role || '').toLowerCase()
     if (r.includes('planner')) return 'planner'
-    if (r === 'bride' || r === 'groom' || r === 'family') return 'family'
+    if (r === 'bride' || r === 'groom') return 'couple'
+    if (r === 'family') return 'family'
     if (r.includes('vendor')) return 'vendor'
     return 'viewer'
   }
@@ -445,6 +447,7 @@ export default function App() {
 
   // ── Guest handlers ───────────────────────────────────────────────────────────
   const handleAddGuest = async (guest) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const { data } = await supabase.from('guests').insert({
         wedding_id: weddingId,
@@ -460,6 +463,7 @@ export default function App() {
   }
 
   const handleUpdateGuest = async (id, updates) => {
+    if (!requireEdit()) return
     setGuests(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g))
     if (session) {
       const current = guests.find(g => g.id === id)
@@ -477,11 +481,13 @@ export default function App() {
   }
 
   const handleDeleteGuest = async (id) => {
+    if (!requireEdit()) return
     setGuests(prev => prev.filter(g => g.id !== id))
     if (session) await supabase.from('guests').delete().eq('id', id)
   }
 
   const handleImportGuests = async (guestList) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const rows = guestList.map(g => ({
         wedding_id: weddingId,
@@ -499,6 +505,7 @@ export default function App() {
 
   // ── Table handlers ───────────────────────────────────────────────────────────
   const handleAddTable = async (table) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const { data, error } = await supabase
         .from('seating_tables')
@@ -523,11 +530,13 @@ export default function App() {
   }
 
   const handleUpdateTable = async (id, updates) => {
+    if (!requireEdit()) return
     setTables(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
     if (session) await supabase.from('seating_tables').update(updates).eq('id', id)
   }
 
   const handleDeleteTable = async (id) => {
+    if (!requireEdit()) return
     setTables(prev => prev.filter(t => t.id !== id))
     setGuests(prev => prev.map(g => g.tableId === id ? { ...g, tableId: null } : g))
     if (session) await supabase.from('seating_tables').delete().eq('id', id)
@@ -536,6 +545,7 @@ export default function App() {
 
   // ── Bulk import: Tasks ──────────────────────────────────────────────────────
   const handleImportTasks = async (taskList) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const rows = taskList.map(t => ({
         wedding_id: weddingId,
@@ -552,6 +562,7 @@ export default function App() {
 
   // ── Task handlers ────────────────────────────────────────────────────────────
   const handleAddTask = async (task) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const { data } = await supabase.from('tasks').insert({
         wedding_id: weddingId,
@@ -566,6 +577,7 @@ export default function App() {
   }
 
   const handleUpdateTask = async (id, updates) => {
+    if (!requireEdit()) return
     setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
     if (session) {
       const current = tasks.find(t => t.id === id)
@@ -581,12 +593,14 @@ export default function App() {
   }
 
   const handleDeleteTask = async (id) => {
+    if (!requireEdit()) return
     setTasks(prev => prev.filter(t => t.id !== id))
     if (session) await supabase.from('tasks').delete().eq('id', id)
   }
 
   // ── Bulk import: Vendors ────────────────────────────────────────────────────
   const handleImportVendors = async (vendorList) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const rows = vendorList.map(v => ({
         wedding_id: weddingId,
@@ -606,6 +620,7 @@ export default function App() {
 
   // ── Vendor handlers ──────────────────────────────────────────────────────────
   const handleAddVendor = async (vendor) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const { data } = await supabase.from('vendors').insert({
         wedding_id: weddingId,
@@ -618,6 +633,7 @@ export default function App() {
   }
 
   const handleUpdateVendor = async (id, updates) => {
+    if (!requireEdit()) return
     setVendors(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v))
     if (session) {
       const current = vendors.find(v => v.id === id)
@@ -631,12 +647,14 @@ export default function App() {
   }
 
   const handleDeleteVendor = async (id) => {
+    if (!requireEdit()) return
     setVendors(prev => prev.filter(v => v.id !== id))
     if (session) await supabase.from('vendors').delete().eq('id', id)
   }
 
   // ── Notes handlers ─────────────────────────────────────────────────────────
   const handleAddNote = async (note) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const { data } = await supabase.from('notes').insert({
         wedding_id: weddingId,
@@ -650,6 +668,7 @@ export default function App() {
   }
 
   const handleUpdateNote = async (id, updates) => {
+    if (!requireEdit()) return
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...updates } : n))
     if (session) {
       const current = notes.find(n => n.id === id)
@@ -664,6 +683,7 @@ export default function App() {
   }
 
   const handleDeleteNote = async (id) => {
+    if (!requireEdit()) return
     setNotes(prev => prev.filter(n => n.id !== id))
     if (session) await supabase.from('notes').delete().eq('id', id)
   }
@@ -753,6 +773,7 @@ export default function App() {
 
   // ── Bulk import: Invoices ───────────────────────────────────────────────────
   const handleImportInvoices = async (invoiceList) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const rows = invoiceList.map(inv => ({
         wedding_id: weddingId,
@@ -772,6 +793,7 @@ export default function App() {
 
   // ── Invoice handlers ─────────────────────────────────────────────────────────
   const handleAddInvoice = async (invoice) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       const { data } = await supabase.from('invoices').insert({
         wedding_id: weddingId,
@@ -789,6 +811,7 @@ export default function App() {
   }
 
   const handleUpdateInvoice = async (id, updates) => {
+    if (!requireEdit()) return
     setInvoices(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i))
     if (session) {
       const current = invoices.find(i => i.id === id)
@@ -807,12 +830,14 @@ export default function App() {
   }
 
   const handleDeleteInvoice = async (id) => {
+    if (!requireEdit()) return
     setInvoices(prev => prev.filter(i => i.id !== id))
     if (session) await supabase.from('invoices').delete().eq('id', id)
   }
 
   // ── Collaborator handlers ────────────────────────────────────────────────────
   const handleAddCollaborator = async (collab) => {
+    if (!requireEdit()) return
     if (session && weddingId) {
       // Enforce unique email — query DB directly so it works even if local state is stale
       if (collab.email) {
@@ -888,6 +913,7 @@ export default function App() {
   }
 
   const handleDeleteCollaborator = async (id) => {
+    if (!requireEdit()) return
     const collab = collaborators.find(c => c.id === id)
     setCollaborators(prev => prev.filter(c => c.id !== id))
     if (session) {
@@ -925,6 +951,7 @@ export default function App() {
 
   // ── Budget ───────────────────────────────────────────────────────────────────
   const handleSetBudget = async (budget) => {
+    if (!requireEdit()) return
     setWedding(prev => ({ ...prev, budget }))
     if (session && weddingId) await supabase.from('weddings').update({ budget }).eq('id', weddingId)
   }
@@ -984,6 +1011,32 @@ export default function App() {
   // ── Sign out ─────────────────────────────────────────────────────────────────
   const handleSignOut = () => supabase.auth.signOut()
 
+  // ── Permissions ──────────────────────────────────────────────────────────────
+  const activeWedObj = myWeddings.find(w => w.id === activeWeddingId)
+  const myRole = activeWedObj?.myRole || 'viewer'
+  const permissions = usePermissions(myRole)
+
+  const hiddenTabs = useMemo(() => {
+    const h = new Set()
+    if (!permissions.canViewBilling) h.add('billing')
+    if (!permissions.canViewCollaborators) h.add('collaborators')
+    if (permissions.isVendor) {
+      h.add('guests')
+      h.add('tasks')
+      h.add('notes')
+      h.add('dayofcontacts')
+    }
+    return h
+  }, [myRole])
+
+  const requireEdit = () => {
+    if (!permissions.canEdit) {
+      console.warn('Permission denied: requires owner or planner role')
+      return false
+    }
+    return true
+  }
+
   // ── Tab renderer ─────────────────────────────────────────────────────────────
   const renderTab = () => {
     switch (activeTab) {
@@ -997,7 +1050,9 @@ export default function App() {
             onNavigate={setActiveTab}
             weddingDate={wedding?.wedding_date ?? null}
             isPro={wedding?.plan === 'pro'}
-            onUpgrade={handleUpgrade}
+            onUpgrade={permissions.isOwner ? handleUpgrade : undefined}
+            isOwner={permissions.isOwner}
+            canEdit={permissions.canEdit}
           />
         )
       case 'guests':
@@ -1012,6 +1067,7 @@ export default function App() {
             onUpdateTable={handleUpdateTable}
             onDeleteTable={handleDeleteTable}
             onImportGuests={handleImportGuests}
+            canEdit={permissions.canEditGuests}
           />
         )
       case 'tasks':
@@ -1022,6 +1078,7 @@ export default function App() {
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onImportTasks={handleImportTasks}
+            canEdit={permissions.canEditTasks}
           />
         )
       case 'vendors':
@@ -1034,6 +1091,8 @@ export default function App() {
             onImportVendors={handleImportVendors}
             budget={wedding?.budget ?? 0}
             onSetBudget={handleSetBudget}
+            canEdit={permissions.canEditVendors}
+            vendorFilterEmail={permissions.isVendor ? session?.user?.email : null}
           />
         )
       case 'messaging': {
@@ -1055,6 +1114,7 @@ export default function App() {
             onAddChannelMembers={handleAddChannelMembers}
             onRemoveChannelMember={handleRemoveChannelMember}
             onNavigate={setActiveTab}
+            canCreateChannel={permissions.canCreateChannel}
           />
         )
       }
@@ -1068,14 +1128,10 @@ export default function App() {
             onImportInvoices={handleImportInvoices}
             budget={wedding?.budget ?? 0}
             onSetBudget={handleSetBudget}
+            canEdit={permissions.canEditBilling}
           />
         )
-      case 'collaborators': {
-        const isOwner = !!(session && wedding && session.user.id === wedding.user_id)
-        const myCollab = collaborators.find(c => c.user_id === session?.user?.id)
-        const myRole = myCollab?.role?.toLowerCase() ?? ''
-        const canInvite = !session || isOwner || myRole.includes('planner') || myRole === 'owner'
-        const isPro = wedding?.plan === 'pro'
+      case 'collaborators':
         return (
           <Collaborators
             collaborators={collaborators}
@@ -1083,13 +1139,13 @@ export default function App() {
             onAddCollaborator={handleAddCollaborator}
             onDeleteCollaborator={handleDeleteCollaborator}
             isAuthenticated={!!session}
-            canInvite={canInvite}
-            isPro={isPro}
+            canInvite={permissions.canInvite}
+            canEdit={permissions.canEdit}
+            isPro={wedding?.plan === 'pro'}
             onUpgrade={handleUpgrade}
             rsvpSlug={wedding?.rsvp_slug ?? null}
           />
         )
-      }
       case 'dayofcontacts':
         return (
           <DayOfContacts
@@ -1097,21 +1153,17 @@ export default function App() {
             vendors={vendors}
           />
         )
-      case 'notes': {
-        const isOwnerN = !!(session && wedding && session.user.id === wedding.user_id)
-        const myCollabN = collaborators.find(c => c.user_id === session?.user?.id)
-        const myRoleN = myCollabN?.role?.toLowerCase() ?? ''
-        const canSeePrivate = isOwnerN || myRoleN.includes('planner') || myRoleN === 'owner'
+      case 'notes':
         return (
           <Notes
             notes={notes}
             onAddNote={handleAddNote}
             onUpdateNote={handleUpdateNote}
             onDeleteNote={handleDeleteNote}
-            canSeePrivate={canSeePrivate}
+            canSeePrivate={permissions.canSeePrivateNotes}
+            canEdit={permissions.canEditNotes}
           />
         )
-      }
       default:
         return null
     }
@@ -1191,7 +1243,7 @@ export default function App() {
           onSignIn={() => setAuthOpen(true)}
           onSignOut={handleSignOut}
         />
-        <NavTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <NavTabs activeTab={activeTab} onTabChange={setActiveTab} hiddenTabs={hiddenTabs} />
 
         {showProBanner && (
           <div className="pro-success-banner">

@@ -30,6 +30,7 @@ const dmConvId = (a, b) => {
 export default function Messaging({
   channels, channelMembers, messages, collaborators, me,
   tasks, onAddMessage, onAddChannel, onAddChannelMembers, onRemoveChannelMember, onNavigate,
+  canCreateChannel = true,
 }) {
   const [activeConvId, setActiveConvId]     = useState(null)
   const [activeConvType, setActiveConvType] = useState(null)
@@ -237,9 +238,11 @@ export default function Messaging({
               </button>
             ))}
 
-            <button className="sidebar-add-btn" onClick={() => setShowCreateChannel(true)}>
-              + Create channel
-            </button>
+            {canCreateChannel && (
+              <button className="sidebar-add-btn" onClick={() => setShowCreateChannel(true)}>
+                + Create channel
+              </button>
+            )}
 
             {/* Direct Messages */}
             <div className="sidebar-group-label" style={{ marginTop: 16 }}>DIRECT MESSAGES</div>

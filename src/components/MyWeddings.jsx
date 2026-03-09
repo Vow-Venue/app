@@ -10,6 +10,7 @@ const fmtDate = (dateStr) => {
 const ROLE_LABELS = {
   owner: 'OWNER',
   planner: 'PLANNER',
+  couple: 'COUPLE',
   family: 'FAMILY',
   vendor: 'VENDOR',
   viewer: 'VIEWER',

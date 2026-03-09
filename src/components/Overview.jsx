@@ -59,7 +59,7 @@ const CountdownUnit = ({ value, label }) => (
   </div>
 )
 
-export default function Overview({ guests, tasks, vendors, invoices, onNavigate, weddingDate, isPro, onUpgrade }) {
+export default function Overview({ guests, tasks, vendors, invoices, onNavigate, weddingDate, isPro, onUpgrade, isOwner = true }) {
   const target = weddingDate ? new Date(weddingDate + 'T00:00:00') : null
   const [timeLeft, setTimeLeft] = useState(() => calcTimeLeft(target))
 
@@ -170,9 +170,11 @@ export default function Overview({ guests, tasks, vendors, invoices, onNavigate,
         ) : (
           <>
             <span>FREE PLAN · 2 weddings · 2 collaborators per wedding</span>
-            <button className="btn btn-primary" style={{ fontSize: 10, padding: '6px 18px', marginLeft: 16 }} onClick={onUpgrade}>
-              UPGRADE TO PRO
-            </button>
+            {isOwner && (
+              <button className="btn btn-primary" style={{ fontSize: 10, padding: '6px 18px', marginLeft: 16 }} onClick={onUpgrade}>
+                UPGRADE TO PRO
+              </button>
+            )}
           </>
         )}
       </div>

@@ -146,7 +146,7 @@ const TEMPLATES = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask, onImportTasks }) {
+export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask, onImportTasks, canEdit = true }) {
   const [modalOpen, setModalOpen]       = useState(false)
   const [editingTask, setEditingTask]   = useState(null)
   const [form, setForm]                 = useState(BLANK_TASK)
@@ -299,20 +299,24 @@ export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask,
           <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={handleExport}>
             ↓ EXPORT CSV
           </button>
-          <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => fileInputRef.current?.click()}>
-            ↑ IMPORT CSV
-          </button>
-          <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleFileChange} />
-          <button
-            className="btn btn-ghost"
-            style={{ fontSize: 11 }}
-            onClick={() => setTmplOpen(true)}
-          >
-            LOAD TEMPLATES
-          </button>
-          <button className="btn btn-primary" onClick={openAdd}>
-            + ADD TASK
-          </button>
+          {canEdit && (
+            <>
+              <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => fileInputRef.current?.click()}>
+                ↑ IMPORT CSV
+              </button>
+              <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleFileChange} />
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: 11 }}
+                onClick={() => setTmplOpen(true)}
+              >
+                LOAD TEMPLATES
+              </button>
+              <button className="btn btn-primary" onClick={openAdd}>
+                + ADD TASK
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -328,8 +332,9 @@ export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask,
           <div key={t.id} className="task-item">
             <div
               className={`task-check ${t.completed ? 'done' : ''}`}
-              onClick={() => onUpdateTask(t.id, { completed: !t.completed })}
-              title="Toggle complete"
+              onClick={canEdit ? () => onUpdateTask(t.id, { completed: !t.completed }) : undefined}
+              title={canEdit ? 'Toggle complete' : ''}
+              style={canEdit ? undefined : { cursor: 'default' }}
             >
               {t.completed ? '✓' : ''}
             </div>
@@ -354,8 +359,8 @@ export default function TaskList({ tasks, onAddTask, onUpdateTask, onDeleteTask,
                 +Cal
               </a>
             )}
-            <button className="btn-icon" onClick={() => openEdit(t)}>Edit</button>
-            <button className="btn-danger" onClick={() => onDeleteTask(t.id)}>×</button>
+            {canEdit && <button className="btn-icon" onClick={() => openEdit(t)}>Edit</button>}
+            {canEdit && <button className="btn-danger" onClick={() => onDeleteTask(t.id)}>×</button>}
           </div>
         ))}
       </div>

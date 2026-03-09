@@ -69,7 +69,7 @@ function RichTextEditor({ value, onChange }) {
   )
 }
 
-export default function Notes({ notes, onAddNote, onUpdateNote, onDeleteNote, canSeePrivate }) {
+export default function Notes({ notes, onAddNote, onUpdateNote, onDeleteNote, canSeePrivate, canEdit = true }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [viewingNote, setViewingNote] = useState(null)
   const [editingNote, setEditingNote] = useState(null)
@@ -112,9 +112,11 @@ export default function Notes({ notes, onAddNote, onUpdateNote, onDeleteNote, ca
       <div className="section-title">Notes</div>
       <div className="section-subtitle">{visibleNotes.length} NOTE{visibleNotes.length !== 1 ? 'S' : ''}</div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 20 }}>
-        <button className="btn btn-primary" onClick={openAdd}>+ NEW NOTE</button>
-      </div>
+      {canEdit && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 20 }}>
+          <button className="btn btn-primary" onClick={openAdd}>+ NEW NOTE</button>
+        </div>
+      )}
 
       {visibleNotes.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--muted)', fontStyle: 'italic', padding: 40 }}>
@@ -135,10 +137,12 @@ export default function Notes({ notes, onAddNote, onUpdateNote, onDeleteNote, ca
               </div>
               <div className="note-card-footer">
                 <span className="note-card-date">{formatDate(n.updatedAt || n.createdAt)}</span>
-                <div className="note-card-actions" onClick={e => e.stopPropagation()}>
-                  <button className="btn btn-ghost" onClick={() => openEdit(n)}>EDIT</button>
-                  <button className="btn-danger" onClick={() => onDeleteNote(n.id)}>×</button>
-                </div>
+                {canEdit && (
+                  <div className="note-card-actions" onClick={e => e.stopPropagation()}>
+                    <button className="btn btn-ghost" onClick={() => openEdit(n)}>EDIT</button>
+                    <button className="btn-danger" onClick={() => onDeleteNote(n.id)}>×</button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -164,7 +168,7 @@ export default function Notes({ notes, onAddNote, onUpdateNote, onDeleteNote, ca
             />
             <div className="modal-actions">
               <button className="btn btn-ghost" onClick={close}>CLOSE</button>
-              <button className="btn btn-primary" onClick={() => openEdit(viewingNote)}>EDIT</button>
+              {canEdit && <button className="btn btn-primary" onClick={() => openEdit(viewingNote)}>EDIT</button>}
             </div>
           </div>
         </div>

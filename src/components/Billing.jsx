@@ -66,7 +66,7 @@ function parseInvoiceCSV(text) {
   }).filter(inv => inv.vendorName)
 }
 
-export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDeleteInvoice, onImportInvoices, budget = 0, onSetBudget }) {
+export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDeleteInvoice, onImportInvoices, budget = 0, onSetBudget, canEdit = true }) {
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingInvoice, setEditingInvoice] = useState(null)
   const [form, setForm]                   = useState(BLANK_INVOICE)
@@ -193,13 +193,15 @@ export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDel
                 <span style={{ fontSize: 26, fontWeight: 600, color: 'var(--deep)' }}>
                   {hasBudget ? fmt(budget) : '—'}
                 </span>
-                <button
-                  className="btn btn-ghost"
-                  style={{ fontSize: 10 }}
-                  onClick={() => setEditingBudget(true)}
-                >
-                  {hasBudget ? 'EDIT' : 'SET BUDGET'}
-                </button>
+                {canEdit && (
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: 10 }}
+                    onClick={() => setEditingBudget(true)}
+                  >
+                    {hasBudget ? 'EDIT' : 'SET BUDGET'}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -280,13 +282,17 @@ export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDel
           <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={handleExport}>
             ↓ EXPORT CSV
           </button>
-          <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => csvInputRef.current?.click()}>
-            ↑ IMPORT CSV
-          </button>
-          <input ref={csvInputRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleCSVFileChange} />
-          <button className="btn btn-primary" onClick={openAdd}>
-            + UPLOAD INVOICE
-          </button>
+          {canEdit && (
+            <>
+              <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => csvInputRef.current?.click()}>
+                ↑ IMPORT CSV
+              </button>
+              <input ref={csvInputRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleCSVFileChange} />
+              <button className="btn btn-primary" onClick={openAdd}>
+                + UPLOAD INVOICE
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -318,7 +324,7 @@ export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDel
                     VIEW
                   </button>
                 )}
-                {inv.displayStatus !== 'paid' && (
+                {canEdit && inv.displayStatus !== 'paid' && (
                   <button
                     className="btn btn-ghost"
                     onClick={() => markPaid(inv)}
@@ -327,8 +333,8 @@ export default function Billing({ invoices, onAddInvoice, onUpdateInvoice, onDel
                     MARK PAID
                   </button>
                 )}
-                <button className="btn-icon" onClick={() => openEdit(inv)} style={{ fontSize: 10 }}>Edit</button>
-                <button className="btn-danger" onClick={() => onDeleteInvoice(inv.id)}>×</button>
+                {canEdit && <button className="btn-icon" onClick={() => openEdit(inv)} style={{ fontSize: 10 }}>Edit</button>}
+                {canEdit && <button className="btn-danger" onClick={() => onDeleteInvoice(inv.id)}>×</button>}
               </div>
             </div>
           </div>

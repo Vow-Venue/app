@@ -10,10 +10,10 @@ const TABS = [
   { id: 'notes',          label: 'NOTES' },
 ]
 
-export default function NavTabs({ activeTab, onTabChange }) {
+export default function NavTabs({ activeTab, onTabChange, hiddenTabs = new Set() }) {
   return (
     <nav className="tabs">
-      {TABS.map(t => (
+      {TABS.filter(t => !hiddenTabs.has(t.id)).map(t => (
         <button
           key={t.id}
           className={`tab ${activeTab === t.id ? 'active' : ''}`}

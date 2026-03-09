@@ -40,6 +40,7 @@ function getSeatPositions(shape, capacity) {
 export default function SeatingChart({
   guests, tables,
   onUpdateGuest, onUpdateTable, onAddTable, onDeleteTable,
+  canEdit = true,
 }) {
   const canvasRef  = useRef(null)
   const popoverRef = useRef(null)
@@ -206,24 +207,26 @@ export default function SeatingChart({
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="btn btn-ghost"
-            style={{ fontSize: 11, letterSpacing: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}
-            onClick={() => handleAddTable('round')}
-          >
-            <span style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid var(--gold)', display: 'inline-block', flexShrink: 0 }} />
-            + ROUND TABLE
-          </button>
-          <button
-            className="btn btn-primary"
-            style={{ fontSize: 11, letterSpacing: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}
-            onClick={() => handleAddTable('rect')}
-          >
-            <span style={{ width: 17, height: 9, borderRadius: 3, border: '2px solid rgba(255,255,255,0.7)', display: 'inline-block', flexShrink: 0 }} />
-            + LONG TABLE
-          </button>
-        </div>
+        {canEdit && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: 11, letterSpacing: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}
+              onClick={() => handleAddTable('round')}
+            >
+              <span style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid var(--gold)', display: 'inline-block', flexShrink: 0 }} />
+              + ROUND TABLE
+            </button>
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: 11, letterSpacing: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}
+              onClick={() => handleAddTable('rect')}
+            >
+              <span style={{ width: 17, height: 9, borderRadius: 3, border: '2px solid rgba(255,255,255,0.7)', display: 'inline-block', flexShrink: 0 }} />
+              + LONG TABLE
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Main: sidebar + canvas ───────────────────────────────────────────── */}
@@ -329,7 +332,7 @@ export default function SeatingChart({
                   filter: isDragging ? 'drop-shadow(0 8px 24px rgba(61,44,44,0.22))' : 'none',
                   transition: isDragging ? 'none' : 'filter 0.2s',
                 }}
-                onMouseDown={e => handleTableMouseDown(e, table)}
+                onMouseDown={canEdit ? e => handleTableMouseDown(e, table) : undefined}
                 onDragOver={e => { e.preventDefault(); setDragOverTable(table.id) }}
                 onDragLeave={() => setDragOverTable(null)}
                 onDrop={e => handleTableDrop(e, table)}
@@ -356,24 +359,28 @@ export default function SeatingChart({
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: 3 }}>
-                    <button
-                      data-action="edit"
-                      className="btn-icon"
-                      style={{ fontSize: 10, padding: '2px 6px' }}
-                      onMouseDown={e => e.stopPropagation()}
-                      onClick={() => openEdit(table)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      data-action="del"
-                      className="btn-danger"
-                      style={{ fontSize: 12, padding: '0 5px' }}
-                      onMouseDown={e => e.stopPropagation()}
-                      onClick={() => onDeleteTable(table.id)}
-                    >
-                      ×
-                    </button>
+                    {canEdit && (
+                      <>
+                        <button
+                          data-action="edit"
+                          className="btn-icon"
+                          style={{ fontSize: 10, padding: '2px 6px' }}
+                          onMouseDown={e => e.stopPropagation()}
+                          onClick={() => openEdit(table)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          data-action="del"
+                          className="btn-danger"
+                          style={{ fontSize: 12, padding: '0 5px' }}
+                          onMouseDown={e => e.stopPropagation()}
+                          onClick={() => onDeleteTable(table.id)}
+                        >
+                          ×
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 

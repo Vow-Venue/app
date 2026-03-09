@@ -41,6 +41,7 @@ export default function GuestList({
   onAddGuest, onUpdateGuest, onDeleteGuest,
   onAddTable, onDeleteTable, onUpdateTable,
   onImportGuests,
+  canEdit = true,
 }) {
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingGuest, setEditingGuest]   = useState(null)
@@ -132,6 +133,7 @@ export default function GuestList({
           onUpdateTable={onUpdateTable}
           onAddTable={onAddTable}
           onDeleteTable={onDeleteTable}
+          canEdit={canEdit}
         />
       </div>
     )
@@ -179,24 +181,28 @@ export default function GuestList({
           >
             ↓ EXPORT CSV
           </button>
-          <button
-            className="btn btn-ghost"
-            style={{ fontSize: 11 }}
-            onClick={() => fileInputRef.current?.click()}
-            title="Import guests from a CSV file"
-          >
-            ↑ IMPORT CSV
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.txt"
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-          />
-          <button className="btn btn-primary" onClick={openAdd}>
-            + ADD GUEST
-          </button>
+          {canEdit && (
+            <>
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: 11 }}
+                onClick={() => fileInputRef.current?.click()}
+                title="Import guests from a CSV file"
+              >
+                ↑ IMPORT CSV
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.txt"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+              <button className="btn btn-primary" onClick={openAdd}>
+                + ADD GUEST
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -211,7 +217,7 @@ export default function GuestList({
               <th>TABLE</th>
               <th>DIETARY</th>
               <th>RSVP</th>
-              <th></th>
+              {canEdit && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -235,12 +241,14 @@ export default function GuestList({
                       {g.rsvp === 'yes' ? 'CONFIRMED' : g.rsvp === 'no' ? 'DECLINED' : 'PENDING'}
                     </span>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <button className="btn-icon" onClick={() => openEdit(g)}>Edit</button>
-                      <button className="btn-danger" onClick={() => onDeleteGuest(g.id)}>×</button>
-                    </div>
-                  </td>
+                  {canEdit && (
+                    <td>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        <button className="btn-icon" onClick={() => openEdit(g)}>Edit</button>
+                        <button className="btn-danger" onClick={() => onDeleteGuest(g.id)}>×</button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               )
             })}
