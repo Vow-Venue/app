@@ -36,12 +36,15 @@ const GUEST_CSV_COLUMNS = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
+
 export default function GuestList({
   guests, tables,
   onAddGuest, onUpdateGuest, onDeleteGuest,
   onAddTable, onDeleteTable, onUpdateTable,
   onImportGuests,
   canEdit = true,
+  rsvpSlug = null,
 }) {
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingGuest, setEditingGuest]   = useState(null)
@@ -49,7 +52,16 @@ export default function GuestList({
   const [rsvpFilter, setRsvpFilter]       = useState('all')
   const [view, setView]                   = useState('list')
   const [importPreview, setImportPreview] = useState(null) // { guests: [] } | null
+  const [copied, setCopied]               = useState(false)
   const fileInputRef                      = useRef(null)
+
+  const rsvpLink = rsvpSlug ? `${appUrl}/rsvp/${rsvpSlug}` : null
+  const handleCopyRsvp = () => {
+    if (!rsvpLink) return
+    navigator.clipboard.writeText(rsvpLink)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   useEffect(() => {
     setForm(editingGuest
@@ -146,6 +158,39 @@ export default function GuestList({
       <div className="section-subtitle">
         {guests.length} GUESTS · {confirmed} CONFIRMED · {pending} PENDING · {declined} DECLINED
       </div>
+
+      {/* RSVP Link */}
+      {rsvpLink && (
+        <div style={{
+          marginBottom: 20, background: 'rgba(184,151,90,0.06)',
+          border: '1px solid var(--border)', borderRadius: 12, padding: '14px 20px',
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+        }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 15, fontStyle: 'italic', marginBottom: 4 }}>
+              ✦ Public RSVP Link
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+              Share with guests — no sign-in needed
+            </div>
+          </div>
+          <div style={{
+            flex: 2, minWidth: 200, display: 'flex', gap: 8, alignItems: 'center',
+          }}>
+            <div style={{
+              flex: 1, fontSize: 12, color: 'var(--deep)', background: 'var(--white)',
+              border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              userSelect: 'all',
+            }}>
+              {rsvpLink}
+            </div>
+            <button className="btn btn-primary" style={{ fontSize: 11, flexShrink: 0 }} onClick={handleCopyRsvp}>
+              {copied ? 'COPIED ✓' : 'COPY LINK'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter + Actions */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>

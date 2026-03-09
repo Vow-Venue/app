@@ -182,6 +182,8 @@ export default function App() {
   const [invoices, setInvoices]             = useState([])
   const [collaborators, setCollaborators]   = useState([])
   const [notes, setNotes]                   = useState([])
+  const [timelineDays, setTimelineDays]     = useState([])
+  const [timelineEvents, setTimelineEvents] = useState([])
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -373,7 +375,7 @@ export default function App() {
       setWedding(weddingRow)
       setWeddingId(weddingRow.id)
 
-      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes, notesRes] = await Promise.all([
+      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes, notesRes, tdRes, teRes] = await Promise.all([
         supabase.from('guests').select('*').eq('wedding_id', wId),
         supabase.from('seating_tables').select('*').eq('wedding_id', wId),
         supabase.from('tasks').select('*').eq('wedding_id', wId).order('created_at'),
@@ -382,6 +384,8 @@ export default function App() {
         supabase.from('invoices').select('*').eq('wedding_id', wId),
         supabase.from('collaborators').select('*').eq('wedding_id', wId),
         supabase.from('notes').select('*').eq('wedding_id', wId).order('updated_at', { ascending: false }),
+        supabase.from('timeline_days').select('*').eq('wedding_id', wId).order('sort_order'),
+        supabase.from('timeline_events').select('*').eq('wedding_id', wId).order('sort_order'),
       ])
 
       setGuests((gRes.data ?? []).map(mapGuest))
@@ -391,6 +395,8 @@ export default function App() {
       setInvoices((invRes.data ?? []).map(mapInvoice))
       setCollaborators(collRes.data ?? [])
       setNotes((notesRes.data ?? []).map(mapNote))
+      setTimelineDays(tdRes.data ?? [])
+      setTimelineEvents(teRes.data ?? [])
 
       const fetchedChannels = chRes.data ?? []
       setChannels(fetchedChannels)
@@ -762,6 +768,75 @@ export default function App() {
     if (!requireEdit()) return
     setNotes(prev => prev.filter(n => n.id !== id))
     if (session) await supabase.from('notes').delete().eq('id', id)
+  }
+
+  // ── Timeline handlers ──────────────────────────────────────────────────────
+  const handleAddTimelineDay = async (day) => {
+    if (!session || !weddingId) return
+    const maxSort = timelineDays.reduce((m, d) => Math.max(m, d.sort_order), -1)
+    const { data, error } = await supabase.from('timeline_days').insert({
+      wedding_id: weddingId, label: day.label, date: day.date || null, sort_order: maxSort + 1,
+    }).select().single()
+    if (error) { console.error('Add timeline day failed:', error.message); return }
+    if (data) setTimelineDays(prev => [...prev, data])
+    return data
+  }
+
+  const handleUpdateTimelineDay = async (id, updates) => {
+    if (!session) return
+    const { data, error } = await supabase.from('timeline_days').update(updates).eq('id', id).select().single()
+    if (error) { console.error('Update timeline day failed:', error.message); return }
+    if (data) setTimelineDays(prev => prev.map(d => d.id === id ? data : d))
+  }
+
+  const handleDeleteTimelineDay = async (id) => {
+    if (!session) return
+    const { error } = await supabase.from('timeline_days').delete().eq('id', id)
+    if (error) { console.error('Delete timeline day failed:', error.message); return }
+    setTimelineDays(prev => prev.filter(d => d.id !== id))
+    setTimelineEvents(prev => prev.filter(e => e.day_id !== id))
+  }
+
+  const handleAddTimelineEvent = async (event) => {
+    if (!session || !weddingId) return
+    const dayEvents = timelineEvents.filter(e => e.day_id === event.day_id)
+    const maxSort = dayEvents.reduce((m, e) => Math.max(m, e.sort_order), -1)
+    const { data, error } = await supabase.from('timeline_events').insert({
+      wedding_id: weddingId, day_id: event.day_id,
+      time: event.time, title: event.title,
+      location: event.location || null, assigned_to: event.assigned_to || null,
+      notes: event.notes || null, sort_order: maxSort + 1,
+    }).select().single()
+    if (error) { console.error('Add timeline event failed:', error.message); return }
+    if (data) setTimelineEvents(prev => [...prev, data])
+  }
+
+  const handleUpdateTimelineEvent = async (id, updates) => {
+    if (!session) return
+    const { data, error } = await supabase.from('timeline_events').update(updates).eq('id', id).select().single()
+    if (error) { console.error('Update timeline event failed:', error.message); return }
+    if (data) setTimelineEvents(prev => prev.map(e => e.id === id ? data : e))
+  }
+
+  const handleDeleteTimelineEvent = async (id) => {
+    if (!session) return
+    const { error } = await supabase.from('timeline_events').delete().eq('id', id)
+    if (error) { console.error('Delete timeline event failed:', error.message); return }
+    setTimelineEvents(prev => prev.filter(e => e.id !== id))
+  }
+
+  const handleReorderTimelineEvents = async (dayId, orderedIds) => {
+    if (!session) return
+    const updates = orderedIds.map((id, i) => ({ id, sort_order: i }))
+    // Optimistic update
+    setTimelineEvents(prev => prev.map(e => {
+      const u = updates.find(u => u.id === e.id)
+      return u ? { ...e, sort_order: u.sort_order } : e
+    }))
+    for (const u of updates) {
+      const { error } = await supabase.from('timeline_events').update({ sort_order: u.sort_order }).eq('id', u.id)
+      if (error) console.error('Reorder event failed:', error.message)
+    }
   }
 
   // ── Messaging handlers ───────────────────────────────────────────────────────
@@ -1189,6 +1264,7 @@ export default function App() {
             onDeleteTable={handleDeleteTable}
             onImportGuests={handleImportGuests}
             canEdit={permissions.canEditGuests}
+            rsvpSlug={wedding?.rsvp_slug ?? null}
           />
         )
       case 'tasks':
@@ -1270,8 +1346,19 @@ export default function App() {
       case 'dayofcontacts':
         return (
           <DayOfContacts
-            collaborators={collaborators}
+            days={timelineDays}
+            events={timelineEvents}
+            wedding={wedding}
             vendors={vendors}
+            collaborators={collaborators}
+            onAddDay={handleAddTimelineDay}
+            onUpdateDay={handleUpdateTimelineDay}
+            onDeleteDay={handleDeleteTimelineDay}
+            onAddEvent={handleAddTimelineEvent}
+            onUpdateEvent={handleUpdateTimelineEvent}
+            onDeleteEvent={handleDeleteTimelineEvent}
+            onReorderEvents={handleReorderTimelineEvents}
+            canEdit={permissions.canEdit}
           />
         )
       case 'notes':
