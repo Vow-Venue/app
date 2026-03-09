@@ -2386,12 +2386,8 @@ label {
 }
 
 .feature-section-icon {
-  font-size: 40px;
   flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  background: rgba(184, 151, 90, 0.08);
-  border-radius: 16px;
+  color: var(--deep);
   display: flex;
   align-items: center;
   justify-content: center;

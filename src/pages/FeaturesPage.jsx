@@ -1,8 +1,11 @@
 import { useOutletContext } from 'react-router-dom'
+import { Users, CreditCard, LayoutGrid, MessageSquare, UserPlus, CheckSquare, Phone, FileText, DollarSign, ClipboardList, FolderOpen } from 'lucide-react'
+
+const ICON_PROPS = { size: 32, strokeWidth: 1.5 }
 
 const FEATURES = [
   {
-    icon: '👥',
+    icon: <Users {...ICON_PROPS} />,
     title: 'Guest Management',
     desc: 'The complete guest list solution for wedding professionals.',
     details: [
@@ -16,7 +19,7 @@ const FEATURES = [
     ],
   },
   {
-    icon: '💳',
+    icon: <CreditCard {...ICON_PROPS} />,
     title: 'Vendor Payment Tracking',
     desc: 'Keep every vendor payment organized and on schedule.',
     details: [
@@ -29,7 +32,7 @@ const FEATURES = [
     ],
   },
   {
-    icon: '🪑',
+    icon: <LayoutGrid {...ICON_PROPS} />,
     title: 'Interactive Seating Chart',
     desc: 'Design your floor plan visually with drag-and-drop.',
     details: [
@@ -41,7 +44,7 @@ const FEATURES = [
     ],
   },
   {
-    icon: '💬',
+    icon: <MessageSquare {...ICON_PROPS} />,
     title: 'Team Messaging',
     desc: 'Slack-style messaging built for wedding teams.',
     details: [
@@ -54,7 +57,7 @@ const FEATURES = [
     ],
   },
   {
-    icon: '🤝',
+    icon: <UserPlus {...ICON_PROPS} />,
     title: 'Collaborator Invites',
     desc: 'Give the right people the right level of access.',
     details: [
@@ -67,7 +70,7 @@ const FEATURES = [
     ],
   },
   {
-    icon: '📋',
+    icon: <ClipboardList {...ICON_PROPS} />,
     title: 'BEO Generator',
     badge: 'COMING SOON',
     desc: 'Generate banquet event orders from your wedding data.',
@@ -79,7 +82,7 @@ const FEATURES = [
     ],
   },
   {
-    icon: '📁',
+    icon: <FolderOpen {...ICON_PROPS} />,
     title: 'CSV Import & Export',
     desc: 'Move data in and out without manual entry.',
     details: [
