@@ -17,6 +17,7 @@ import AuthModal from './components/AuthModal'
 import WeddingSetup from './components/WeddingSetup'
 import RSVPPage from './components/RSVPPage'
 import OrgDashboard from './components/OrgDashboard'
+import { TEMPLATES, PERIOD_OFFSETS } from './lib/taskTemplates'
 import MarketingLayout from './layouts/MarketingLayout'
 import HomePage from './pages/HomePage'
 import FeaturesPage from './pages/FeaturesPage'
@@ -168,6 +169,10 @@ export default function App() {
   const [showProBanner, setShowProBanner]       = useState(false)
   const [dashboardTaskStats, setDashboardTaskStats] = useState({})
   const [sharedVendors, setSharedVendors]           = useState([])
+  const [teamMembers, setTeamMembers]               = useState([])
+  const [dashboardRevenue, setDashboardRevenue]     = useState(0)
+  const [taskTemplates, setTaskTemplates]           = useState([])
+  const [templateTasks, setTemplateTasks]           = useState({})
 
   // ── Wedding (currently selected)
   const [weddingId, setWeddingId] = useState(null)
@@ -232,7 +237,30 @@ export default function App() {
     if (!session) return
     loadMyWeddings(session.user.id)
     loadProfile(session.user.id)
+    loadTaskTemplates(session.user.id)
   }, [session?.user?.id])
+
+  // ── Load task templates ────────────────────────────────────────────────────
+  const loadTaskTemplates = async (userId) => {
+    const { data: templates } = await supabase
+      .from('task_templates').select('*').eq('user_id', userId).order('created_at')
+    if (!templates) return
+    setTaskTemplates(templates)
+    if (templates.length > 0) {
+      const tIds = templates.map(t => t.id)
+      const { data: tasks } = await supabase
+        .from('template_tasks').select('*').in('template_id', tIds).order('sort_order')
+      if (tasks) {
+        const grouped = {}
+        tIds.forEach(id => { grouped[id] = [] })
+        tasks.forEach(t => {
+          if (!grouped[t.template_id]) grouped[t.template_id] = []
+          grouped[t.template_id].push(t)
+        })
+        setTemplateTasks(grouped)
+      }
+    }
+  }
 
   const loadProfile = async (userId) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
@@ -373,22 +401,76 @@ export default function App() {
       // ── Step 3d: Fetch shared vendor contacts ───────────────────────────────
       if (weddings.length > 1) {
         const weddingIds = weddings.map(w => w.id)
+        const weddingNameMap = {}
+        weddings.forEach(w => { weddingNameMap[w.id] = w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled' })
         const { data: allVendors } = await supabase
           .from('vendors')
-          .select('name, role, phone, email, wedding_id')
+          .select('name, role, phone, email, website, wedding_id')
           .in('wedding_id', weddingIds)
         if (allVendors) {
           const vendorMap = {}
           allVendors.forEach(v => {
             const key = `${(v.name || '').toLowerCase()}|${v.role}`
-            if (!vendorMap[key]) vendorMap[key] = { name: v.name, role: v.role, phone: v.phone, email: v.email, weddingIds: new Set() }
+            if (!vendorMap[key]) vendorMap[key] = { name: v.name, role: v.role, phone: v.phone, email: v.email, website: v.website, weddingIds: new Set(), weddingNames: [] }
             vendorMap[key].weddingIds.add(v.wedding_id)
           })
           setSharedVendors(
             Object.values(vendorMap)
               .filter(v => v.weddingIds.size >= 2)
-              .map(v => ({ name: v.name, role: v.role, phone: v.phone, email: v.email, weddingCount: v.weddingIds.size }))
+              .map(v => ({
+                name: v.name, role: v.role, phone: v.phone, email: v.email, website: v.website,
+                weddingCount: v.weddingIds.size,
+                weddingNames: [...v.weddingIds].map(id => weddingNameMap[id] || 'Untitled'),
+              }))
           )
+        }
+      }
+
+      // ── Step 3e: Fetch team members (owners + planners across weddings) ──────
+      if (weddings.length > 0) {
+        const weddingIds = weddings.map(w => w.id)
+        const { data: memberRows } = await supabase
+          .from('wedding_members')
+          .select('user_id, role, wedding_id')
+          .in('wedding_id', weddingIds)
+          .in('role', ['owner', 'planner'])
+        if (memberRows) {
+          const memberMap = {}
+          memberRows.forEach(m => {
+            if (!memberMap[m.user_id]) memberMap[m.user_id] = { userId: m.user_id, role: m.role, weddingCount: 0 }
+            memberMap[m.user_id].weddingCount++
+            if (m.role === 'owner') memberMap[m.user_id].role = 'owner'
+          })
+          const memberUserIds = Object.keys(memberMap)
+          if (memberUserIds.length > 0) {
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('id, display_name, avatar_url')
+              .in('id', memberUserIds)
+            if (profiles) {
+              profiles.forEach(p => {
+                if (memberMap[p.id]) {
+                  memberMap[p.id].displayName = p.display_name
+                  memberMap[p.id].avatarUrl = p.avatar_url
+                }
+              })
+            }
+          }
+          setTeamMembers(Object.values(memberMap))
+        }
+      }
+
+      // ── Step 3f: Calculate revenue (sum of paid vendor amounts) ──────────────
+      if (weddings.length > 0) {
+        const weddingIds = weddings.map(w => w.id)
+        const { data: paidVendors } = await supabase
+          .from('vendors')
+          .select('amount')
+          .in('wedding_id', weddingIds)
+          .eq('paid', true)
+        if (paidVendors) {
+          const total = paidVendors.reduce((s, v) => s + (v.amount || 0), 0)
+          setDashboardRevenue(total)
         }
       }
 
@@ -549,6 +631,163 @@ export default function App() {
     await supabase.from('weddings').update({ cover_url: url }).eq('id', wId)
     setMyWeddings(prev => prev.map(w => w.id === wId ? { ...w, cover_url: url } : w))
     if (wedding?.id === wId) setWedding(prev => ({ ...prev, cover_url: url }))
+  }
+
+  // ── Studio name ─────────────────────────────────────────────────────────────
+  const handleUpdateStudioName = async (name) => {
+    if (!session?.user) return
+    const userId = session.user.id
+    const { data, error } = await supabase.from('profiles').upsert({
+      id: userId, studio_name: name, updated_at: new Date().toISOString(),
+    }).select().single()
+    if (error) { console.error('Studio name update failed:', error.message); return }
+    if (data) setProfile(data)
+  }
+
+  // ── Task template handlers ────────────────────────────────────────────────
+  const handleCreateTemplate = async (name) => {
+    if (!session?.user) return
+    const { data, error } = await supabase.from('task_templates').insert({
+      user_id: session.user.id, name,
+    }).select().single()
+    if (error) { console.error('Create template failed:', error.message); return }
+    if (data) {
+      setTaskTemplates(prev => [...prev, data])
+      setTemplateTasks(prev => ({ ...prev, [data.id]: [] }))
+    }
+    return data
+  }
+
+  const handleUpdateTemplate = async (id, updates) => {
+    const { error } = await supabase.from('task_templates').update(updates).eq('id', id)
+    if (error) { console.error('Update template failed:', error.message); return }
+    setTaskTemplates(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
+  }
+
+  const handleDeleteTemplate = async (id) => {
+    const { error } = await supabase.from('task_templates').delete().eq('id', id)
+    if (error) { console.error('Delete template failed:', error.message); return }
+    setTaskTemplates(prev => prev.filter(t => t.id !== id))
+    setTemplateTasks(prev => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  const handleAddTemplateTask = async (templateId, task) => {
+    const existing = templateTasks[templateId] || []
+    const maxSort = existing.reduce((m, t) => Math.max(m, t.sort_order), -1)
+    const { data, error } = await supabase.from('template_tasks').insert({
+      template_id: templateId,
+      title: task.title,
+      assignee_role: task.assignee_role || 'planner',
+      offset_days: task.offset_days ?? 0,
+      priority: task.priority || 'medium',
+      sort_order: maxSort + 1,
+    }).select().single()
+    if (error) { console.error('Add template task failed:', error.message); return }
+    if (data) {
+      setTemplateTasks(prev => ({
+        ...prev,
+        [templateId]: [...(prev[templateId] || []), data],
+      }))
+    }
+  }
+
+  const handleUpdateTemplateTask = async (taskId, updates) => {
+    const { error } = await supabase.from('template_tasks').update(updates).eq('id', taskId)
+    if (error) { console.error('Update template task failed:', error.message); return }
+    setTemplateTasks(prev => {
+      const next = {}
+      for (const [tid, tasks] of Object.entries(prev)) {
+        next[tid] = tasks.map(t => t.id === taskId ? { ...t, ...updates } : t)
+      }
+      return next
+    })
+  }
+
+  const handleDeleteTemplateTask = async (taskId, templateId) => {
+    const { error } = await supabase.from('template_tasks').delete().eq('id', taskId)
+    if (error) { console.error('Delete template task failed:', error.message); return }
+    setTemplateTasks(prev => ({
+      ...prev,
+      [templateId]: (prev[templateId] || []).filter(t => t.id !== taskId),
+    }))
+  }
+
+  const handleImportTemplateToWedding = async (templateId, weddingId) => {
+    if (!session) return
+    const tasks = templateTasks[templateId] || []
+    if (tasks.length === 0) return 0
+    const targetWedding = myWeddings.find(w => w.id === weddingId)
+    const weddingDate = targetWedding?.wedding_date
+
+    const rows = tasks.map(t => {
+      let dueDate = null
+      if (weddingDate && t.offset_days) {
+        const d = new Date(weddingDate + 'T00:00:00')
+        d.setDate(d.getDate() + t.offset_days)
+        dueDate = d.toISOString().split('T')[0]
+      }
+      return {
+        wedding_id: weddingId,
+        title: t.title,
+        done: false,
+        due_date: dueDate,
+        assigned_to: t.assignee_role || null,
+        priority: t.priority || 'medium',
+      }
+    })
+
+    const { data, error } = await supabase.from('tasks').insert(rows).select()
+    if (error) { console.error('Import template failed:', error.message); return 0 }
+    // If importing into the currently-viewed wedding, update local tasks
+    if (weddingId === activeWeddingId && data) {
+      setTasks(prev => [...prev, ...data.map(mapTask)])
+    }
+    return data?.length || 0
+  }
+
+  const handleSeedStarterTemplates = async () => {
+    if (!session?.user) return
+    const tmpl = await handleCreateTemplate('Wedding Checklist')
+    if (!tmpl) return
+    const rows = []
+    for (const period of TEMPLATES) {
+      const offset = PERIOD_OFFSETS[period.period] || 0
+      for (const task of period.tasks) {
+        rows.push({
+          template_id: tmpl.id,
+          title: task.title,
+          assignee_role: 'planner',
+          offset_days: offset,
+          priority: task.priority || 'medium',
+          sort_order: rows.length,
+        })
+      }
+    }
+    const { data, error } = await supabase.from('template_tasks').insert(rows).select()
+    if (error) { console.error('Seed templates failed:', error.message); return }
+    if (data) {
+      setTemplateTasks(prev => ({ ...prev, [tmpl.id]: data }))
+    }
+  }
+
+  const handleCopyVendorToWedding = async (vendor, targetWeddingId) => {
+    if (!session) return
+    const { error } = await supabase.from('vendors').insert({
+      wedding_id: targetWeddingId,
+      name: vendor.name,
+      role: vendor.role || 'other',
+      phone: vendor.phone || null,
+      email: vendor.email || null,
+      website: vendor.website || null,
+      amount: 0,
+      paid: false,
+    })
+    if (error) { console.error('Copy vendor failed:', error.message); return false }
+    return true
   }
 
   // ── Realtime: new messages ───────────────────────────────────────────────────
@@ -1515,10 +1754,24 @@ export default function App() {
               taskStats={dashboardTaskStats}
               sharedVendors={sharedVendors}
               profile={profile}
+              teamMembers={teamMembers}
+              revenue={dashboardRevenue}
+              taskTemplates={taskTemplates}
+              templateTasks={templateTasks}
               onSelectWedding={selectWedding}
               onCreateWedding={handleCreateWedding}
               onUpgrade={handleUpgrade}
               onUploadCover={handleUploadCover}
+              onUpdateStudioName={handleUpdateStudioName}
+              onCreateTemplate={handleCreateTemplate}
+              onUpdateTemplate={handleUpdateTemplate}
+              onDeleteTemplate={handleDeleteTemplate}
+              onAddTemplateTask={handleAddTemplateTask}
+              onUpdateTemplateTask={handleUpdateTemplateTask}
+              onDeleteTemplateTask={handleDeleteTemplateTask}
+              onImportTemplate={handleImportTemplateToWedding}
+              onSeedStarterTemplates={handleSeedStarterTemplates}
+              onCopyVendor={handleCopyVendorToWedding}
             />
           </main>
           <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />

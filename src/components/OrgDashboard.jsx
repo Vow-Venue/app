@@ -1,11 +1,20 @@
 import { useState, useRef, useMemo } from 'react'
-import { LayoutGrid, List, ChevronDown, ChevronUp, Phone, Mail, Camera } from 'lucide-react'
+import {
+  LayoutGrid, List, ChevronDown, ChevronUp, Phone, Mail, Camera,
+  Pencil, Check, X, Plus, Trash2, Globe, Users, Download, FileText,
+  Calendar, DollarSign, ClipboardList, UserPlus,
+} from 'lucide-react'
 
 const fmtDate = (dateStr) => {
   if (!dateStr) return ''
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'long', day: 'numeric', year: 'numeric',
   }).toUpperCase()
+}
+
+const fmtCurrency = (n) => {
+  if (!n) return '$0'
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 const ROLE_LABELS = {
@@ -34,14 +43,54 @@ const daysUntil = (dateStr) => {
   return diff > 0 ? Math.ceil(diff / 86400000) : null
 }
 
+const offsetLabel = (days) => {
+  if (!days) return 'Wedding day'
+  const abs = Math.abs(days)
+  if (abs >= 365) return `${Math.round(abs / 30)} mo before`
+  if (abs >= 30) return `${Math.round(abs / 30)} mo before`
+  return `${abs}d before`
+}
+
 export default function OrgDashboard({
   weddings, userPlan, taskStats, sharedVendors, profile,
+  teamMembers, revenue, taskTemplates, templateTasks,
   onSelectWedding, onCreateWedding, onUpgrade, onUploadCover,
+  onUpdateStudioName, onCreateTemplate, onUpdateTemplate, onDeleteTemplate,
+  onAddTemplateTask, onUpdateTemplateTask, onDeleteTemplateTask,
+  onImportTemplate, onSeedStarterTemplates, onCopyVendor,
 }) {
   const [viewMode, setViewMode] = useState('grid')
   const [sortBy, setSortBy] = useState('date')
   const [sharedOpen, setSharedOpen] = useState(false)
+  const [teamOpen, setTeamOpen] = useState(false)
   const fileInputRefs = useRef({})
+
+  // Studio name editing
+  const [editingStudioName, setEditingStudioName] = useState(false)
+  const [studioNameDraft, setStudioNameDraft] = useState('')
+
+  // Template modal
+  const [templateModalOpen, setTemplateModalOpen] = useState(false)
+  const [activeTemplate, setActiveTemplate] = useState(null)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskOffset, setNewTaskOffset] = useState(-180)
+  const [newTaskPriority, setNewTaskPriority] = useState('medium')
+
+  // Import modal
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [importTemplateId, setImportTemplateId] = useState(null)
+  const [importWeddingId, setImportWeddingId] = useState(null)
+  const [importing, setImporting] = useState(false)
+
+  // Invite placeholder modal
+  const [inviteModalOpen, setInviteModalOpen] = useState(false)
+
+  // Vendor copy dropdown
+  const [copyVendorIdx, setCopyVendorIdx] = useState(null)
+
+  // New template name
+  const [newTemplateName, setNewTemplateName] = useState('')
+  const [creatingTemplate, setCreatingTemplate] = useState(false)
 
   const [recentOrder, setRecentOrder] = useState(() => {
     try { return JSON.parse(localStorage.getItem('vv_recent_weddings') || '[]') }
@@ -50,13 +99,27 @@ export default function OrgDashboard({
 
   const ownedCount = weddings.filter(w => w.myRole === 'owner').length
   const canCreate = userPlan === 'pro' || ownedCount < FREE_WEDDING_LIMIT
-  const studioName = profile?.display_name
-    ? `${profile.display_name}'s Studio`
-    : 'My Studio'
+
+  const studioName = profile?.studio_name
+    || (profile?.display_name ? `${profile.display_name}'s Studio` : 'My Studio')
 
   const totalGuests = weddings.reduce((s, w) => s + (w.guestCount || 0), 0)
   const totalTasks = Object.values(taskStats).reduce((s, t) => s + t.total, 0)
   const totalDone = Object.values(taskStats).reduce((s, t) => s + t.done, 0)
+
+  // Avg completion across weddings with tasks
+  const weddingsWithTasks = Object.values(taskStats).filter(s => s.total > 0)
+  const avgCompletion = weddingsWithTasks.length > 0
+    ? Math.round(weddingsWithTasks.reduce((s, t) => s + (t.done / t.total * 100), 0) / weddingsWithTasks.length)
+    : 0
+
+  // Recently viewed (top 3)
+  const recentWeddings = useMemo(() => {
+    return recentOrder
+      .map(id => weddings.find(w => w.id === id))
+      .filter(Boolean)
+      .slice(0, 3)
+  }, [recentOrder, weddings])
 
   const sortedWeddings = useMemo(() => {
     const sorted = [...weddings]
@@ -111,14 +174,85 @@ export default function OrgDashboard({
     e.target.value = ''
   }
 
+  const handleSaveStudioName = () => {
+    if (studioNameDraft.trim()) {
+      onUpdateStudioName(studioNameDraft.trim())
+    }
+    setEditingStudioName(false)
+  }
+
+  const handleOpenTemplate = (tmpl) => {
+    setActiveTemplate(tmpl)
+    setTemplateModalOpen(true)
+    setNewTaskTitle('')
+    setNewTaskOffset(-180)
+    setNewTaskPriority('medium')
+  }
+
+  const handleCreateTemplate = async () => {
+    if (!newTemplateName.trim()) return
+    setCreatingTemplate(true)
+    const tmpl = await onCreateTemplate(newTemplateName.trim())
+    setCreatingTemplate(false)
+    setNewTemplateName('')
+    if (tmpl) handleOpenTemplate(tmpl)
+  }
+
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim() || !activeTemplate) return
+    await onAddTemplateTask(activeTemplate.id, {
+      title: newTaskTitle.trim(),
+      offset_days: newTaskOffset,
+      priority: newTaskPriority,
+      assignee_role: 'planner',
+    })
+    setNewTaskTitle('')
+  }
+
+  const handleImport = async () => {
+    if (!importTemplateId || !importWeddingId) return
+    setImporting(true)
+    const count = await onImportTemplate(importTemplateId, importWeddingId)
+    setImporting(false)
+    setImportModalOpen(false)
+    if (count > 0) alert(`Imported ${count} tasks!`)
+  }
+
+  const handleCopyVendor = async (vendor, wId) => {
+    const ok = await onCopyVendor(vendor, wId)
+    setCopyVendorIdx(null)
+    if (ok) alert(`${vendor.name} added to wedding!`)
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="org-dashboard">
-      {/* Dashboard header */}
+      {/* ── Dashboard Header (editable studio name) ───────────────────────── */}
       <div className="org-dashboard-header">
         <div>
-          <h1 className="section-title" style={{ marginBottom: 4 }}>{studioName}</h1>
+          {editingStudioName ? (
+            <div className="org-studio-edit">
+              <input
+                className="org-studio-input"
+                value={studioNameDraft}
+                onChange={e => setStudioNameDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSaveStudioName(); if (e.key === 'Escape') setEditingStudioName(false) }}
+                autoFocus
+              />
+              <button className="org-studio-save" onClick={handleSaveStudioName}><Check size={16} /></button>
+              <button className="org-studio-cancel" onClick={() => setEditingStudioName(false)}><X size={16} /></button>
+            </div>
+          ) : (
+            <h1
+              className="section-title org-studio-name"
+              style={{ marginBottom: 4, cursor: 'pointer' }}
+              onClick={() => { setEditingStudioName(true); setStudioNameDraft(studioName) }}
+            >
+              {studioName}
+              <Pencil size={14} className="org-studio-pencil" />
+            </h1>
+          )}
           <p className="section-subtitle">
             {weddings.length} wedding{weddings.length !== 1 ? 's' : ''}
             {' · '}{totalGuests} guest{totalGuests !== 1 ? 's' : ''}
@@ -135,58 +269,218 @@ export default function OrgDashboard({
             </select>
           </div>
           <div className="org-view-toggle">
-            <button
-              className={`org-view-btn${viewMode === 'grid' ? ' active' : ''}`}
-              onClick={() => setViewMode('grid')}
-              title="Grid view"
-            >
+            <button className={`org-view-btn${viewMode === 'grid' ? ' active' : ''}`} onClick={() => setViewMode('grid')} title="Grid view">
               <LayoutGrid size={16} />
             </button>
-            <button
-              className={`org-view-btn${viewMode === 'list' ? ' active' : ''}`}
-              onClick={() => setViewMode('list')}
-              title="List view"
-            >
+            <button className={`org-view-btn${viewMode === 'list' ? ' active' : ''}`} onClick={() => setViewMode('list')} title="List view">
               <List size={16} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Shared Resources (collapsible) */}
-      {sharedVendors.length > 0 && (
+      {/* ── Quick Actions ─────────────────────────────────────────────────── */}
+      <div className="org-quick-actions">
+        <button className="org-quick-btn" onClick={handleCreate} disabled={!canCreate}>
+          <Plus size={16} /> New Wedding
+        </button>
+        <button className="org-quick-btn" onClick={() => setInviteModalOpen(true)}>
+          <UserPlus size={16} /> Invite Planner
+        </button>
+        <button className="org-quick-btn" onClick={() => setImportModalOpen(true)} disabled={taskTemplates.length === 0}>
+          <Download size={16} /> Import Template
+        </button>
+      </div>
+
+      {/* ── Recently Viewed ───────────────────────────────────────────────── */}
+      {recentWeddings.length > 0 && (
+        <div className="org-recent-section">
+          <div className="org-section-label">RECENTLY VIEWED</div>
+          <div className="org-recent-row">
+            {recentWeddings.map(w => {
+              const stats = taskStats[w.id] || { total: 0, done: 0 }
+              const pct = stats.total > 0 ? Math.round(stats.done / stats.total * 100) : 0
+              return (
+                <button key={w.id} className="org-recent-card" onClick={() => handleSelect(w.id)}>
+                  <div className="org-recent-couple">
+                    {w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled'}
+                  </div>
+                  <div className="org-recent-meta">
+                    {w.guestCount || 0} guests · {pct}% done
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Studio Stats Bar ──────────────────────────────────────────────── */}
+      <div className="org-stats-bar">
+        <div className="org-stat-card">
+          <Calendar size={18} className="org-stat-icon" />
+          <div className="org-stat-value">{weddings.length}</div>
+          <div className="org-stat-label">Active Weddings</div>
+        </div>
+        <div className="org-stat-card">
+          <Users size={18} className="org-stat-icon" />
+          <div className="org-stat-value">{totalGuests}</div>
+          <div className="org-stat-label">Total Guests</div>
+        </div>
+        <div className="org-stat-card">
+          <ClipboardList size={18} className="org-stat-icon" />
+          <div className="org-stat-value">{avgCompletion}%</div>
+          <div className="org-stat-label">Avg Completion</div>
+        </div>
+        <div className="org-stat-card">
+          <DollarSign size={18} className="org-stat-icon" />
+          <div className="org-stat-value">{fmtCurrency(revenue)}</div>
+          <div className="org-stat-label">Revenue Tracked</div>
+        </div>
+      </div>
+
+      {/* ── Team Members (collapsible) ────────────────────────────────────── */}
+      {teamMembers.length > 0 && (
         <div className="org-shared-section">
-          <button className="org-shared-toggle" onClick={() => setSharedOpen(!sharedOpen)}>
-            <span>SHARED RESOURCES</span>
-            {sharedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          <button className="org-shared-toggle" onClick={() => setTeamOpen(!teamOpen)}>
+            <span>TEAM MEMBERS</span>
+            {teamOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
-          {sharedOpen && (
+          {teamOpen && (
             <div className="org-shared-content">
-              <div className="org-shared-grid">
-                {sharedVendors.map((v, i) => (
-                  <div key={i} className="org-shared-vendor-card">
-                    <div className="org-shared-vendor-name">{v.name}</div>
-                    <div className="org-shared-vendor-role">{VENDOR_ROLES[v.role] || v.role || 'Vendor'}</div>
-                    <div className="org-shared-vendor-meta">
-                      {v.phone && <span><Phone size={12} /> {v.phone}</span>}
-                      {v.email && <span><Mail size={12} /> {v.email}</span>}
-                    </div>
-                    <div className="org-shared-vendor-count">
-                      Used in {v.weddingCount} wedding{v.weddingCount !== 1 ? 's' : ''}
+              <div className="org-team-grid">
+                {teamMembers.map(m => (
+                  <div key={m.userId} className="org-team-card">
+                    {m.avatarUrl ? (
+                      <img src={m.avatarUrl} alt="" className="org-team-avatar" />
+                    ) : (
+                      <div className="org-team-initials">
+                        {(m.displayName || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="org-team-name">{m.displayName || 'Unknown'}</div>
+                    <span className={`wedding-card-role-inline role-${m.role}`}>
+                      {ROLE_LABELS[m.role] || 'MEMBER'}
+                    </span>
+                    <div className="org-team-count">
+                      {m.weddingCount} wedding{m.weddingCount !== 1 ? 's' : ''}
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="org-shared-placeholder">
-                <span>Task Templates</span>
-                <span className="org-coming-soon">COMING SOON</span>
-              </div>
+              <button className="org-quick-btn" style={{ marginTop: 12 }} onClick={() => setInviteModalOpen(true)}>
+                <UserPlus size={14} /> Invite Planner
+              </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Wedding Events */}
+      {/* ── Shared Resources (collapsible) ────────────────────────────────── */}
+      <div className="org-shared-section">
+        <button className="org-shared-toggle" onClick={() => setSharedOpen(!sharedOpen)}>
+          <span>SHARED RESOURCES</span>
+          {sharedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        {sharedOpen && (
+          <div className="org-shared-content">
+            {/* Shared vendors */}
+            {sharedVendors.length > 0 && (
+              <>
+                <div className="org-section-label" style={{ marginBottom: 8 }}>VENDOR CONTACTS</div>
+                <div className="org-shared-grid">
+                  {sharedVendors.map((v, i) => (
+                    <div key={i} className="org-shared-vendor-card">
+                      <div className="org-shared-vendor-name">{v.name}</div>
+                      <div className="org-shared-vendor-role">{VENDOR_ROLES[v.role] || v.role || 'Vendor'}</div>
+                      <div className="org-shared-vendor-meta">
+                        {v.phone && <span><Phone size={12} /> {v.phone}</span>}
+                        {v.email && <span><Mail size={12} /> {v.email}</span>}
+                        {v.website && <span><Globe size={12} /> {v.website}</span>}
+                      </div>
+                      {v.weddingNames && (
+                        <div className="org-shared-vendor-weddings">
+                          {v.weddingNames.join(', ')}
+                        </div>
+                      )}
+                      <div className="org-shared-vendor-actions">
+                        <div className="org-shared-vendor-count">
+                          Used in {v.weddingCount} wedding{v.weddingCount !== 1 ? 's' : ''}
+                        </div>
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            className="org-vendor-copy-btn"
+                            onClick={() => setCopyVendorIdx(copyVendorIdx === i ? null : i)}
+                          >
+                            <Plus size={12} /> Add to Wedding
+                          </button>
+                          {copyVendorIdx === i && (
+                            <div className="org-vendor-copy-dropdown">
+                              {weddings.map(w => (
+                                <button
+                                  key={w.id}
+                                  className="org-vendor-copy-option"
+                                  onClick={() => handleCopyVendor(v, w.id)}
+                                >
+                                  {w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled'}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Task Templates */}
+            <div className="org-templates-section">
+              <div className="org-section-label" style={{ marginBottom: 8 }}>TASK TEMPLATES</div>
+              {taskTemplates.length === 0 ? (
+                <div className="org-templates-empty">
+                  <p>No templates yet. Create one or load the starter checklist.</p>
+                  <button className="org-quick-btn" onClick={onSeedStarterTemplates}>
+                    <FileText size={14} /> Load Starter Templates
+                  </button>
+                </div>
+              ) : (
+                <div className="org-templates-list">
+                  {taskTemplates.map(tmpl => {
+                    const tasks = templateTasks[tmpl.id] || []
+                    return (
+                      <button key={tmpl.id} className="org-template-row" onClick={() => handleOpenTemplate(tmpl)}>
+                        <FileText size={14} />
+                        <span className="org-template-name">{tmpl.name}</span>
+                        <span className="org-template-count">{tasks.length} tasks</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              <div className="org-tmpl-create-row">
+                <input
+                  className="org-tmpl-create-input"
+                  placeholder="New template name..."
+                  value={newTemplateName}
+                  onChange={e => setNewTemplateName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleCreateTemplate() }}
+                />
+                <button
+                  className="org-quick-btn"
+                  onClick={handleCreateTemplate}
+                  disabled={creatingTemplate || !newTemplateName.trim()}
+                >
+                  <Plus size={14} /> Create
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Wedding Cards ─────────────────────────────────────────────────── */}
       <div className={viewMode === 'grid' ? 'weddings-grid' : 'org-weddings-list'}>
         {sortedWeddings.map((w, i) => {
           const hasCover = !!w.cover_url
@@ -221,7 +515,6 @@ export default function OrgDashboard({
             )
           }
 
-          // Grid view
           return (
             <button key={w.id} className="wedding-card" onClick={() => handleSelect(w.id)}>
               <div className="wedding-card-arch" style={bgStyle}>
@@ -274,7 +567,6 @@ export default function OrgDashboard({
           )
         })}
 
-        {/* Create new / upgrade card */}
         {viewMode === 'grid' && (
           canCreate ? (
             <button className="wedding-card wedding-card-new" onClick={handleCreate}>
@@ -301,11 +593,191 @@ export default function OrgDashboard({
         )}
       </div>
 
-      {/* List view: new wedding button below */}
       {viewMode === 'list' && canCreate && (
         <button className="org-list-new-btn" onClick={handleCreate}>
           + NEW WEDDING
         </button>
+      )}
+
+      {/* ── Template Editor Modal ─────────────────────────────────────────── */}
+      {templateModalOpen && activeTemplate && (
+        <div className="modal-backdrop" onClick={() => setTemplateModalOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">{activeTemplate.name}</div>
+              <button className="modal-close" onClick={() => setTemplateModalOpen(false)}>×</button>
+            </div>
+            <div style={{ padding: '16px 24px 24px', maxHeight: 500, overflowY: 'auto' }}>
+              {(templateTasks[activeTemplate.id] || []).length === 0 ? (
+                <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>No tasks in this template yet.</p>
+              ) : (
+                <div className="org-tmpl-task-list">
+                  {(templateTasks[activeTemplate.id] || []).map(t => (
+                    <div key={t.id} className="org-tmpl-task-row">
+                      <div className="org-tmpl-task-title">{t.title}</div>
+                      <div className="org-tmpl-task-meta">
+                        <span className="org-tmpl-task-offset">{offsetLabel(t.offset_days)}</span>
+                        <span className={`org-tmpl-task-priority priority-${t.priority}`}>{t.priority}</span>
+                      </div>
+                      <button
+                        className="org-tmpl-task-delete"
+                        onClick={() => onDeleteTemplateTask(t.id, activeTemplate.id)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Add task form */}
+              <div className="org-tmpl-add-form">
+                <input
+                  className="org-tmpl-add-input"
+                  placeholder="Task title..."
+                  value={newTaskTitle}
+                  onChange={e => setNewTaskTitle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddTask() }}
+                />
+                <select
+                  className="org-tmpl-add-select"
+                  value={newTaskOffset}
+                  onChange={e => setNewTaskOffset(Number(e.target.value))}
+                >
+                  <option value={-365}>12+ mo before</option>
+                  <option value={-300}>9-12 mo before</option>
+                  <option value={-210}>6-9 mo before</option>
+                  <option value={-120}>3-6 mo before</option>
+                  <option value={-45}>1-3 mo before</option>
+                  <option value={-7}>Week of</option>
+                  <option value={0}>Wedding day</option>
+                </select>
+                <select
+                  className="org-tmpl-add-select"
+                  value={newTaskPriority}
+                  onChange={e => setNewTaskPriority(e.target.value)}
+                >
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+                <button className="org-quick-btn" onClick={handleAddTask} disabled={!newTaskTitle.trim()}>
+                  <Plus size={14} /> Add
+                </button>
+              </div>
+              {/* Bottom actions */}
+              <div className="org-tmpl-bottom-actions">
+                <button
+                  className="org-quick-btn"
+                  onClick={() => { setImportTemplateId(activeTemplate.id); setTemplateModalOpen(false); setImportModalOpen(true) }}
+                  disabled={(templateTasks[activeTemplate.id] || []).length === 0}
+                >
+                  <Download size={14} /> Import to Wedding
+                </button>
+                <button
+                  className="btn-ghost-danger"
+                  onClick={() => { onDeleteTemplate(activeTemplate.id); setTemplateModalOpen(false) }}
+                >
+                  <Trash2 size={14} /> Delete Template
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Import Modal ──────────────────────────────────────────────────── */}
+      {importModalOpen && (
+        <div className="modal-backdrop" onClick={() => setImportModalOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Import Template to Wedding</div>
+              <button className="modal-close" onClick={() => setImportModalOpen(false)}>×</button>
+            </div>
+            <div style={{ padding: '16px 24px 24px' }}>
+              <label className="org-import-label">Template</label>
+              <select
+                className="org-import-select"
+                value={importTemplateId || ''}
+                onChange={e => setImportTemplateId(e.target.value)}
+              >
+                <option value="">Select template...</option>
+                {taskTemplates.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({(templateTasks[t.id] || []).length} tasks)
+                  </option>
+                ))}
+              </select>
+
+              <label className="org-import-label" style={{ marginTop: 16 }}>Wedding</label>
+              <select
+                className="org-import-select"
+                value={importWeddingId || ''}
+                onChange={e => setImportWeddingId(e.target.value)}
+              >
+                <option value="">Select wedding...</option>
+                {weddings.map(w => (
+                  <option key={w.id} value={w.id}>
+                    {w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled'}
+                    {w.wedding_date ? ` (${fmtDate(w.wedding_date)})` : ''}
+                  </option>
+                ))}
+              </select>
+
+              {importTemplateId && importWeddingId && (
+                <div className="org-import-preview">
+                  Will import {(templateTasks[importTemplateId] || []).length} tasks
+                  {weddings.find(w => w.id === importWeddingId)?.wedding_date
+                    ? ' with calculated due dates'
+                    : ' (no due dates — wedding has no date set)'}
+                </div>
+              )}
+
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%', marginTop: 16 }}
+                onClick={handleImport}
+                disabled={!importTemplateId || !importWeddingId || importing}
+              >
+                {importing ? 'Importing...' : `Import ${(templateTasks[importTemplateId] || []).length} Tasks`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Invite Planner Modal (placeholder) ────────────────────────────── */}
+      {inviteModalOpen && (
+        <div className="modal-backdrop" onClick={() => setInviteModalOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Invite a Planner</div>
+              <button className="modal-close" onClick={() => setInviteModalOpen(false)}>×</button>
+            </div>
+            <div style={{ padding: '16px 24px 24px' }}>
+              <div style={{ marginBottom: 16 }}>
+                <div className="org-section-label" style={{ marginBottom: 8 }}>PER-WEDDING CO-PLANNER</div>
+                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
+                  To invite a co-planner to a specific wedding, open that wedding and go to the
+                  <strong> Team</strong> tab. You can invite them with an email link.
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+                  Available on Free + Pro plans.
+                </p>
+              </div>
+              <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '16px 0' }} />
+              <div>
+                <div className="org-section-label" style={{ marginBottom: 8 }}>
+                  ORG-LEVEL PLANNER SEATS
+                  <span className="org-coming-soon" style={{ marginLeft: 8 }}>COMING SOON</span>
+                </div>
+                <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+                  Org-level planner seats will let you invite planners to your entire organization
+                  with access to all weddings. Pro plan only.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
