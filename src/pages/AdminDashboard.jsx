@@ -8,6 +8,18 @@ const fmt = (n) => Number(n || 0).toLocaleString('en-US', { style: 'currency', c
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'
 
+const timeAgo = (d) => {
+  if (!d) return 'never'
+  const diff = Date.now() - new Date(d).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
 // ── Styles (self-contained light theme) ─────────────────────────────────────
 const S = {
   page: { minHeight: '100vh', background: '#f8f9fa', color: '#1a1a2e', fontFamily: "'Jost', sans-serif", padding: '32px 24px' },
@@ -26,10 +38,14 @@ const S = {
   th: { textAlign: 'left', padding: '10px 14px', borderBottom: '1px solid #eee', color: '#999', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', cursor: 'pointer', userSelect: 'none' },
   td: { padding: '10px 14px', borderBottom: '1px solid #f0f0f0', color: '#444' },
   badge: (plan) => ({ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, background: plan === 'pro' ? 'rgba(184,151,90,0.12)' : 'rgba(0,0,0,0.05)', color: plan === 'pro' ? '#b8975a' : '#999' }),
-  barWrap: { display: 'flex', alignItems: 'flex-end', gap: 3, height: 100, padding: '0 4px' },
-  bar: (h, max) => ({ flex: 1, background: 'linear-gradient(to top, #b8975a88, #b8975a)', borderRadius: '3px 3px 0 0', height: `${max > 0 ? (h / max) * 100 : 0}%`, minHeight: h > 0 ? 4 : 0, transition: 'height 0.3s' }),
-  barLabel: { display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#aaa', marginTop: 6, padding: '0 4px' },
+  statusBadge: (status) => ({ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, background: status === 'open' ? 'rgba(198,40,40,0.1)' : 'rgba(46,125,50,0.1)', color: status === 'open' ? '#c62828' : '#2e7d32', cursor: 'pointer' }),
+  dot: (ok) => ({ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: ok ? '#2e7d32' : '#c62828', marginRight: 8 }),
+  healthRow: { display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13 },
+  healthLabel: { flex: 1, color: '#444' },
+  healthValue: { color: '#999', fontSize: 12 },
   placeholder: { background: '#fff', borderRadius: 10, padding: 24, border: '1px dashed #ddd', textAlign: 'center', color: '#bbb', fontSize: 13, fontStyle: 'italic' },
+  tabBar: { display: 'flex', gap: 8, marginBottom: 12 },
+  tabBtn: (active) => ({ padding: '6px 14px', borderRadius: 6, border: '1px solid #ddd', background: active ? '#1a1a2e' : '#fff', color: active ? '#fff' : '#666', fontSize: 11, fontWeight: 600, letterSpacing: 1, cursor: 'pointer', fontFamily: 'inherit' }),
   // Password gate
   gate: { minHeight: '100vh', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   gateBox: { background: '#fff', borderRadius: 12, padding: '40px 36px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: 340, width: '100%' },
@@ -42,11 +58,15 @@ const S = {
 }
 
 export default function AdminDashboard() {
-  const [authed, setAuthed] = useState(false)
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('adminAuthed') === 'true')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [stats, setStats] = useState(null)
   const [signups, setSignups] = useState([])
+  const [storage, setStorage] = useState(null)
+  const [health, setHealth] = useState(null)
+  const [tickets, setTickets] = useState([])
+  const [ticketFilter, setTicketFilter] = useState('open')
   const [loading, setLoading] = useState(false)
   const [sortKey, setSortKey] = useState('created_at')
   const [sortDir, setSortDir] = useState('desc')
@@ -54,6 +74,7 @@ export default function AdminDashboard() {
   const handleLogin = (e) => {
     e.preventDefault()
     if (password === ADMIN_PASSWORD) {
+      sessionStorage.setItem('adminAuthed', 'true')
       setAuthed(true)
       setError('')
     } else {
@@ -63,18 +84,30 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     setLoading(true)
-    const [statsRes, signupsRes] = await Promise.all([
+    const [statsRes, signupsRes, storageRes, healthRes, ticketsRes] = await Promise.all([
       supabase.rpc('get_admin_stats'),
       supabase.rpc('get_recent_signups', { limit_count: 50 }),
+      supabase.rpc('get_storage_stats'),
+      supabase.rpc('get_system_health'),
+      supabase.rpc('get_support_tickets', { limit_count: 100 }),
     ])
     if (statsRes.data) setStats(statsRes.data)
     if (signupsRes.data) setSignups(signupsRes.data)
+    if (storageRes.data) setStorage(storageRes.data)
+    if (healthRes.data) setHealth(healthRes.data)
+    if (ticketsRes.data) setTickets(ticketsRes.data)
     setLoading(false)
   }
 
   useEffect(() => {
     if (authed) loadData()
   }, [authed])
+
+  const handleToggleTicketStatus = async (ticket) => {
+    const newStatus = ticket.status === 'open' ? 'resolved' : 'open'
+    await supabase.rpc('update_ticket_status', { ticket_id: ticket.id, new_status: newStatus })
+    setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: newStatus } : t))
+  }
 
   // ── Password gate ────────────────────────────────────────────────────────
   if (!authed) {
@@ -106,8 +139,6 @@ export default function AdminDashboard() {
 
   // ── Derived metrics ───────────────────────────────────────────────────────
   const profit = stats.mrr - SUPABASE_COST
-  const dailyWeddings = stats.daily_weddings || []
-  const maxDaily = Math.max(...dailyWeddings.map(d => d.count), 1)
 
   // ── Sorted signups ───────────────────────────────────────────────────────
   const sorted = [...signups].sort((a, b) => {
@@ -132,6 +163,8 @@ export default function AdminDashboard() {
   }
 
   const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
+
+  const filteredTickets = tickets.filter(t => t.status === ticketFilter)
 
   return (
     <div style={S.page}>
@@ -162,8 +195,9 @@ export default function AdminDashboard() {
             <div style={S.cardValue}>{stats.free_users}</div>
           </div>
           <div style={S.card}>
-            <div style={S.cardLabel}>Conversion Rate</div>
-            <div style={S.cardValue}>{stats.conversion_rate}%</div>
+            <div style={S.cardLabel}>Churn Rate</div>
+            <div style={S.cardValue}>0%</div>
+            <div style={S.cardSub}>tracks cancellations once org billing is live</div>
           </div>
           <div style={S.card}>
             <div style={S.cardLabel}>MRR</div>
@@ -208,27 +242,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Bar chart — weddings by day */}
-        {dailyWeddings.length > 0 && (
-          <div style={{ ...S.card, marginTop: 12 }}>
-            <div style={S.cardLabel}>Weddings Created — Last 30 Days</div>
-            <div style={{ ...S.barWrap, marginTop: 12 }}>
-              {dailyWeddings.map((d, i) => (
-                <div
-                  key={i}
-                  style={S.bar(d.count, maxDaily)}
-                  title={`${d.date}: ${d.count} wedding${d.count !== 1 ? 's' : ''}`}
-                />
-              ))}
-            </div>
-            <div style={S.barLabel}>
-              <span>{dailyWeddings[0]?.date}</span>
-              <span>{dailyWeddings[dailyWeddings.length - 1]?.date}</span>
-            </div>
-          </div>
-        )}
-
-        {/* ── Usage / Storage ─────────────────────────────────────────── */}
+        {/* ── Usage ─────────────────────────────────────────────────── */}
         <div style={S.sectionTitle}>Usage</div>
         <div style={S.grid}>
           <div style={S.card}>
@@ -240,10 +254,6 @@ export default function AdminDashboard() {
             <div style={S.cardValue}>{stats.avg_weddings_per_user}</div>
           </div>
           <div style={S.card}>
-            <div style={S.cardLabel}>Total Guests</div>
-            <div style={S.cardValue}>{Number(stats.total_guests).toLocaleString()}</div>
-          </div>
-          <div style={S.card}>
             <div style={S.cardLabel}>Total Vendors</div>
             <div style={S.cardValue}>{Number(stats.total_vendors).toLocaleString()}</div>
           </div>
@@ -253,8 +263,40 @@ export default function AdminDashboard() {
           </div>
           <div style={S.card}>
             <div style={S.cardLabel}>Storage</div>
-            <div style={{ ...S.cardValue, fontSize: 16, color: '#bbb' }}>—</div>
-            <div style={S.cardSub}>coming soon</div>
+            <div style={S.cardValue}>{storage ? storage.file_count : 0}</div>
+            <div style={S.cardSub}>
+              {storage ? `${storage.total_mb} MB used` : '0 MB used'} · files uploaded
+            </div>
+          </div>
+        </div>
+
+        {/* ── System Health ──────────────────────────────────────────── */}
+        <div style={S.sectionTitle}>System Health</div>
+        <div style={S.card}>
+          <div style={S.healthRow}>
+            <span style={S.dot(true)} />
+            <span style={S.healthLabel}>Supabase DB</span>
+            <span style={S.healthValue}>connected</span>
+          </div>
+          <div style={S.healthRow}>
+            <span style={S.dot(!!health?.last_login)} />
+            <span style={S.healthLabel}>Last User Login</span>
+            <span style={S.healthValue}>{health?.last_login ? timeAgo(health.last_login) : 'no data'}</span>
+          </div>
+          <div style={S.healthRow}>
+            <span style={S.dot(false)} />
+            <span style={S.healthLabel}>Stripe Webhook</span>
+            <span style={S.healthValue}>not yet tracked</span>
+          </div>
+          <div style={S.healthRow}>
+            <span style={S.dot(false)} />
+            <span style={S.healthLabel}>Resend Last Email</span>
+            <span style={S.healthValue}>not yet tracked</span>
+          </div>
+          <div style={{ ...S.healthRow, borderBottom: 'none' }}>
+            <span style={S.dot(!!health?.last_ticket)} />
+            <span style={S.healthLabel}>Last Support Ticket</span>
+            <span style={S.healthValue}>{health?.last_ticket ? timeAgo(health.last_ticket) : 'none yet'}</span>
           </div>
         </div>
 
@@ -263,6 +305,53 @@ export default function AdminDashboard() {
         <div style={S.placeholder}>
           Organization system not built yet. Stats will appear here once orgs are live.
         </div>
+
+        {/* ── Support Tickets ──────────────────────────────────────────── */}
+        <div style={S.sectionTitle}>Support Tickets ({tickets.length})</div>
+        <div style={S.tabBar}>
+          <button style={S.tabBtn(ticketFilter === 'open')} onClick={() => setTicketFilter('open')}>
+            OPEN ({tickets.filter(t => t.status === 'open').length})
+          </button>
+          <button style={S.tabBtn(ticketFilter === 'resolved')} onClick={() => setTicketFilter('resolved')}>
+            RESOLVED ({tickets.filter(t => t.status === 'resolved').length})
+          </button>
+        </div>
+        {filteredTickets.length === 0 ? (
+          <div style={S.placeholder}>No {ticketFilter} tickets.</div>
+        ) : (
+          <div style={{ ...S.card, padding: 0, overflow: 'auto' }}>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  <th style={S.th}>Email</th>
+                  <th style={S.th}>Subject</th>
+                  <th style={S.th}>Message</th>
+                  <th style={S.th}>Submitted</th>
+                  <th style={S.th}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTickets.map(t => (
+                  <tr key={t.id}>
+                    <td style={S.td}>{t.email}</td>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{t.subject}</td>
+                    <td style={{ ...S.td, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.message}</td>
+                    <td style={S.td}>{fmtDateTime(t.created_at)}</td>
+                    <td style={S.td}>
+                      <span
+                        style={S.statusBadge(t.status)}
+                        onClick={() => handleToggleTicketStatus(t)}
+                        title={`Click to mark as ${t.status === 'open' ? 'resolved' : 'open'}`}
+                      >
+                        {t.status.toUpperCase()}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* ── Recent Signups ──────────────────────────────────────────── */}
         <div style={S.sectionTitle}>Recent Signups ({signups.length})</div>

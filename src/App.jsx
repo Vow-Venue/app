@@ -78,6 +78,65 @@ const mapNote = r => ({
   updatedAt: r.updated_at,
 })
 
+// ─── Support Ticket Modal ────────────────────────────────────────────────────
+
+function SupportTicketModal({ isOpen, onClose, onSubmit }) {
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+
+  if (!isOpen) return null
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!subject.trim() || !message.trim()) return
+    await onSubmit(subject.trim(), message.trim())
+    setSubject('')
+    setMessage('')
+    setSubmitted(true)
+    setTimeout(() => { setSubmitted(false); onClose() }, 2000)
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-box" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Need Help?</div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {submitted ? (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--deep)' }}>
+            <div style={{ fontSize: 20, marginBottom: 8 }}>✓</div>
+            <div style={{ fontWeight: 600 }}>Ticket submitted!</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>We'll get back to you soon.</div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ padding: '16px 24px 24px' }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Subject</label>
+            <input
+              type="text"
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              placeholder="What do you need help with?"
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 16 }}
+              autoFocus
+            />
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Message</label>
+            <textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder="Describe the issue or question..."
+              rows={5}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', marginBottom: 16 }}
+            />
+            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>SUBMIT TICKET</button>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -95,6 +154,7 @@ export default function App() {
 
   // ── App view
   const [activeTab, setActiveTab] = useState('overview')
+  const [helpOpen, setHelpOpen] = useState(false)
 
   // ── Multi-wedding
   const [myWeddings, setMyWeddings]             = useState([])
@@ -1013,6 +1073,18 @@ export default function App() {
   // ── Sign out ─────────────────────────────────────────────────────────────────
   const handleSignOut = () => supabase.auth.signOut()
 
+  const handleSubmitTicket = async (subject, message) => {
+    if (!session?.user) return
+    const { error } = await supabase.from('support_tickets').insert({
+      user_id: session.user.id,
+      email: session.user.email,
+      subject,
+      message,
+    })
+    if (error) console.error('Ticket submit failed:', error.message)
+    setHelpOpen(false)
+  }
+
   // ── Permissions ──────────────────────────────────────────────────────────────
   const activeWedObj = myWeddings.find(w => w.id === activeWeddingId)
   const myRole = activeWedObj?.myRole || 'viewer'
@@ -1210,6 +1282,7 @@ export default function App() {
             activeWeddingId={null}
             onSignIn={() => setAuthOpen(true)}
             onSignOut={handleSignOut}
+            onHelp={() => setHelpOpen(true)}
           />
           <main className="main">
             <MyWeddings
@@ -1222,6 +1295,7 @@ export default function App() {
             />
           </main>
           <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
+          <SupportTicketModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} onSubmit={handleSubmitTicket} />
         </div>
       )
     }
@@ -1244,6 +1318,7 @@ export default function App() {
           onBackToDashboard={handleBackToDashboard}
           onSignIn={() => setAuthOpen(true)}
           onSignOut={handleSignOut}
+          onHelp={() => setHelpOpen(true)}
         />
         <NavTabs activeTab={activeTab} onTabChange={setActiveTab} hiddenTabs={hiddenTabs} />
 
@@ -1259,6 +1334,7 @@ export default function App() {
         </main>
 
         <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
+        <SupportTicketModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} onSubmit={handleSubmitTicket} />
       </div>
     )
   }

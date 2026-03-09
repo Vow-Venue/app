@@ -16,7 +16,7 @@ export default function Header({
   session, wedding, isPro,
   myWeddings = [], activeWeddingId = null,
   onSelectWedding, onBackToDashboard,
-  onSignIn, onSignOut,
+  onSignIn, onSignOut, onHelp,
 }) {
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -97,6 +97,16 @@ export default function Header({
         )}
 
         {isPro && <span className="header-pro-badge">PRO</span>}
+
+        {session && onHelp && (
+          <button
+            className="btn btn-ghost"
+            style={{ color: 'rgba(255,255,255,0.75)', borderColor: 'rgba(255,255,255,0.25)', letterSpacing: 2, fontSize: 11, padding: '6px 12px' }}
+            onClick={onHelp}
+          >
+            HELP
+          </button>
+        )}
 
         <button
           className="btn btn-ghost"
