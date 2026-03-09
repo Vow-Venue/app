@@ -1,44 +1,44 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-const ADMIN_PASSWORD = 'VowVenueAdmin2024'
+const ADMIN_PASSWORD = 'flower'
 const SUPABASE_COST = 25 // $25/mo Pro tier estimate
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'
 
-// ── Styles (self-contained dark theme) ──────────────────────────────────────
+// ── Styles (self-contained light theme) ─────────────────────────────────────
 const S = {
-  page: { minHeight: '100vh', background: '#0f0f1a', color: '#e0e0e0', fontFamily: "'Jost', sans-serif", padding: '32px 24px' },
+  page: { minHeight: '100vh', background: '#f8f9fa', color: '#1a1a2e', fontFamily: "'Jost', sans-serif", padding: '32px 24px' },
   container: { maxWidth: 1100, margin: '0 auto' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
-  title: { fontSize: 28, fontWeight: 300, color: '#fff', fontFamily: "'Cormorant Garamond', serif", letterSpacing: 1 },
-  subtitle: { fontSize: 11, color: '#666', letterSpacing: 1.5, textTransform: 'uppercase' },
-  refreshBtn: { background: '#1e1e2f', border: '1px solid #2a2a3d', color: '#8888aa', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
-  sectionTitle: { fontSize: 11, color: '#666', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14, marginTop: 32 },
+  title: { fontSize: 28, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", letterSpacing: 1 },
+  subtitle: { fontSize: 11, color: '#999', letterSpacing: 1.5, textTransform: 'uppercase' },
+  refreshBtn: { background: '#fff', border: '1px solid #ddd', color: '#666', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
+  sectionTitle: { fontSize: 11, color: '#999', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14, marginTop: 32 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 },
-  card: { background: '#1a1a2e', borderRadius: 10, padding: '18px 20px', border: '1px solid #2a2a3d' },
-  cardLabel: { fontSize: 10, color: '#666', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 },
-  cardValue: { fontSize: 26, fontWeight: 300, color: '#fff', fontFamily: "'Cormorant Garamond', serif" },
-  cardSub: { fontSize: 11, color: '#555', marginTop: 4 },
+  card: { background: '#fff', borderRadius: 10, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', border: '1px solid #eee' },
+  cardLabel: { fontSize: 10, color: '#999', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 },
+  cardValue: { fontSize: 26, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif" },
+  cardSub: { fontSize: 11, color: '#aaa', marginTop: 4 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
-  th: { textAlign: 'left', padding: '10px 14px', borderBottom: '1px solid #2a2a3d', color: '#666', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', cursor: 'pointer', userSelect: 'none' },
-  td: { padding: '10px 14px', borderBottom: '1px solid #1e1e2f', color: '#ccc' },
-  badge: (plan) => ({ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, background: plan === 'pro' ? 'rgba(184,151,90,0.15)' : 'rgba(100,100,120,0.2)', color: plan === 'pro' ? '#b8975a' : '#888' }),
+  th: { textAlign: 'left', padding: '10px 14px', borderBottom: '1px solid #eee', color: '#999', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', cursor: 'pointer', userSelect: 'none' },
+  td: { padding: '10px 14px', borderBottom: '1px solid #f0f0f0', color: '#444' },
+  badge: (plan) => ({ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, background: plan === 'pro' ? 'rgba(184,151,90,0.12)' : 'rgba(0,0,0,0.05)', color: plan === 'pro' ? '#b8975a' : '#999' }),
   barWrap: { display: 'flex', alignItems: 'flex-end', gap: 3, height: 100, padding: '0 4px' },
-  bar: (h, max) => ({ flex: 1, background: 'linear-gradient(to top, #b8975a33, #b8975a)', borderRadius: '3px 3px 0 0', height: `${max > 0 ? (h / max) * 100 : 0}%`, minHeight: h > 0 ? 4 : 0, transition: 'height 0.3s' }),
-  barLabel: { display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#555', marginTop: 6, padding: '0 4px' },
-  placeholder: { background: '#1a1a2e', borderRadius: 10, padding: 24, border: '1px dashed #2a2a3d', textAlign: 'center', color: '#444', fontSize: 13, fontStyle: 'italic' },
+  bar: (h, max) => ({ flex: 1, background: 'linear-gradient(to top, #b8975a88, #b8975a)', borderRadius: '3px 3px 0 0', height: `${max > 0 ? (h / max) * 100 : 0}%`, minHeight: h > 0 ? 4 : 0, transition: 'height 0.3s' }),
+  barLabel: { display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#aaa', marginTop: 6, padding: '0 4px' },
+  placeholder: { background: '#fff', borderRadius: 10, padding: 24, border: '1px dashed #ddd', textAlign: 'center', color: '#bbb', fontSize: 13, fontStyle: 'italic' },
   // Password gate
-  gate: { minHeight: '100vh', background: '#0f0f1a', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  gateBox: { background: '#1a1a2e', borderRadius: 12, padding: '40px 36px', border: '1px solid #2a2a3d', textAlign: 'center', maxWidth: 340, width: '100%' },
-  gateTitle: { fontSize: 20, color: '#fff', fontFamily: "'Cormorant Garamond', serif", marginBottom: 6 },
-  gateSubtitle: { fontSize: 11, color: '#555', marginBottom: 24, letterSpacing: 1 },
-  gateInput: { width: '100%', padding: '10px 14px', background: '#0f0f1a', border: '1px solid #2a2a3d', borderRadius: 6, color: '#fff', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
-  gateBtn: { width: '100%', marginTop: 14, padding: '10px 0', background: '#b8975a', border: 'none', borderRadius: 6, color: '#1a1a2e', fontSize: 12, fontWeight: 600, letterSpacing: 1.5, cursor: 'pointer', fontFamily: 'inherit' },
+  gate: { minHeight: '100vh', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  gateBox: { background: '#fff', borderRadius: 12, padding: '40px 36px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: 340, width: '100%' },
+  gateTitle: { fontSize: 20, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", marginBottom: 6 },
+  gateSubtitle: { fontSize: 11, color: '#999', marginBottom: 24, letterSpacing: 1 },
+  gateInput: { width: '100%', padding: '10px 14px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 6, color: '#333', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
+  gateBtn: { width: '100%', marginTop: 14, padding: '10px 0', background: '#b8975a', border: 'none', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, letterSpacing: 1.5, cursor: 'pointer', fontFamily: 'inherit' },
   gateError: { color: '#c62828', fontSize: 12, marginTop: 10 },
-  loading: { textAlign: 'center', color: '#555', padding: 60, fontSize: 14 },
+  loading: { textAlign: 'center', color: '#999', padding: 60, fontSize: 14 },
 }
 
 export default function AdminDashboard() {
@@ -167,21 +167,21 @@ export default function AdminDashboard() {
           </div>
           <div style={S.card}>
             <div style={S.cardLabel}>MRR</div>
-            <div style={{ ...S.cardValue, color: '#4caf50' }}>{fmt(stats.mrr)}</div>
+            <div style={{ ...S.cardValue, color: '#2e7d32' }}>{fmt(stats.mrr)}</div>
             <div style={S.cardSub}>{stats.pro_seats} seats × $39</div>
           </div>
           <div style={S.card}>
             <div style={S.cardLabel}>ARR</div>
-            <div style={{ ...S.cardValue, color: '#4caf50' }}>{fmt(stats.arr)}</div>
+            <div style={{ ...S.cardValue, color: '#2e7d32' }}>{fmt(stats.arr)}</div>
           </div>
           <div style={S.card}>
             <div style={S.cardLabel}>Est. Monthly Costs</div>
-            <div style={S.cardValue}>{fmt(SUPABASE_COST)}</div>
+            <div style={{ ...S.cardValue, color: '#c62828' }}>{fmt(SUPABASE_COST)}</div>
             <div style={S.cardSub}>Supabase Pro</div>
           </div>
           <div style={S.card}>
             <div style={S.cardLabel}>Est. Profit</div>
-            <div style={{ ...S.cardValue, color: profit >= 0 ? '#4caf50' : '#c62828' }}>{fmt(profit)}</div>
+            <div style={{ ...S.cardValue, color: profit >= 0 ? '#2e7d32' : '#c62828' }}>{fmt(profit)}</div>
             <div style={S.cardSub}>MRR − costs</div>
           </div>
           <div style={S.card}>
@@ -253,7 +253,7 @@ export default function AdminDashboard() {
           </div>
           <div style={S.card}>
             <div style={S.cardLabel}>Storage</div>
-            <div style={{ ...S.cardValue, fontSize: 16, color: '#555' }}>—</div>
+            <div style={{ ...S.cardValue, fontSize: 16, color: '#bbb' }}>—</div>
             <div style={S.cardSub}>coming soon</div>
           </div>
         </div>
@@ -292,7 +292,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', color: '#333', fontSize: 11, marginTop: 40, paddingBottom: 20 }}>
+        <div style={{ textAlign: 'center', color: '#bbb', fontSize: 11, marginTop: 40, paddingBottom: 20 }}>
           Vow & Venue Admin — Internal Use Only
         </div>
       </div>
