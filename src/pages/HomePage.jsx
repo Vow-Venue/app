@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
+import { Users, CreditCard, LayoutGrid, MessageSquare, UserPlus, CheckSquare } from 'lucide-react'
 
 const FAQ_ITEMS = [
   { q: 'Is it really free?', a: 'Yes. The free plan includes all features with up to 2 weddings. No credit card required, no trial period, no hidden fees.' },
@@ -78,12 +79,12 @@ export default function HomePage() {
         <h2 className="marketing-section-title">Everything you need, nothing you don&apos;t</h2>
         <div className="marketing-features-grid">
           {[
-            { icon: '👥', title: 'Guest Management', desc: 'Track RSVPs, dietary needs, roles, and seating assignments. Import guests from CSV in seconds.' },
-            { icon: '💳', title: 'Vendor Payments', desc: 'Manage vendor contacts, track payment status, and keep invoices organized in one place.' },
-            { icon: '🪑', title: 'Seating Chart', desc: 'Drag-and-drop table placement with round and long table support. Assign guests visually.' },
-            { icon: '💬', title: 'Team Messaging', desc: 'Slack-style channels and direct messages. Keep your entire team aligned without leaving the app.' },
-            { icon: '🤝', title: 'Collaborator Invites', desc: 'Role-based access for planners, family, and vendors. One-click magic link invites.' },
-            { icon: '✅', title: 'Task Management', desc: 'Assign tasks with due dates and priorities. Track progress across your entire team.' },
+            { icon: <Users size={28} strokeWidth={1.5} />, title: 'Guest Management', desc: 'Track RSVPs, dietary needs, roles, and seating assignments. Import guests from CSV in seconds.' },
+            { icon: <CreditCard size={28} strokeWidth={1.5} />, title: 'Vendor Payments', desc: 'Manage vendor contacts, track payment status, and keep invoices organized in one place.' },
+            { icon: <LayoutGrid size={28} strokeWidth={1.5} />, title: 'Seating Chart', desc: 'Drag-and-drop table placement with round and long table support. Assign guests visually.' },
+            { icon: <MessageSquare size={28} strokeWidth={1.5} />, title: 'Team Messaging', desc: 'Slack-style channels and direct messages. Keep your entire team aligned without leaving the app.' },
+            { icon: <UserPlus size={28} strokeWidth={1.5} />, title: 'Collaborator Invites', desc: 'Role-based access for planners, family, and vendors. One-click magic link invites.' },
+            { icon: <CheckSquare size={28} strokeWidth={1.5} />, title: 'Task Management', desc: 'Assign tasks with due dates and priorities. Track progress across your entire team.' },
           ].map((f) => (
             <div key={f.title} className="marketing-feature-card">
               <div className="marketing-feature-icon">{f.icon}</div>

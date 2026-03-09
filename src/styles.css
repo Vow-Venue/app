@@ -2344,7 +2344,7 @@ label {
 }
 
 .marketing-feature-icon {
-  font-size: 28px;
+  color: var(--deep);
   margin-bottom: 12px;
 }
 
