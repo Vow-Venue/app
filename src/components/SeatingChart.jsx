@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const GRID_SIZE    = 20
@@ -29,7 +29,7 @@ const ELEMENT_STYLES = {
 
 const RSVP_COLORS = { yes: '#4caf50', pending: '#ff9800', no: '#ef5350' }
 
-// ── Seat position computation ────────────────────────────────────────────────
+// ── Seat position computation (stable — only depends on shape + capacity) ───
 function getSeatPositions(shape, capacity) {
   const s = TABLE_SIZES[shape] || TABLE_SIZES.round
   if (shape === 'sweetheart') {
@@ -64,6 +64,143 @@ function getSeatPositions(shape, capacity) {
 
 const snap = v => Math.round(v / GRID_SIZE) * GRID_SIZE
 
+// ── Memoized Seat Component ─────────────────────────────────────────────────
+const SeatCircle = memo(function SeatCircle({ sp, seatNum, guest, padX, padY, onSelect }) {
+  const rsvpColor = guest ? (RSVP_COLORS[guest.rsvp] || RSVP_COLORS.pending) : null
+  return (
+    <div
+      className="fp-seat"
+      style={{
+        position: 'absolute',
+        left: padX + sp.x - SEAT_R,
+        top: padY + sp.y - SEAT_R,
+        width: SEAT_R * 2, height: SEAT_R * 2,
+        background: guest ? rsvpColor : 'rgba(255,255,255,0.95)',
+        border: `2px solid ${sp.isHead ? 'var(--deep)' : 'var(--gold)'}`,
+        color: guest ? '#fff' : (sp.isHead ? 'var(--deep)' : 'var(--gold)'),
+        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+      }}
+      title={guest ? `${guest.name} (${guest.rsvp})` : `Seat ${seatNum + 1}${sp.isHead ? ' (Head)' : ''}`}
+      onClick={onSelect}
+    >
+      {guest ? guest.name.charAt(0).toUpperCase() : (sp.isHead ? '★' : '+')}
+    </div>
+  )
+})
+
+// ── Memoized Table Shape ────────────────────────────────────────────────────
+const TableShape = memo(function TableShape({ shape, s, isOver, isSel, cursorStyle, padX, padY }) {
+  const bg = isOver ? 'rgba(184,151,90,0.3)' : isSel ? 'rgba(184,151,90,0.25)' : 'rgba(184,151,90,0.14)'
+  const borderStyle = `2px ${isSel ? 'solid' : 'dashed'} var(--gold)`
+  const base = {
+    position: 'absolute', left: padX, top: padY,
+    width: s.w, height: s.h,
+    background: bg, border: borderStyle,
+    transition: 'background 0.15s',
+    cursor: cursorStyle,
+  }
+  if (shape === 'round') return <div style={{ ...base, borderRadius: '50%' }} />
+  if (shape === 'sweetheart') return <div style={{ ...base, borderRadius: '50px 50px 0 0' }} />
+  return <div style={{ ...base, borderRadius: 8 }} />
+})
+
+// ── Memoized Table Component ────────────────────────────────────────────────
+const TableNode = memo(function TableNode({
+  table, seatedHere, isDragging, isOver, isSel,
+  activeTool, onMouseDown, onDragOver, onDragLeave, onDrop, onSelectTable,
+}) {
+  const shape = table.shape ?? 'round'
+  const s = TABLE_SIZES[shape] || TABLE_SIZES.round
+  const capacity = shape === 'sweetheart' ? 2 : (table.capacity ?? 8)
+  const seats = useMemo(() => getSeatPositions(shape, capacity), [shape, capacity])
+  const isFull = seatedHere.length >= capacity
+  const padX = 30, padY = 30
+  const cursorStyle = activeTool === 'select' ? 'grab' : activeTool === 'delete' ? 'pointer' : 'default'
+
+  return (
+    <div
+      style={{
+        position: 'absolute', left: table.x - padX, top: table.y - padY,
+        width: s.w + padX * 2, height: s.h + padY * 2 + 20,
+        zIndex: isDragging ? 100 : 2,
+        filter: isDragging ? 'drop-shadow(0 6px 20px rgba(61,44,44,0.2))' : 'none',
+      }}
+      onMouseDown={onMouseDown}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      <TableShape shape={shape} s={s} isOver={isOver} isSel={isSel} cursorStyle={cursorStyle} padX={padX} padY={padY} />
+
+      {seats.map((sp, seatNum) => (
+        <SeatCircle
+          key={seatNum}
+          sp={sp} seatNum={seatNum}
+          guest={seatedHere.find(g => g.seatNumber === seatNum)}
+          padX={padX} padY={padY}
+          onSelect={onSelectTable}
+        />
+      ))}
+
+      <div className="fp-table-label" style={{
+        position: 'absolute', left: padX, top: padY + s.h + (shape === 'sweetheart' ? 24 : 18),
+        width: s.w, textAlign: 'center',
+      }}>
+        {table.name}
+        <span style={{ fontSize: 9, color: isFull ? 'var(--rose)' : 'var(--muted)', marginLeft: 4, fontStyle: 'normal', fontWeight: 400 }}>
+          {seatedHere.length}/{capacity}{isFull ? ' FULL' : ''}
+        </span>
+      </div>
+
+      <div className="fp-print-guests" style={{ display: 'none' }}>
+        {seatedHere.map(g => g.name).join(', ')}
+      </div>
+    </div>
+  )
+})
+
+// ── Memoized Room Element Component ─────────────────────────────────────────
+const RoomElementNode = memo(function RoomElementNode({ elem, isSelected, activeTool, onMouseDown }) {
+  const es = ELEMENT_STYLES[elem.type] || ELEMENT_STYLES.dance_floor
+  return (
+    <div
+      className={`fp-element${isSelected ? ' selected' : ''}`}
+      style={{
+        position: 'absolute', left: elem.x, top: elem.y,
+        width: elem.width, height: elem.height,
+        background: es.bg, border: es.border, borderRadius: 8,
+        cursor: activeTool === 'select' ? 'grab' : activeTool === 'delete' ? 'pointer' : 'default',
+        zIndex: 0,
+        outline: isSelected ? '2px solid var(--gold)' : 'none',
+        outlineOffset: 2,
+      }}
+      onMouseDown={onMouseDown}
+    >
+      <span style={{ fontSize: 28, opacity: 0.6 }}>{es.icon}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: 'var(--muted)', textTransform: 'uppercase' }}>
+        {elem.label}
+      </span>
+    </div>
+  )
+})
+
+// ── Guest Row (used in panel) ───────────────────────────────────────────────
+const GuestRow = memo(function GuestRow({ guest, draggable, onDragStart, onUnseat, showSeat, canEdit }) {
+  return (
+    <div className="fp-guest-row" draggable={draggable} onDragStart={onDragStart}>
+      <div className="fp-rsvp-dot" style={{ background: RSVP_COLORS[guest.rsvp] || RSVP_COLORS.pending }} />
+      {draggable && <span style={{ fontSize: 9, color: 'var(--muted)' }}>⠿</span>}
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--deep)' }}>
+        {guest.name}
+      </span>
+      {showSeat && <span style={{ fontSize: 9, color: 'var(--muted)' }}>S{(guest.seatNumber ?? 0) + 1}</span>}
+      {canEdit && onUnseat && (
+        <button className="btn-danger" style={{ fontSize: 10, padding: '0 4px' }} onClick={onUnseat}>×</button>
+      )}
+    </div>
+  )
+})
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SeatingChart({
@@ -79,7 +216,7 @@ export default function SeatingChart({
   const [isPanning, setIsPanning] = useState(false)
   const panStart                  = useRef({ x: 0, y: 0, px: 0, py: 0 })
 
-  // Tools: select | add_round | add_rect | add_sweetheart | add_element | delete
+  // Tools
   const [activeTool, setActiveTool]       = useState('select')
   const [elementMenu, setElementMenu]     = useState(false)
   const [elementSubType, setElementSubType] = useState(null)
@@ -94,6 +231,28 @@ export default function SeatingChart({
   const dragRef = useRef(null)
 
   const wrapperRef = useRef(null)
+
+  // ── Pre-compute guest-by-table map (avoids O(n*m) in render) ────────────
+  const guestsByTable = useMemo(() => {
+    const map = {}
+    for (const g of guests) {
+      if (g.tableId) {
+        if (!map[g.tableId]) map[g.tableId] = []
+        map[g.tableId].push(g)
+      }
+    }
+    return map
+  }, [guests])
+
+  const unassigned = useMemo(() => guests.filter(g => !g.tableId), [guests])
+  const totalSeated = useMemo(() => guests.length - unassigned.length, [guests.length, unassigned.length])
+
+  const selTable = selectedTable ? tables.find(t => t.id === selectedTable) : null
+  const selElement = selectedElement ? roomElements.find(e => e.id === selectedElement) : null
+  const seatedAtSel = useMemo(
+    () => selTable ? (guestsByTable[selTable.id] || []).slice().sort((a, b) => (a.seatNumber ?? 99) - (b.seatNumber ?? 99)) : [],
+    [selTable, guestsByTable]
+  )
 
   // ── Zoom via mouse wheel ──────────────────────────────────────────────────
   useEffect(() => {
@@ -118,14 +277,12 @@ export default function SeatingChart({
   }, [zoom, pan])
 
   // ── Canvas mouse handlers ─────────────────────────────────────────────────
-  const handleCanvasMouseDown = (e) => {
+  const handleCanvasMouseDown = useCallback((e) => {
     if (e.target !== e.currentTarget && !e.target.classList.contains('fp-canvas')) return
 
-    // Add tool: place on click
     if (activeTool.startsWith('add_') && activeTool !== 'add_element') {
       const pos = screenToCanvas(e.clientX, e.clientY)
       const shape = activeTool.replace('add_', '')
-      const n = tables.length
       const shapeCount = tables.filter(t => (t.shape ?? 'round') === shape).length
       const name = shape === 'sweetheart' ? 'Sweetheart Table'
         : shape === 'rect' ? (shapeCount === 0 ? 'Head Table' : `Long Table ${shapeCount + 1}`)
@@ -136,7 +293,6 @@ export default function SeatingChart({
       return
     }
 
-    // Add element with subtype
     if (activeTool === 'add_element' && elementSubType) {
       const pos = screenToCanvas(e.clientX, e.clientY)
       const defaults = ELEMENT_DEFAULTS[elementSubType]
@@ -146,12 +302,11 @@ export default function SeatingChart({
       return
     }
 
-    // Select: deselect + start pan
     setSelectedTable(null)
     setSelectedElement(null)
     setIsPanning(true)
     panStart.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }
-  }
+  }, [activeTool, elementSubType, tables, pan, screenToCanvas, onAddTable, onAddRoomElement])
 
   const handleMouseMove = useCallback((e) => {
     if (isPanning) {
@@ -188,7 +343,7 @@ export default function SeatingChart({
   }, [isPanning, tables, roomElements, onUpdateTable, onUpdateRoomElement])
 
   // ── Table interactions ─────────────────────────────────────────────────────
-  const handleTableMouseDown = (e, table) => {
+  const handleTableMouseDown = useCallback((e, table) => {
     e.stopPropagation()
     if (activeTool === 'delete') {
       if (confirm(`Delete "${table.name}"? Guests will be unassigned.`)) onDeleteTable(table.id)
@@ -201,10 +356,10 @@ export default function SeatingChart({
       dragRef.current = { type: 'table', id: table.id, ox: pos.x - table.x, oy: pos.y - table.y }
       setDragging(table.id)
     }
-  }
+  }, [activeTool, canEdit, screenToCanvas, onDeleteTable])
 
   // ── Element interactions ───────────────────────────────────────────────────
-  const handleElementMouseDown = (e, elem) => {
+  const handleElementMouseDown = useCallback((e, elem) => {
     e.stopPropagation()
     if (activeTool === 'delete') {
       onDeleteRoomElement(elem.id)
@@ -217,23 +372,23 @@ export default function SeatingChart({
       dragRef.current = { type: 'element', id: elem.id, ox: pos.x - elem.x, oy: pos.y - elem.y }
       setDragging(elem.id)
     }
-  }
+  }, [activeTool, canEdit, screenToCanvas, onDeleteRoomElement])
 
   // ── Guest drag (sidebar → table) ──────────────────────────────────────────
-  const handleGuestDragStart = (e, guestId) => {
+  const handleGuestDragStart = useCallback((e, guestId) => {
     e.dataTransfer.setData('guestId', guestId)
     e.dataTransfer.effectAllowed = 'move'
-  }
+  }, [])
 
-  const handleTableDrop = (e, table) => {
+  const handleTableDrop = useCallback((e, table) => {
     e.preventDefault()
     e.stopPropagation()
     setDragOverTable(null)
     const guestId = e.dataTransfer.getData('guestId')
     if (!guestId) return
     const capacity = table.capacity ?? 8
-    const seated = guests.filter(g => g.tableId === table.id)
-    if (seated.length >= capacity) return // full
+    const seated = guestsByTable[table.id] || []
+    if (seated.length >= capacity) return
     const used = new Set(seated.map(g => g.seatNumber).filter(n => n != null))
     let seat = null
     for (let i = 0; i < capacity; i++) {
@@ -241,20 +396,33 @@ export default function SeatingChart({
     }
     if (seat === null) return
     onUpdateGuest(guestId, { tableId: table.id, seatNumber: seat })
-  }
+  }, [guestsByTable, onUpdateGuest])
 
-  // ── Derived data ──────────────────────────────────────────────────────────
-  const unassigned = guests.filter(g => !g.tableId)
-  const totalSeated = guests.filter(g => g.tableId).length
-  const selTable = selectedTable ? tables.find(t => t.id === selectedTable) : null
-  const selElement = selectedElement ? roomElements.find(e => e.id === selectedElement) : null
-  const seatedAtSel = selTable ? guests.filter(g => g.tableId === selTable.id).sort((a, b) => (a.seatNumber ?? 99) - (b.seatNumber ?? 99)) : []
+  const handleDragOver = useCallback((e, tableId) => {
+    e.preventDefault()
+    setDragOverTable(tableId)
+  }, [])
+
+  const handleDragLeave = useCallback(() => setDragOverTable(null), [])
 
   // ── Tool cursor ───────────────────────────────────────────────────────────
   const cursorForCanvas = activeTool === 'select'
     ? (isPanning ? 'grabbing' : 'grab')
     : activeTool === 'delete' ? 'not-allowed'
     : 'crosshair'
+
+  // ── Canvas background (memoized to avoid object churn) ────────────────────
+  const canvasBg = useMemo(() => ({
+    cursor: cursorForCanvas,
+    backgroundImage: 'radial-gradient(circle, rgba(184,151,90,0.15) 1px, transparent 1px)',
+    backgroundSize: `${GRID_SIZE * zoom}px ${GRID_SIZE * zoom}px`,
+    backgroundPosition: `${pan.x * zoom}px ${pan.y * zoom}px`,
+  }), [cursorForCanvas, zoom, pan.x, pan.y])
+
+  const canvasTransform = useMemo(
+    () => ({ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)` }),
+    [zoom, pan.x, pan.y]
+  )
 
   return (
     <div className="fp-container">
@@ -321,157 +489,41 @@ export default function SeatingChart({
       <div
         ref={wrapperRef}
         className="fp-canvas-wrapper"
-        style={{
-          cursor: cursorForCanvas,
-          backgroundImage: 'radial-gradient(circle, rgba(184,151,90,0.15) 1px, transparent 1px)',
-          backgroundSize: `${GRID_SIZE * zoom}px ${GRID_SIZE * zoom}px`,
-          backgroundPosition: `${pan.x * zoom}px ${pan.y * zoom}px`,
-        }}
+        style={canvasBg}
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <div
-          className="fp-canvas"
-          style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)` }}
-        >
+        <div className="fp-canvas" style={canvasTransform}>
           {/* Room elements (behind tables) */}
-          {roomElements.map(elem => {
-            const es = ELEMENT_STYLES[elem.type] || ELEMENT_STYLES.dance_floor
-            return (
-              <div
-                key={elem.id}
-                className={`fp-element${selectedElement === elem.id ? ' selected' : ''}`}
-                style={{
-                  position: 'absolute', left: elem.x, top: elem.y,
-                  width: elem.width, height: elem.height,
-                  background: es.bg, border: es.border, borderRadius: 8,
-                  cursor: activeTool === 'select' ? 'grab' : activeTool === 'delete' ? 'pointer' : 'default',
-                  zIndex: 0,
-                  outline: selectedElement === elem.id ? '2px solid var(--gold)' : 'none',
-                  outlineOffset: 2,
-                }}
-                onMouseDown={e => handleElementMouseDown(e, elem)}
-              >
-                <span style={{ fontSize: 28, opacity: 0.6 }}>{es.icon}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: 'var(--muted)', textTransform: 'uppercase' }}>
-                  {elem.label}
-                </span>
-              </div>
-            )
-          })}
+          {roomElements.map(elem => (
+            <RoomElementNode
+              key={elem.id}
+              elem={elem}
+              isSelected={selectedElement === elem.id}
+              activeTool={activeTool}
+              onMouseDown={e => handleElementMouseDown(e, elem)}
+            />
+          ))}
 
           {/* Tables */}
-          {tables.map(table => {
-            const shape = table.shape ?? 'round'
-            const s = TABLE_SIZES[shape] || TABLE_SIZES.round
-            const capacity = shape === 'sweetheart' ? 2 : (table.capacity ?? 8)
-            const seatedHere = guests.filter(g => g.tableId === table.id)
-            const seats = getSeatPositions(shape, capacity)
-            const isOver = dragOverTable === table.id
-            const isSel = selectedTable === table.id
-            const isFull = seatedHere.length >= capacity
-
-            // Extra size for seats overflow
-            const padX = 30, padY = 30
-
-            return (
-              <div
-                key={table.id}
-                style={{
-                  position: 'absolute', left: table.x - padX, top: table.y - padY,
-                  width: s.w + padX * 2, height: s.h + padY * 2 + 20,
-                  zIndex: dragging === table.id ? 100 : 2,
-                  filter: dragging === table.id ? 'drop-shadow(0 6px 20px rgba(61,44,44,0.2))' : 'none',
-                }}
-                onMouseDown={e => handleTableMouseDown(e, table)}
-                onDragOver={e => { e.preventDefault(); setDragOverTable(table.id) }}
-                onDragLeave={() => setDragOverTable(null)}
-                onDrop={e => handleTableDrop(e, table)}
-              >
-                {/* Table shape */}
-                {shape === 'round' && (
-                  <div style={{
-                    position: 'absolute', left: padX, top: padY,
-                    width: s.w, height: s.h, borderRadius: '50%',
-                    background: isOver ? 'rgba(184,151,90,0.3)' : isSel ? 'rgba(184,151,90,0.25)' : 'rgba(184,151,90,0.14)',
-                    border: `2px ${isSel ? 'solid' : 'dashed'} var(--gold)`,
-                    transition: 'background 0.15s',
-                    cursor: activeTool === 'select' ? 'grab' : activeTool === 'delete' ? 'pointer' : 'default',
-                  }} />
-                )}
-                {shape === 'rect' && (
-                  <div style={{
-                    position: 'absolute', left: padX, top: padY,
-                    width: s.w, height: s.h, borderRadius: 8,
-                    background: isOver ? 'rgba(184,151,90,0.3)' : isSel ? 'rgba(184,151,90,0.25)' : 'rgba(184,151,90,0.14)',
-                    border: `2px ${isSel ? 'solid' : 'dashed'} var(--gold)`,
-                    transition: 'background 0.15s',
-                    cursor: activeTool === 'select' ? 'grab' : activeTool === 'delete' ? 'pointer' : 'default',
-                  }} />
-                )}
-                {shape === 'sweetheart' && (
-                  <div style={{
-                    position: 'absolute', left: padX, top: padY,
-                    width: s.w, height: s.h,
-                    borderRadius: '50px 50px 0 0',
-                    background: isOver ? 'rgba(184,151,90,0.3)' : isSel ? 'rgba(184,151,90,0.25)' : 'rgba(184,151,90,0.14)',
-                    border: `2px ${isSel ? 'solid' : 'dashed'} var(--gold)`,
-                    borderBottom: `2px ${isSel ? 'solid' : 'dashed'} var(--gold)`,
-                    transition: 'background 0.15s',
-                    cursor: activeTool === 'select' ? 'grab' : activeTool === 'delete' ? 'pointer' : 'default',
-                  }} />
-                )}
-
-                {/* Seats */}
-                {seats.map((sp, seatNum) => {
-                  const guest = seatedHere.find(g => g.seatNumber === seatNum)
-                  const rsvpColor = guest ? (RSVP_COLORS[guest.rsvp] || RSVP_COLORS.pending) : null
-                  return (
-                    <div
-                      key={seatNum}
-                      className="fp-seat"
-                      style={{
-                        position: 'absolute',
-                        left: padX + sp.x - SEAT_R,
-                        top: padY + sp.y - SEAT_R,
-                        width: SEAT_R * 2, height: SEAT_R * 2,
-                        background: guest ? rsvpColor : 'rgba(255,255,255,0.95)',
-                        border: `2px solid ${sp.isHead ? 'var(--deep)' : 'var(--gold)'}`,
-                        color: guest ? '#fff' : (sp.isHead ? 'var(--deep)' : 'var(--gold)'),
-                        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-                      }}
-                      title={guest ? `${guest.name} (${guest.rsvp})` : `Seat ${seatNum + 1}${sp.isHead ? ' (Head)' : ''}`}
-                      onClick={e => {
-                        e.stopPropagation()
-                        setSelectedTable(table.id)
-                        setSelectedElement(null)
-                      }}
-                    >
-                      {guest ? guest.name.charAt(0).toUpperCase() : (sp.isHead ? '★' : '+')}
-                    </div>
-                  )
-                })}
-
-                {/* Label */}
-                <div className="fp-table-label" style={{
-                  position: 'absolute', left: padX, top: padY + s.h + (shape === 'sweetheart' ? 24 : 18),
-                  width: s.w, textAlign: 'center',
-                }}>
-                  {table.name}
-                  <span style={{ fontSize: 9, color: isFull ? 'var(--rose)' : 'var(--muted)', marginLeft: 4, fontStyle: 'normal', fontWeight: 400 }}>
-                    {seatedHere.length}/{capacity}{isFull ? ' FULL' : ''}
-                  </span>
-                </div>
-
-                {/* Print-only guest names */}
-                <div className="fp-print-guests" style={{ display: 'none' }}>
-                  {seatedHere.map(g => g.name).join(', ')}
-                </div>
-              </div>
-            )
-          })}
+          {tables.map(table => (
+            <TableNode
+              key={table.id}
+              table={table}
+              seatedHere={guestsByTable[table.id] || []}
+              isDragging={dragging === table.id}
+              isOver={dragOverTable === table.id}
+              isSel={selectedTable === table.id}
+              activeTool={activeTool}
+              onMouseDown={e => handleTableMouseDown(e, table)}
+              onDragOver={e => handleDragOver(e, table.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={e => handleTableDrop(e, table)}
+              onSelectTable={e => { e.stopPropagation(); setSelectedTable(table.id); setSelectedElement(null) }}
+            />
+          ))}
 
           {/* Empty state */}
           {tables.length === 0 && roomElements.length === 0 && (
@@ -494,7 +546,6 @@ export default function SeatingChart({
 
       {/* ── Right Panel ────────────────────────────────────────────────────── */}
       <div className="fp-panel no-print">
-        {/* Table properties */}
         {selTable ? (
           <>
             <div className="fp-panel-section">
@@ -533,7 +584,6 @@ export default function SeatingChart({
               </div>
             </div>
 
-            {/* Guests at this table */}
             <div className="fp-panel-section" style={{ flex: 1, overflowY: 'auto' }}>
               <div className="fp-panel-label">GUESTS AT TABLE</div>
               {seatedAtSel.length === 0 ? (
@@ -541,32 +591,16 @@ export default function SeatingChart({
                   No guests assigned yet. Drag guests here.
                 </div>
               ) : seatedAtSel.map(g => (
-                <div key={g.id} className="fp-guest-row">
-                  <div className="fp-rsvp-dot" style={{ background: RSVP_COLORS[g.rsvp] || RSVP_COLORS.pending }} />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--deep)' }}>
-                    {g.name}
-                  </span>
-                  <span style={{ fontSize: 9, color: 'var(--muted)' }}>S{(g.seatNumber ?? 0) + 1}</span>
-                  {canEdit && (
-                    <button className="btn-danger" style={{ fontSize: 10, padding: '0 4px' }}
-                      onClick={() => onUpdateGuest(g.id, { tableId: null, seatNumber: null })}>×</button>
-                  )}
-                </div>
+                <GuestRow key={g.id} guest={g} showSeat canEdit={canEdit}
+                  onUnseat={() => onUpdateGuest(g.id, { tableId: null, seatNumber: null })} />
               ))}
 
-              {/* Unassigned guests below */}
               <div className="fp-panel-label" style={{ marginTop: 16 }}>UNASSIGNED · {unassigned.length}</div>
               {unassigned.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', padding: '8px 0' }}>All guests seated!</div>
               ) : unassigned.map(g => (
-                <div key={g.id} className="fp-guest-row"
-                  draggable onDragStart={e => handleGuestDragStart(e, g.id)}>
-                  <div className="fp-rsvp-dot" style={{ background: RSVP_COLORS[g.rsvp] || RSVP_COLORS.pending }} />
-                  <span style={{ fontSize: 9, color: 'var(--muted)' }}>⠿</span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--deep)' }}>
-                    {g.name}
-                  </span>
-                </div>
+                <GuestRow key={g.id} guest={g} draggable
+                  onDragStart={e => handleGuestDragStart(e, g.id)} />
               ))}
             </div>
 
@@ -580,7 +614,6 @@ export default function SeatingChart({
             )}
           </>
         ) : selElement ? (
-          /* Element properties */
           <>
             <div className="fp-panel-section">
               <div className="fp-panel-label">ELEMENT PROPERTIES</div>
@@ -618,7 +651,6 @@ export default function SeatingChart({
             )}
           </>
         ) : (
-          /* Default: stats + unassigned */
           <>
             <div className="fp-panel-section">
               <div className="fp-panel-label">FLOOR PLAN</div>
@@ -636,14 +668,8 @@ export default function SeatingChart({
               {unassigned.length === 0 ? (
                 <div style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', padding: '8px 0' }}>All guests seated!</div>
               ) : unassigned.map(g => (
-                <div key={g.id} className="fp-guest-row"
-                  draggable onDragStart={e => handleGuestDragStart(e, g.id)}>
-                  <div className="fp-rsvp-dot" style={{ background: RSVP_COLORS[g.rsvp] || RSVP_COLORS.pending }} />
-                  <span style={{ fontSize: 9, color: 'var(--muted)' }}>⠿</span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--deep)' }}>
-                    {g.name}
-                  </span>
-                </div>
+                <GuestRow key={g.id} guest={g} draggable
+                  onDragStart={e => handleGuestDragStart(e, g.id)} />
               ))}
             </div>
             <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', fontSize: 10, color: 'var(--muted)', textAlign: 'center', fontStyle: 'italic' }}>
