@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import Header from './components/Header'
 import NavTabs from './components/NavTabs'
@@ -10,77 +11,16 @@ import Messaging from './components/Messaging'
 import Billing from './components/Billing'
 import Collaborators from './components/Collaborators'
 import DayOfContacts from './components/DayOfContacts'
-import LandingPage from './components/LandingPage'
 import AuthModal from './components/AuthModal'
 import WeddingSetup from './components/WeddingSetup'
 import RSVPPage from './components/RSVPPage'
 import MyWeddings from './components/MyWeddings'
+import MarketingLayout from './layouts/MarketingLayout'
+import HomePage from './pages/HomePage'
+import FeaturesPage from './pages/FeaturesPage'
+import PricingPage from './pages/PricingPage'
 
 const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
-
-// ─── Seed Data (used in guest mode only) ─────────────────────────────────────
-
-const SEED_GUESTS = [
-  { id: 'g1', name: 'Emma & James Wilson',   email: 'emma@example.com',    rsvp: 'yes',     dietary: '',            tableId: 't1', guestRole: "Bride's Friend" },
-  { id: 'g2', name: 'Sarah Mitchell',        email: 'sarah@example.com',   rsvp: 'pending', dietary: 'Vegetarian',  tableId: 't2', guestRole: 'Bridesmaid' },
-  { id: 'g3', name: 'Robert Chen',           email: 'rchen@example.com',   rsvp: 'yes',     dietary: '',            tableId: 't1', guestRole: 'Groomsman' },
-  { id: 'g4', name: 'Linda Beaumont',        email: 'linda@example.com',   rsvp: 'no',      dietary: '',            tableId: null, guestRole: "Bride's Aunt" },
-  { id: 'g5', name: 'Marcus & Priya Nair',   email: 'marcus@example.com',  rsvp: 'yes',     dietary: 'Vegan',       tableId: 't2', guestRole: 'Family Friend' },
-  { id: 'g6', name: 'Charlotte Webb',        email: 'cwebb@example.com',   rsvp: 'pending', dietary: 'Gluten-free', tableId: 't3', guestRole: 'Maid of Honor' },
-  { id: 'g7', name: 'Thomas Harrington',     email: 'tharr@example.com',   rsvp: 'yes',     dietary: '',            tableId: 't3', guestRole: "Groom's Father" },
-]
-
-const SEED_TABLES = [
-  { id: 't1', name: 'Rose Table' },
-  { id: 't2', name: 'Peony Table' },
-  { id: 't3', name: 'Dahlia Table' },
-]
-
-const SEED_TASKS = [
-  { id: 'tk1', title: 'Book the ceremony venue',       dueDate: '2026-03-01', assignedTo: 'Olivia',  priority: 'high',   completed: true  },
-  { id: 'tk2', title: 'Send save-the-date cards',      dueDate: '2026-03-15', assignedTo: 'Ethan',   priority: 'high',   completed: true  },
-  { id: 'tk3', title: 'Confirm florist & flowers',     dueDate: '2026-04-01', assignedTo: 'Olivia',  priority: 'high',   completed: true  },
-  { id: 'tk4', title: 'Finalize catering menu',        dueDate: '2026-04-15', assignedTo: 'Planner', priority: 'medium', completed: false },
-  { id: 'tk5', title: 'Order wedding cake tasting',    dueDate: '2026-04-20', assignedTo: 'Olivia',  priority: 'medium', completed: false },
-  { id: 'tk6', title: 'Confirm photographer timeline', dueDate: '2026-05-01', assignedTo: 'Planner', priority: 'high',   completed: false },
-  { id: 'tk7', title: 'Arrange rehearsal dinner',      dueDate: '2026-05-10', assignedTo: 'Ethan',   priority: 'medium', completed: false },
-  { id: 'tk8', title: 'Pick bridesmaid dresses',       dueDate: '2026-05-20', assignedTo: 'Olivia',  priority: 'low',    completed: false },
-  { id: 'tk9', title: 'Confirm DJ setlist',            dueDate: '2026-06-01', assignedTo: 'Ethan',   priority: 'low',    completed: false },
-]
-
-const SEED_VENDORS = [
-  { id: 'v1', name: 'Lumière Photography',  role: 'photographer', phone: '555-0101', email: 'hello@lumiere.co',    notes: '8-hour package, 2 shooters. Deposit paid.', amount: 3500, dueDate: '2026-02-15', paid: true },
-  { id: 'v2', name: 'Blossom Florals',      role: 'florist',      phone: '555-0202', email: 'orders@blossom.com',  notes: 'White roses and peonies. Setup at 3pm.',     amount: 1200, dueDate: '2026-04-15', paid: false },
-  { id: 'v3', name: 'Harvest Table Co.',    role: 'caterer',      phone: '555-0303', email: 'harvest@example.com', notes: 'Tasting booked Apr 15. 3-course menu.',      amount: 2800, dueDate: '2026-03-01', paid: true },
-  { id: 'v4', name: 'DJ Marcus B.',         role: 'dj',           phone: '555-0404', email: 'marcusb@djmix.com',   notes: 'Ceremony + reception. 6-hour set.',          amount: 800,  dueDate: '2026-05-15', paid: false },
-  { id: 'v5', name: 'Rosewood Manor',       role: 'venue',        phone: '555-0505', email: 'events@rosewood.com', notes: 'Capacity 200. Indoor & garden. Deposit paid.', amount: 5000, dueDate: '2026-05-01', paid: false },
-]
-
-const SEED_CHANNELS = [
-  { id: 'ch1', name: 'general', type: 'channel' },
-]
-
-const SEED_CHANNEL_MEMBERS = [
-  { channelId: 'ch1', userId: 'c1' },
-  { channelId: 'ch1', userId: 'c2' },
-]
-
-const SEED_MESSAGES = [
-  { id: 'm1', channelId: 'ch1', senderId: 'system', senderName: 'System', text: 'Welcome to your wedding workspace! This is the #general channel where your whole team can communicate.', timestamp: '2026-02-20T09:00:00' },
-]
-
-const SEED_INVOICES = [
-  { id: 'inv1', invoiceNumber: 'INV-001', vendorName: 'Blossom Florals',      amount: 1200, dueDate: '2026-04-15', status: 'unpaid',  notes: 'White roses & peonies arrangement deposit', fileName: null, fileUrl: null },
-  { id: 'inv2', invoiceNumber: 'INV-002', vendorName: 'Harvest Table Co.',    amount: 2800, dueDate: '2026-03-01', status: 'paid',    notes: 'Catering deposit — paid in full',            fileName: null, fileUrl: null },
-  { id: 'inv3', invoiceNumber: 'INV-003', vendorName: 'Lumière Photography',  amount: 3500, dueDate: '2026-02-15', status: 'overdue', notes: 'Photography booking fee — OVERDUE',          fileName: null, fileUrl: null },
-  { id: 'inv4', invoiceNumber: 'INV-004', vendorName: 'Rosewood Manor',       amount: 5000, dueDate: '2026-05-01', status: 'unpaid',  notes: 'Venue deposit — 50% of total required',     fileName: null, fileUrl: null },
-  { id: 'inv5', invoiceNumber: 'INV-005', vendorName: 'DJ Marcus B.',         amount: 800,  dueDate: '2026-05-15', status: 'unpaid',  notes: 'Entertainment deposit',                     fileName: null, fileUrl: null },
-]
-
-const SEED_COLLABORATORS = [
-  { id: 'c1', name: 'Olivia Hart', role: 'Bride', access: 'full' },
-  { id: 'c2', name: 'Ethan Hart',  role: 'Groom', access: 'full' },
-]
 
 // ─── DB → App mapping helpers ─────────────────────────────────────────────────
 
@@ -128,27 +68,19 @@ const mapInvoice = r => ({
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
   // ── Auth
   const [session, setSession]         = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [authOpen, setAuthOpen]       = useState(false)
 
-  // ── URL params (read once on load)
-  const [pendingInviteToken] = useState(() => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('invite') || null
-  })
-  const [rsvpSlug] = useState(() => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('rsvp') || null
-  })
-  const [stripeSuccess] = useState(() => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('stripe_success') === '1'
-  })
+  // ── URL params
+  const pendingInviteToken = searchParams.get('invite') || null
+  const stripeSuccess = searchParams.get('stripe_success') === '1'
 
   // ── App view
-  const [showApp, setShowApp]     = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
 
   // ── Multi-wedding
@@ -161,48 +93,47 @@ export default function App() {
   const [weddingId, setWeddingId] = useState(null)
   const [wedding, setWedding]     = useState(null)
 
-  // ── Data (seeded for guest mode)
-  const [guests, setGuests]             = useState(SEED_GUESTS)
-  const [tables, setTables]             = useState(SEED_TABLES)
-  const [tasks, setTasks]               = useState(SEED_TASKS)
-  const [vendors, setVendors]           = useState(SEED_VENDORS)
-  const [channels, setChannels]             = useState(SEED_CHANNELS)
-  const [channelMembers, setChannelMembers] = useState(SEED_CHANNEL_MEMBERS)
-  const [messages, setMessages]             = useState(SEED_MESSAGES)
-  const [invoices, setInvoices]             = useState(SEED_INVOICES)
-  const [collaborators, setCollaborators]   = useState(SEED_COLLABORATORS)
+  // ── Data
+  const [guests, setGuests]             = useState([])
+  const [tables, setTables]             = useState([])
+  const [tasks, setTasks]               = useState([])
+  const [vendors, setVendors]           = useState([])
+  const [channels, setChannels]             = useState([])
+  const [channelMembers, setChannelMembers] = useState([])
+  const [messages, setMessages]             = useState([])
+  const [invoices, setInvoices]             = useState([])
+  const [collaborators, setCollaborators]   = useState([])
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setAuthLoading(false)
-      if (session) setShowApp(true)
+      if (session) navigate('/app', { replace: true })
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) {
-        setShowApp(true)
         setAuthOpen(false)
+        navigate('/app', { replace: true })
       } else {
-        // Sign out — reset to seed data and return to landing page
+        // Sign out — reset and return to home
         setMyWeddings([])
         setActiveWeddingId(null)
         setDashboardLoading(false)
-        setGuests(SEED_GUESTS)
-        setTables(SEED_TABLES)
-        setTasks(SEED_TASKS)
-        setVendors(SEED_VENDORS)
-        setChannels(SEED_CHANNELS)
-        setChannelMembers(SEED_CHANNEL_MEMBERS)
-        setMessages(SEED_MESSAGES)
-        setInvoices(SEED_INVOICES)
-        setCollaborators(SEED_COLLABORATORS)
-        setCurrentUserId('c1')
+        setGuests([])
+        setTables([])
+        setTasks([])
+        setVendors([])
+        setChannels([])
+        setChannelMembers([])
+        setMessages([])
+        setInvoices([])
+        setCollaborators([])
         setWeddingId(null)
         setWedding(null)
-        setShowApp(false)
+        navigate('/', { replace: true })
       }
     })
 
@@ -354,7 +285,6 @@ export default function App() {
       setVendors(vRes.data ?? [])
       setInvoices((invRes.data ?? []).map(mapInvoice))
       setCollaborators(collRes.data ?? [])
-      setCurrentUserId(userId || session?.user?.id || 'c1')
 
       const fetchedChannels = chRes.data ?? []
       setChannels(fetchedChannels)
@@ -470,8 +400,6 @@ export default function App() {
         table_id: guest.tableId || null,
       }).select().single()
       if (data) setGuests(prev => [...prev, mapGuest(data)])
-    } else {
-      setGuests(prev => [...prev, { ...guest, id: genId() }])
     }
   }
 
@@ -510,8 +438,6 @@ export default function App() {
       }))
       const { data } = await supabase.from('guests').insert(rows).select()
       if (data) setGuests(prev => [...prev, ...data.map(mapGuest)])
-    } else {
-      setGuests(prev => [...prev, ...guestList.map(g => ({ ...g, id: genId(), tableId: null }))])
     }
   }
 
@@ -537,8 +463,6 @@ export default function App() {
         console.warn('seating_tables insert failed (run SQL migration):', error?.message)
         setTables(prev => [...prev, { ...table, id: genId() }])
       }
-    } else {
-      setTables(prev => [...prev, { ...table, id: genId() }])
     }
   }
 
@@ -567,8 +491,6 @@ export default function App() {
       }))
       const { data } = await supabase.from('tasks').insert(rows).select()
       if (data) setTasks(prev => [...prev, ...data.map(mapTask)])
-    } else {
-      setTasks(prev => [...prev, ...taskList.map(t => ({ ...t, id: genId() }))])
     }
   }
 
@@ -584,8 +506,6 @@ export default function App() {
         priority: task.priority,
       }).select().single()
       if (data) setTasks(prev => [...prev, mapTask(data)])
-    } else {
-      setTasks(prev => [...prev, { ...task, id: genId() }])
     }
   }
 
@@ -625,8 +545,6 @@ export default function App() {
       }))
       const { data } = await supabase.from('vendors').insert(rows).select()
       if (data) setVendors(prev => [...prev, ...data])
-    } else {
-      setVendors(prev => [...prev, ...vendorList.map(v => ({ ...v, id: genId() }))])
     }
   }
 
@@ -640,8 +558,6 @@ export default function App() {
         amount: Number(vendor.amount) || 0, due_date: vendor.dueDate || null, paid: !!vendor.paid,
       }).select().single()
       if (data) setVendors(prev => [...prev, data])
-    } else {
-      setVendors(prev => [...prev, { ...vendor, id: genId() }])
     }
   }
 
@@ -680,12 +596,12 @@ export default function App() {
         return
       }
     }
-    // Guest mode or DM: local only
+    // DM: local only
     setMessages(prev => [...prev, { ...msg, id: genId(), timestamp: new Date().toISOString() }])
   }
 
   const handleAddChannel = async (channel) => {
-    const creatorId = session?.user?.id || 'c1'
+    const creatorId = session?.user?.id
 
     if (session && weddingId && channel.type !== 'dm') {
       const { data } = await supabase.from('channels').insert({
@@ -710,14 +626,11 @@ export default function App() {
         body: `Channel #${channel.name} was created.`,
       })
     } else {
+      // DM channels: local only
       const newId = genId()
       setChannels(prev => [...prev, { ...channel, id: newId, type: channel.type || 'channel' }])
       const memberIds = [...new Set([creatorId, ...(channel.members || [])])]
       setChannelMembers(prev => [...prev, ...memberIds.map(uid => ({ channelId: newId, userId: uid }))])
-      setMessages(prev => [...prev, {
-        id: genId(), channelId: newId, senderId: 'system', senderName: 'System',
-        text: `Channel #${channel.name} was created.`, timestamp: new Date().toISOString(),
-      }])
     }
   }
 
@@ -739,8 +652,6 @@ export default function App() {
     const sysMsg = { channelId, senderId: 'system', senderName: 'System', text: `${names} joined the channel.` }
     if (session && weddingId) {
       await supabase.from('messages').insert({ channel_id: channelId, sender_id: 'system', sender_name: 'System', body: sysMsg.text })
-    } else {
-      setMessages(prev => [...prev, { ...sysMsg, id: genId(), timestamp: new Date().toISOString() }])
     }
   }
 
@@ -767,8 +678,6 @@ export default function App() {
       }))
       const { data } = await supabase.from('invoices').insert(rows).select()
       if (data) setInvoices(prev => [...prev, ...data.map(mapInvoice)])
-    } else {
-      setInvoices(prev => [...prev, ...invoiceList.map(inv => ({ ...inv, id: genId() }))])
     }
   }
 
@@ -787,8 +696,6 @@ export default function App() {
         file_name: invoice.fileName,
       }).select().single()
       if (data) setInvoices(prev => [...prev, mapInvoice(data)])
-    } else {
-      setInvoices(prev => [...prev, { ...invoice, id: genId() }])
     }
   }
 
@@ -887,14 +794,6 @@ export default function App() {
           return { token, emailSent: false, emailError: err.message }
         }
       }
-    } else {
-      const newId = genId()
-      setCollaborators(prev => [...prev, { ...collab, id: newId }])
-      // Auto-add to #general in guest mode
-      const generalCh = channels.find(c => c.name === 'general' && c.type !== 'dm')
-      if (generalCh) {
-        setChannelMembers(prev => [...prev, { channelId: generalCh.id, userId: newId }])
-      }
     }
     return null
   }
@@ -960,8 +859,8 @@ export default function App() {
         body: JSON.stringify({
           weddingId,
           userId: session.user.id,
-          successUrl: `${origin}?stripe_success=1`,
-          cancelUrl: `${origin}`,
+          successUrl: `${origin}/app?stripe_success=1`,
+          cancelUrl: `${origin}/app`,
         }),
       })
       const body = await res.json()
@@ -989,7 +888,7 @@ export default function App() {
       setMyWeddings(prev => prev.map(w => w.myRole === 'owner' ? { ...w, plan: 'pro' } : w))
       setShowProBanner(true)
       setTimeout(() => setShowProBanner(false), 8000)
-      window.history.replaceState({}, '', window.location.pathname)
+      navigate('/app', { replace: true })
     })
   }, [stripeSuccess, session, myWeddings.length])
 
@@ -1049,13 +948,11 @@ export default function App() {
           />
         )
       case 'messaging': {
-        const me = session
-          ? {
-              id: session.user.id,
-              name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'You',
-              email: session.user.email,
-            }
-          : (collaborators[0] || { id: 'owner', name: 'You', email: '' })
+        const me = {
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'You',
+          email: session.user.email,
+        }
         return (
           <Messaging
             channels={channels}
@@ -1116,155 +1013,119 @@ export default function App() {
     }
   }
 
-  // ── Public RSVP page (no auth required) ─────────────────────────────────────
-  if (rsvpSlug) return <RSVPPage slug={rsvpSlug} />
-
-  // ── Initial auth check spinner ───────────────────────────────────────────────
-  if (authLoading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--cream)',
-      }}>
+  // ── Authenticated app content (rendered inside /app route) ──────────────────
+  const renderApp = () => {
+    if (authLoading || dashboardLoading) {
+      return (
         <div style={{
-          fontFamily: "'Cormorant Garamond', serif",
-          fontSize: 28,
-          fontStyle: 'italic',
-          color: 'var(--deep)',
-          opacity: 0.7,
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--cream)',
         }}>
-          ✦ Vow &amp; Venue
+          <div style={{
+            fontFamily: "'Cormorant Garamond', serif",
+            fontSize: 28,
+            fontStyle: 'italic',
+            color: 'var(--deep)',
+            opacity: 0.7,
+          }}>
+            ✦ Vow &amp; Venue
+          </div>
         </div>
-      </div>
-    )
-  }
+      )
+    }
 
-  // ── Landing page ─────────────────────────────────────────────────────────────
-  if (!showApp) {
-    return (
-      <>
-        <LandingPage
-          onStart={() => setShowApp(true)}
-          onSignIn={() => setAuthOpen(true)}
-        />
-        <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
-      </>
-    )
-  }
+    if (!session) return <Navigate to="/" replace />
 
-  // ── Dashboard loading spinner ───────────────────────────────────────────────
-  if (session && dashboardLoading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--cream)',
-      }}>
-        <div style={{
-          fontFamily: "'Cormorant Garamond', serif",
-          fontSize: 28,
-          fontStyle: 'italic',
-          color: 'var(--deep)',
-          opacity: 0.7,
-        }}>
-          ✦ Vow &amp; Venue
+    // My Weddings dashboard (no wedding selected)
+    if (activeWeddingId === null) {
+      const userPlan = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro') ? 'pro' : 'free'
+      return (
+        <div className="app">
+          <Header
+            session={session}
+            wedding={null}
+            isPro={userPlan === 'pro'}
+            myWeddings={myWeddings}
+            activeWeddingId={null}
+            onSignIn={() => setAuthOpen(true)}
+            onSignOut={handleSignOut}
+          />
+          <main className="main">
+            <MyWeddings
+              weddings={myWeddings}
+              userPlan={userPlan}
+              onSelectWedding={selectWedding}
+              onCreateWedding={handleCreateWedding}
+              onUpgrade={handleUpgrade}
+            />
+          </main>
+          <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
         </div>
-      </div>
-    )
-  }
+      )
+    }
 
-  // ── My Weddings dashboard (logged in, no wedding selected) ─────────────────
-  if (session && activeWeddingId === null) {
-    const userPlan = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro') ? 'pro' : 'free'
+    // Onboarding
+    if (wedding && !wedding.setup_complete) {
+      return <WeddingSetup onComplete={handleWeddingSetup} />
+    }
+
+    // App shell
     return (
       <div className="app">
         <Header
           session={session}
-          wedding={null}
-          isPro={userPlan === 'pro'}
+          wedding={wedding}
+          isPro={wedding?.plan === 'pro'}
           myWeddings={myWeddings}
-          activeWeddingId={null}
+          activeWeddingId={activeWeddingId}
+          onSelectWedding={selectWedding}
+          onBackToDashboard={handleBackToDashboard}
           onSignIn={() => setAuthOpen(true)}
           onSignOut={handleSignOut}
         />
+        <NavTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {showProBanner && (
+          <div className="pro-success-banner">
+            <span>✦ WELCOME TO PRO — Unlimited weddings, unlimited collaborators, priority support</span>
+            <button onClick={() => setShowProBanner(false)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>&times;</button>
+          </div>
+        )}
+
         <main className="main">
-          <MyWeddings
-            weddings={myWeddings}
-            userPlan={userPlan}
-            onSelectWedding={selectWedding}
-            onCreateWedding={handleCreateWedding}
-            onUpgrade={handleUpgrade}
-          />
+          {renderTab()}
         </main>
+
         <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
       </div>
     )
   }
 
-  // ── Onboarding — new user hasn't completed setup yet ─────────────────────────
-  if (session && wedding && !wedding.setup_complete) {
-    return <WeddingSetup onComplete={handleWeddingSetup} />
-  }
+  // ── Routes ─────────────────────────────────────────────────────────────────
+  // Legacy ?rsvp= redirect
+  const legacyRsvp = searchParams.get('rsvp')
+  if (legacyRsvp) return <Navigate to={`/rsvp/${legacyRsvp}`} replace />
 
-  // ── App shell ────────────────────────────────────────────────────────────────
   return (
-    <div className="app">
-      <Header
-        session={session}
-        wedding={wedding}
-        isPro={wedding?.plan === 'pro'}
-        myWeddings={myWeddings}
-        activeWeddingId={activeWeddingId}
-        onSelectWedding={selectWedding}
-        onBackToDashboard={handleBackToDashboard}
-        onSignIn={() => setAuthOpen(true)}
-        onSignOut={handleSignOut}
-      />
-      <NavTabs activeTab={activeTab} onTabChange={setActiveTab} />
+    <Routes>
+      {/* Public RSVP page */}
+      <Route path="/rsvp/:slug" element={<RSVPPage />} />
 
-      {/* Guest mode banner — only shown when not signed in */}
-      {!session && (
-        <div style={{
-          background: 'rgba(184,151,90,0.1)',
-          borderBottom: '1px solid var(--border)',
-          padding: '9px 40px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 13,
-          color: 'var(--deep)',
-          gap: 12,
-        }}>
-          <span>
-            ⚠&nbsp; You&apos;re in <strong>guest mode</strong> — sign in to save your work across sessions.
-          </span>
-          <button
-            className="btn btn-primary"
-            style={{ fontSize: 10, padding: '6px 18px', flexShrink: 0 }}
-            onClick={() => setAuthOpen(true)}
-          >
-            SIGN IN
-          </button>
-        </div>
-      )}
+      {/* Marketing site — only when not logged in */}
+      <Route element={!authLoading && session ? <Navigate to="/app" replace /> : <MarketingLayout />}>
+        <Route index element={<HomePage />} />
+        <Route path="features" element={<FeaturesPage />} />
+        <Route path="pricing" element={<PricingPage />} />
+      </Route>
 
-      {showProBanner && (
-        <div className="pro-success-banner">
-          <span>✦ WELCOME TO PRO — Unlimited weddings, unlimited collaborators, priority support</span>
-          <button onClick={() => setShowProBanner(false)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>&times;</button>
-        </div>
-      )}
+      {/* Authenticated app */}
+      <Route path="/app" element={renderApp()} />
 
-      <main className="main">
-        {renderTab()}
-      </main>
-
-      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
-    </div>
+      {/* Catch-all */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }

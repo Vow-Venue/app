@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const fmt = (dateStr) => {
@@ -8,7 +9,8 @@ const fmt = (dateStr) => {
   })
 }
 
-export default function RSVPPage({ slug }) {
+export default function RSVPPage() {
+  const { slug } = useParams()
   const [wedding, setWedding] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
