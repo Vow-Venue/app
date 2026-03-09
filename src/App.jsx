@@ -120,17 +120,19 @@ export default function App() {
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
+    const isAdminPage = window.location.pathname.startsWith('/admin-')
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setAuthLoading(false)
-      if (session) navigate('/app', { replace: true })
+      if (session && !isAdminPage) navigate('/app', { replace: true })
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) {
         setAuthOpen(false)
-        navigate('/app', { replace: true })
+        if (!window.location.pathname.startsWith('/admin-')) navigate('/app', { replace: true })
       } else {
         // Sign out — reset and return to home
         setMyWeddings([])
