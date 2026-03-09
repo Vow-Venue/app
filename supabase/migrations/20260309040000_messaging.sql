@@ -1,6 +1,4 @@
--- ─── Messaging: Channel Members & RLS ──────────────────────────────────────
--- Run this AFTER migration.sql and migration_multi_wedding.sql
--- in the Supabase SQL Editor.
+-- ── Messaging: Channel Members & RLS ─────────────────────────
 
 -- 1. Channel members join table
 create table if not exists channel_members (
@@ -18,7 +16,6 @@ alter table channels add column if not exists created_by text;
 
 -- 3. Channel members RLS policies
 
--- Read: wedding members can see channel membership
 create policy "cm_select" on channel_members
   for select using (
     exists (
@@ -29,7 +26,6 @@ create policy "cm_select" on channel_members
     )
   );
 
--- Insert: wedding members can add channel members
 create policy "cm_insert" on channel_members
   for insert with check (
     exists (
@@ -40,7 +36,6 @@ create policy "cm_insert" on channel_members
     )
   );
 
--- Delete: owners/planners or self-remove
 create policy "cm_delete" on channel_members
   for delete using (
     (
@@ -55,7 +50,7 @@ create policy "cm_delete" on channel_members
     or user_id = auth.uid()::text
   );
 
--- 4. Messages RLS policies (were missing from previous migrations)
+-- 4. Messages RLS policies for wedding members
 
 drop policy if exists "messages_select_member" on messages;
 drop policy if exists "messages_insert_member" on messages;

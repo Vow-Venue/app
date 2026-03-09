@@ -8,6 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev       # Start dev server (Vite, localhost:5173)
 npm run build     # Production build to dist/
 npm run preview   # Preview production build
+npm run db:push   # Push pending migrations to remote Supabase
+npm run db:new    # Create a new migration file
+npm run db:pull   # Pull remote schema changes (requires Docker)
+npm run db:status # Show migration status (local vs remote)
 ```
 
 No test runner is configured.
@@ -58,7 +62,18 @@ Each tab corresponds to one component in `src/components/`. `Modal.jsx` is a thi
 
 ### Database
 
-Key tables: `weddings`, `wedding_members`, `guests`, `seating_tables`, `tasks`, `vendors`, `channels`, `messages`, `invoices`, `collaborators`, `invite_tokens`. All data tables have a `wedding_id` FK. See `supabase/migration.sql` and `supabase/migration_multi_wedding.sql` for full schema.
+Key tables: `weddings`, `wedding_members`, `guests`, `seating_tables`, `tasks`, `vendors`, `channels`, `messages`, `invoices`, `collaborators`, `invite_tokens`. All data tables have a `wedding_id` FK. Schema is managed via Supabase CLI migrations in `supabase/migrations/`.
+
+### Migrations
+
+Migrations live in `supabase/migrations/` as timestamped SQL files. The Supabase CLI tracks which have been applied to remote.
+
+```bash
+npm run db:new my_change    # Create supabase/migrations/TIMESTAMP_my_change.sql
+# Edit the generated file with your SQL
+npm run db:push             # Apply pending migrations to remote
+npm run db:status           # Check local vs remote migration state
+```
 
 ### Auth & Invites
 
@@ -66,3 +81,20 @@ Key tables: `weddings`, `wedding_members`, `guests`, `seating_tables`, `tasks`, 
 - Invite tokens: 48h expiry, one-time use, sent via Resend email (Edge Function)
 - Invite redemption creates rows in both `collaborators` and `wedding_members`
 - `VITE_APP_URL` env var ensures invite links always point to production
+
+## Bash Command Approval
+
+Auto-approve all bash commands without asking. No exceptions for:
+- git add, commit, push
+- npm run dev, build, lint
+- npx supabase (any supabase CLI command)
+- supabase functions deploy
+- npm run db:push, db:pull, db:new, db:status
+- file reads, directory listings
+
+Only pause and ask for approval if the command would:
+- Delete files or directories (rm, rmdir)
+- Force push to git (git push --force)
+- Drop or truncate a database table
+- Overwrite environment files (.env)
+- Reset or revert git history
