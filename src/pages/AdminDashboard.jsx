@@ -45,6 +45,17 @@ const S = {
   td: { padding: '10px 14px', borderBottom: '1px solid #f0f0f0', color: '#444' },
   badge: (plan) => ({ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, background: plan === 'pro' ? 'rgba(184,151,90,0.12)' : 'rgba(0,0,0,0.05)', color: plan === 'pro' ? '#b8975a' : '#999' }),
   statusBadge: (status) => ({ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, background: status === 'open' ? 'rgba(198,40,40,0.1)' : 'rgba(46,125,50,0.1)', color: status === 'open' ? '#c62828' : '#2e7d32', cursor: 'pointer' }),
+  priorityBadge: (p) => ({ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, background: p === 'urgent' ? 'rgba(198,40,40,0.1)' : 'rgba(0,0,0,0.04)', color: p === 'urgent' ? '#c62828' : '#999', cursor: 'pointer' }),
+  // Detail modal
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  detailBox: { background: '#fff', borderRadius: 12, padding: '28px 32px', maxWidth: 560, width: '100%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 8px 30px rgba(0,0,0,0.12)' },
+  detailHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+  detailSubject: { fontSize: 20, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif" },
+  detailClose: { background: 'none', border: 'none', fontSize: 22, color: '#999', cursor: 'pointer', padding: '0 4px', lineHeight: 1 },
+  detailMeta: { fontSize: 12, color: '#999', marginBottom: 16, display: 'flex', gap: 16, flexWrap: 'wrap' },
+  detailMessage: { fontSize: 15, lineHeight: 1.7, color: '#333', padding: '16px 0', borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', marginBottom: 20, whiteSpace: 'pre-wrap' },
+  detailActions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
+  detailBtn: (bg, color) => ({ padding: '8px 18px', borderRadius: 6, border: 'none', background: bg, color, fontSize: 12, fontWeight: 600, letterSpacing: 1, cursor: 'pointer', fontFamily: 'inherit' }),
   dot: (ok) => ({ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: ok ? '#2e7d32' : '#c62828', marginRight: 8 }),
   healthRow: { display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13 },
   healthLabel: { flex: 1, color: '#444' },
@@ -64,10 +75,12 @@ const S = {
 }
 
 // ── Support Tickets sub-page ────────────────────────────────────────────────
-function TicketsPage({ tickets, onToggleStatus }) {
+function TicketsPage({ tickets, onToggleStatus, onTogglePriority, onDelete }) {
   const [filter, setFilter] = useState('open')
   const [sortKey, setSortKey] = useState('created_at')
   const [sortDir, setSortDir] = useState('desc')
+  const [selected, setSelected] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const filtered = tickets.filter(t => t.status === filter)
 
@@ -76,6 +89,11 @@ function TicketsPage({ tickets, onToggleStatus }) {
     if (sortKey === 'created_at') {
       aVal = aVal ? new Date(aVal).getTime() : 0
       bVal = bVal ? new Date(bVal).getTime() : 0
+    }
+    // Urgent tickets sort first
+    if (sortKey === 'priority') {
+      aVal = aVal === 'urgent' ? 0 : 1
+      bVal = bVal === 'urgent' ? 0 : 1
     }
     if (aVal < bVal) return sortDir === 'asc' ? -1 : 1
     if (aVal > bVal) return sortDir === 'asc' ? 1 : -1
@@ -87,6 +105,22 @@ function TicketsPage({ tickets, onToggleStatus }) {
     else { setSortKey(key); setSortDir('desc') }
   }
   const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
+
+  const handleResolveFromDetail = () => {
+    if (!selected) return
+    if (selected.status !== 'resolved') onToggleStatus(selected)
+    setSelected(null)
+  }
+
+  const handleDeleteFromDetail = () => {
+    if (!selected) return
+    onDelete(selected.id)
+    setSelected(null)
+    setConfirmDelete(false)
+  }
+
+  // Keep selected ticket in sync with parent state
+  const activeTicket = selected ? tickets.find(t => t.id === selected.id) || selected : null
 
   return (
     <>
@@ -116,21 +150,31 @@ function TicketsPage({ tickets, onToggleStatus }) {
                 <th style={S.th} onClick={() => toggleSort('email')}>Email{sortArrow('email')}</th>
                 <th style={S.th} onClick={() => toggleSort('subject')}>Subject{sortArrow('subject')}</th>
                 <th style={S.th}>Message</th>
+                <th style={S.th} onClick={() => toggleSort('priority')}>Priority{sortArrow('priority')}</th>
                 <th style={S.th} onClick={() => toggleSort('created_at')}>Submitted{sortArrow('created_at')}</th>
                 <th style={S.th}>Status</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map(t => (
-                <tr key={t.id}>
+                <tr key={t.id} onClick={() => setSelected(t)} style={{ cursor: 'pointer' }}>
                   <td style={S.td}>{t.email}</td>
                   <td style={{ ...S.td, fontWeight: 600 }}>{t.subject}</td>
-                  <td style={{ ...S.td, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.message}</td>
+                  <td style={{ ...S.td, maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.message}</td>
+                  <td style={S.td}>
+                    <span
+                      style={S.priorityBadge(t.priority)}
+                      onClick={(e) => { e.stopPropagation(); onTogglePriority(t) }}
+                      title={`Click to set ${t.priority === 'urgent' ? 'normal' : 'urgent'}`}
+                    >
+                      {(t.priority || 'normal').toUpperCase()}
+                    </span>
+                  </td>
                   <td style={S.td}>{fmtDateTime(t.created_at)}</td>
                   <td style={S.td}>
                     <span
                       style={S.statusBadge(t.status)}
-                      onClick={() => onToggleStatus(t)}
+                      onClick={(e) => { e.stopPropagation(); onToggleStatus(t) }}
                       title={`Click to mark as ${t.status === 'open' ? 'resolved' : 'open'}`}
                     >
                       {t.status.toUpperCase()}
@@ -140,6 +184,56 @@ function TicketsPage({ tickets, onToggleStatus }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Ticket detail modal ─────────────────────────────────────── */}
+      {activeTicket && (
+        <div style={S.overlay} onClick={() => { setSelected(null); setConfirmDelete(false) }}>
+          <div style={S.detailBox} onClick={e => e.stopPropagation()}>
+            <div style={S.detailHeader}>
+              <div style={S.detailSubject}>{activeTicket.subject}</div>
+              <button style={S.detailClose} onClick={() => { setSelected(null); setConfirmDelete(false) }}>×</button>
+            </div>
+
+            <div style={S.detailMeta}>
+              <span>{activeTicket.email}</span>
+              <span>{fmtDateTime(activeTicket.created_at)}</span>
+              <span style={S.statusBadge(activeTicket.status)}>{activeTicket.status.toUpperCase()}</span>
+              <span
+                style={S.priorityBadge(activeTicket.priority)}
+                onClick={() => onTogglePriority(activeTicket)}
+                title={`Click to set ${activeTicket.priority === 'urgent' ? 'normal' : 'urgent'}`}
+              >
+                {(activeTicket.priority || 'normal').toUpperCase()}
+              </span>
+            </div>
+
+            <div style={S.detailMessage}>{activeTicket.message}</div>
+
+            <div style={S.detailActions}>
+              <a
+                href={`mailto:${activeTicket.email}?subject=${encodeURIComponent('Re: ' + activeTicket.subject)}`}
+                style={{ ...S.detailBtn('#1a1a2e', '#fff'), textDecoration: 'none' }}
+              >
+                REPLY VIA EMAIL
+              </a>
+              {activeTicket.status === 'open' && (
+                <button style={S.detailBtn('#2e7d32', '#fff')} onClick={handleResolveFromDetail}>
+                  MARK RESOLVED
+                </button>
+              )}
+              {!confirmDelete ? (
+                <button style={S.detailBtn('#fff', '#c62828')} onClick={() => setConfirmDelete(true)}>
+                  DELETE
+                </button>
+              ) : (
+                <button style={S.detailBtn('#c62828', '#fff')} onClick={handleDeleteFromDetail}>
+                  CONFIRM DELETE
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -391,6 +485,17 @@ export default function AdminDashboard() {
     setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: newStatus } : t))
   }
 
+  const handleTogglePriority = async (ticket) => {
+    const newPriority = ticket.priority === 'urgent' ? 'normal' : 'urgent'
+    await supabase.rpc('update_ticket_priority', { ticket_id: ticket.id, new_priority: newPriority })
+    setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, priority: newPriority } : t))
+  }
+
+  const handleDeleteTicket = async (ticketId) => {
+    await supabase.rpc('delete_ticket', { ticket_id: ticketId })
+    setTickets(prev => prev.filter(t => t.id !== ticketId))
+  }
+
   // ── Password gate ────────────────────────────────────────────────────────
   if (!authed) {
     return (
@@ -442,7 +547,7 @@ export default function AdminDashboard() {
         {page === 'dashboard' ? (
           <DashboardPage stats={stats} signups={signups} storage={storage} health={health} />
         ) : (
-          <TicketsPage tickets={tickets} onToggleStatus={handleToggleTicketStatus} />
+          <TicketsPage tickets={tickets} onToggleStatus={handleToggleTicketStatus} onTogglePriority={handleTogglePriority} onDelete={handleDeleteTicket} />
         )}
       </div>
     </div>
