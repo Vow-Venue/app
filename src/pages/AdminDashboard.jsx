@@ -22,12 +22,18 @@ const timeAgo = (d) => {
 
 // ── Styles (self-contained light theme) ─────────────────────────────────────
 const S = {
-  page: { minHeight: '100vh', background: '#f8f9fa', color: '#1a1a2e', fontFamily: "'Jost', sans-serif", padding: '32px 24px' },
+  page: { minHeight: '100vh', background: '#f8f9fa', color: '#1a1a2e', fontFamily: "'Jost', sans-serif", padding: '0 24px 32px' },
   container: { maxWidth: 1100, margin: '0 auto' },
+  // Top nav
+  topNav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #eee', marginBottom: 32 },
+  topNavLeft: { display: 'flex', alignItems: 'center', gap: 24 },
+  topNavBrand: { fontSize: 16, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", letterSpacing: 1, marginRight: 8 },
+  topNavLink: (active) => ({ fontSize: 12, fontWeight: active ? 700 : 400, letterSpacing: 1.5, textTransform: 'uppercase', color: active ? '#1a1a2e' : '#999', cursor: 'pointer', background: 'none', border: 'none', padding: '4px 0', borderBottom: active ? '2px solid #b8975a' : '2px solid transparent', fontFamily: 'inherit' }),
+  refreshBtn: { background: '#fff', border: '1px solid #ddd', color: '#666', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
+  // Content
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
   title: { fontSize: 28, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", letterSpacing: 1 },
   subtitle: { fontSize: 11, color: '#999', letterSpacing: 1.5, textTransform: 'uppercase' },
-  refreshBtn: { background: '#fff', border: '1px solid #ddd', color: '#666', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
   sectionTitle: { fontSize: 11, color: '#999', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14, marginTop: 32 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 },
   card: { background: '#fff', borderRadius: 10, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', border: '1px solid #eee' },
@@ -57,19 +63,295 @@ const S = {
   loading: { textAlign: 'center', color: '#999', padding: 60, fontSize: 14 },
 }
 
+// ── Support Tickets sub-page ────────────────────────────────────────────────
+function TicketsPage({ tickets, onToggleStatus }) {
+  const [filter, setFilter] = useState('open')
+  const [sortKey, setSortKey] = useState('created_at')
+  const [sortDir, setSortDir] = useState('desc')
+
+  const filtered = tickets.filter(t => t.status === filter)
+
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal = a[sortKey], bVal = b[sortKey]
+    if (sortKey === 'created_at') {
+      aVal = aVal ? new Date(aVal).getTime() : 0
+      bVal = bVal ? new Date(bVal).getTime() : 0
+    }
+    if (aVal < bVal) return sortDir === 'asc' ? -1 : 1
+    if (aVal > bVal) return sortDir === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('desc') }
+  }
+  const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
+
+  return (
+    <>
+      <div style={S.header}>
+        <div>
+          <div style={S.title}>Support Tickets</div>
+          <div style={S.subtitle}>{tickets.length} total tickets</div>
+        </div>
+      </div>
+
+      <div style={S.tabBar}>
+        <button style={S.tabBtn(filter === 'open')} onClick={() => setFilter('open')}>
+          OPEN ({tickets.filter(t => t.status === 'open').length})
+        </button>
+        <button style={S.tabBtn(filter === 'resolved')} onClick={() => setFilter('resolved')}>
+          RESOLVED ({tickets.filter(t => t.status === 'resolved').length})
+        </button>
+      </div>
+
+      {sorted.length === 0 ? (
+        <div style={S.placeholder}>No {filter} tickets.</div>
+      ) : (
+        <div style={{ ...S.card, padding: 0, overflow: 'auto' }}>
+          <table style={S.table}>
+            <thead>
+              <tr>
+                <th style={S.th} onClick={() => toggleSort('email')}>Email{sortArrow('email')}</th>
+                <th style={S.th} onClick={() => toggleSort('subject')}>Subject{sortArrow('subject')}</th>
+                <th style={S.th}>Message</th>
+                <th style={S.th} onClick={() => toggleSort('created_at')}>Submitted{sortArrow('created_at')}</th>
+                <th style={S.th}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(t => (
+                <tr key={t.id}>
+                  <td style={S.td}>{t.email}</td>
+                  <td style={{ ...S.td, fontWeight: 600 }}>{t.subject}</td>
+                  <td style={{ ...S.td, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.message}</td>
+                  <td style={S.td}>{fmtDateTime(t.created_at)}</td>
+                  <td style={S.td}>
+                    <span
+                      style={S.statusBadge(t.status)}
+                      onClick={() => onToggleStatus(t)}
+                      title={`Click to mark as ${t.status === 'open' ? 'resolved' : 'open'}`}
+                    >
+                      {t.status.toUpperCase()}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div style={{ textAlign: 'center', color: '#bbb', fontSize: 11, marginTop: 40, paddingBottom: 20 }}>
+        Vow & Venue Admin — Internal Use Only
+      </div>
+    </>
+  )
+}
+
+// ── Main Dashboard sub-page ─────────────────────────────────────────────────
+function DashboardPage({ stats, signups, storage, health }) {
+  const [sortKey, setSortKey] = useState('created_at')
+  const [sortDir, setSortDir] = useState('desc')
+
+  const profit = stats.mrr - SUPABASE_COST
+
+  const sorted = [...signups].sort((a, b) => {
+    let aVal = a[sortKey], bVal = b[sortKey]
+    if (sortKey === 'created_at' || sortKey === 'last_sign_in_at') {
+      aVal = aVal ? new Date(aVal).getTime() : 0
+      bVal = bVal ? new Date(bVal).getTime() : 0
+    }
+    if (sortKey === 'wedding_count') { aVal = Number(aVal); bVal = Number(bVal) }
+    if (aVal < bVal) return sortDir === 'asc' ? -1 : 1
+    if (aVal > bVal) return sortDir === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('desc') }
+  }
+  const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
+
+  return (
+    <>
+      {/* ── Business Health ──────────────────────────────────────────── */}
+      <div style={S.sectionTitle}>Business Health</div>
+      <div style={S.grid}>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Total Users</div>
+          <div style={S.cardValue}>{stats.total_users}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Pro Seats</div>
+          <div style={S.cardValue}>{stats.pro_seats}</div>
+          <div style={S.cardSub}>paying $39/mo each</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Free Users</div>
+          <div style={S.cardValue}>{stats.free_users}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Churn Rate</div>
+          <div style={S.cardValue}>0%</div>
+          <div style={S.cardSub}>tracks cancellations once org billing is live</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>MRR</div>
+          <div style={{ ...S.cardValue, color: '#2e7d32' }}>{fmt(stats.mrr)}</div>
+          <div style={S.cardSub}>{stats.pro_seats} seats × $39</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>ARR</div>
+          <div style={{ ...S.cardValue, color: '#2e7d32' }}>{fmt(stats.arr)}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Est. Monthly Costs</div>
+          <div style={{ ...S.cardValue, color: '#c62828' }}>{fmt(SUPABASE_COST)}</div>
+          <div style={S.cardSub}>Supabase Pro</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Est. Profit</div>
+          <div style={{ ...S.cardValue, color: profit >= 0 ? '#2e7d32' : '#c62828' }}>{fmt(profit)}</div>
+          <div style={S.cardSub}>MRR − costs</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Inactive Users</div>
+          <div style={S.cardValue}>{stats.inactive_users}</div>
+          <div style={S.cardSub}>signed up, 0 weddings</div>
+        </div>
+      </div>
+
+      {/* ── Growth ──────────────────────────────────────────────────── */}
+      <div style={S.sectionTitle}>Growth</div>
+      <div style={S.grid}>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Signups (7 days)</div>
+          <div style={S.cardValue}>{stats.signups_7d}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Signups (30 days)</div>
+          <div style={S.cardValue}>{stats.signups_30d}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Weddings (30 days)</div>
+          <div style={S.cardValue}>{stats.weddings_30d}</div>
+        </div>
+      </div>
+
+      {/* ── Usage ─────────────────────────────────────────────────── */}
+      <div style={S.sectionTitle}>Usage</div>
+      <div style={S.grid}>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Total Weddings</div>
+          <div style={S.cardValue}>{stats.total_weddings}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Avg Weddings / User</div>
+          <div style={S.cardValue}>{stats.avg_weddings_per_user}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Total Vendors</div>
+          <div style={S.cardValue}>{Number(stats.total_vendors).toLocaleString()}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Total Messages</div>
+          <div style={S.cardValue}>{Number(stats.total_messages).toLocaleString()}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Storage</div>
+          <div style={S.cardValue}>{storage ? storage.file_count : 0}</div>
+          <div style={S.cardSub}>
+            {storage ? `${storage.total_mb} MB used` : '0 MB used'} · files uploaded
+          </div>
+        </div>
+      </div>
+
+      {/* ── System Health ──────────────────────────────────────────── */}
+      <div style={S.sectionTitle}>System Health</div>
+      <div style={S.card}>
+        <div style={S.healthRow}>
+          <span style={S.dot(true)} />
+          <span style={S.healthLabel}>Supabase DB</span>
+          <span style={S.healthValue}>connected</span>
+        </div>
+        <div style={S.healthRow}>
+          <span style={S.dot(!!health?.last_login)} />
+          <span style={S.healthLabel}>Last User Login</span>
+          <span style={S.healthValue}>{health?.last_login ? timeAgo(health.last_login) : 'no data'}</span>
+        </div>
+        <div style={S.healthRow}>
+          <span style={S.dot(false)} />
+          <span style={S.healthLabel}>Stripe Webhook</span>
+          <span style={S.healthValue}>not yet tracked</span>
+        </div>
+        <div style={S.healthRow}>
+          <span style={S.dot(false)} />
+          <span style={S.healthLabel}>Resend Last Email</span>
+          <span style={S.healthValue}>not yet tracked</span>
+        </div>
+        <div style={{ ...S.healthRow, borderBottom: 'none' }}>
+          <span style={S.dot(!!health?.last_ticket)} />
+          <span style={S.healthLabel}>Last Support Ticket</span>
+          <span style={S.healthValue}>{health?.last_ticket ? timeAgo(health.last_ticket) : 'none yet'}</span>
+        </div>
+      </div>
+
+      {/* ── Organizations (placeholder) ─────────────────────────────── */}
+      <div style={S.sectionTitle}>Organizations</div>
+      <div style={S.placeholder}>
+        Organization system not built yet. Stats will appear here once orgs are live.
+      </div>
+
+      {/* ── Recent Signups ──────────────────────────────────────────── */}
+      <div style={S.sectionTitle}>Recent Signups ({signups.length})</div>
+      <div style={{ ...S.card, padding: 0, overflow: 'auto' }}>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th} onClick={() => toggleSort('email')}>Email{sortArrow('email')}</th>
+              <th style={S.th} onClick={() => toggleSort('created_at')}>Joined{sortArrow('created_at')}</th>
+              <th style={S.th} onClick={() => toggleSort('last_sign_in_at')}>Last Active{sortArrow('last_sign_in_at')}</th>
+              <th style={S.th} onClick={() => toggleSort('wedding_count')}>Weddings{sortArrow('wedding_count')}</th>
+              <th style={S.th} onClick={() => toggleSort('plan')}>Plan{sortArrow('plan')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map(u => (
+              <tr key={u.id}>
+                <td style={S.td}>{u.email}</td>
+                <td style={S.td}>{fmtDate(u.created_at)}</td>
+                <td style={S.td}>{fmtDateTime(u.last_sign_in_at)}</td>
+                <td style={S.td}>{u.wedding_count}</td>
+                <td style={S.td}><span style={S.badge(u.plan)}>{u.plan.toUpperCase()}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign: 'center', color: '#bbb', fontSize: 11, marginTop: 40, paddingBottom: 20 }}>
+        Vow & Venue Admin — Internal Use Only
+      </div>
+    </>
+  )
+}
+
+// ── Main export ─────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem('adminAuthed') === 'true')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [page, setPage] = useState('dashboard')
   const [stats, setStats] = useState(null)
   const [signups, setSignups] = useState([])
   const [storage, setStorage] = useState(null)
   const [health, setHealth] = useState(null)
   const [tickets, setTickets] = useState([])
-  const [ticketFilter, setTicketFilter] = useState('open')
   const [loading, setLoading] = useState(false)
-  const [sortKey, setSortKey] = useState('created_at')
-  const [sortDir, setSortDir] = useState('desc')
 
   const handleLogin = (e) => {
     e.preventDefault()
@@ -137,253 +419,31 @@ export default function AdminDashboard() {
     return <div style={S.page}><div style={S.loading}>Loading dashboard...</div></div>
   }
 
-  // ── Derived metrics ───────────────────────────────────────────────────────
-  const profit = stats.mrr - SUPABASE_COST
-
-  // ── Sorted signups ───────────────────────────────────────────────────────
-  const sorted = [...signups].sort((a, b) => {
-    let aVal = a[sortKey], bVal = b[sortKey]
-    if (sortKey === 'created_at' || sortKey === 'last_sign_in_at') {
-      aVal = aVal ? new Date(aVal).getTime() : 0
-      bVal = bVal ? new Date(bVal).getTime() : 0
-    }
-    if (sortKey === 'wedding_count') { aVal = Number(aVal); bVal = Number(bVal) }
-    if (aVal < bVal) return sortDir === 'asc' ? -1 : 1
-    if (aVal > bVal) return sortDir === 'asc' ? 1 : -1
-    return 0
-  })
-
-  const toggleSort = (key) => {
-    if (sortKey === key) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortKey(key)
-      setSortDir('desc')
-    }
-  }
-
-  const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
-
-  const filteredTickets = tickets.filter(t => t.status === ticketFilter)
+  const openCount = tickets.filter(t => t.status === 'open').length
 
   return (
     <div style={S.page}>
+      {/* ── Top nav bar ──────────────────────────────────────────────── */}
       <div style={S.container}>
-        {/* Header */}
-        <div style={S.header}>
-          <div>
-            <div style={S.title}>Admin Dashboard</div>
-            <div style={S.subtitle}>Vow & Venue Internal</div>
+        <div style={S.topNav}>
+          <div style={S.topNavLeft}>
+            <span style={S.topNavBrand}>✦ Admin</span>
+            <button style={S.topNavLink(page === 'dashboard')} onClick={() => setPage('dashboard')}>Dashboard</button>
+            <button style={S.topNavLink(page === 'tickets')} onClick={() => setPage('tickets')}>
+              Support Tickets{openCount > 0 ? ` (${openCount})` : ''}
+            </button>
           </div>
-          <button style={S.refreshBtn} onClick={loadData}>REFRESH DATA</button>
+          <button style={S.refreshBtn} onClick={loadData}>REFRESH</button>
         </div>
+      </div>
 
-        {/* ── Business Health ──────────────────────────────────────────── */}
-        <div style={S.sectionTitle}>Business Health</div>
-        <div style={S.grid}>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Total Users</div>
-            <div style={S.cardValue}>{stats.total_users}</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Pro Seats</div>
-            <div style={S.cardValue}>{stats.pro_seats}</div>
-            <div style={S.cardSub}>paying $39/mo each</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Free Users</div>
-            <div style={S.cardValue}>{stats.free_users}</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Churn Rate</div>
-            <div style={S.cardValue}>0%</div>
-            <div style={S.cardSub}>tracks cancellations once org billing is live</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>MRR</div>
-            <div style={{ ...S.cardValue, color: '#2e7d32' }}>{fmt(stats.mrr)}</div>
-            <div style={S.cardSub}>{stats.pro_seats} seats × $39</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>ARR</div>
-            <div style={{ ...S.cardValue, color: '#2e7d32' }}>{fmt(stats.arr)}</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Est. Monthly Costs</div>
-            <div style={{ ...S.cardValue, color: '#c62828' }}>{fmt(SUPABASE_COST)}</div>
-            <div style={S.cardSub}>Supabase Pro</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Est. Profit</div>
-            <div style={{ ...S.cardValue, color: profit >= 0 ? '#2e7d32' : '#c62828' }}>{fmt(profit)}</div>
-            <div style={S.cardSub}>MRR − costs</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Inactive Users</div>
-            <div style={S.cardValue}>{stats.inactive_users}</div>
-            <div style={S.cardSub}>signed up, 0 weddings</div>
-          </div>
-        </div>
-
-        {/* ── Growth ──────────────────────────────────────────────────── */}
-        <div style={S.sectionTitle}>Growth</div>
-        <div style={S.grid}>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Signups (7 days)</div>
-            <div style={S.cardValue}>{stats.signups_7d}</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Signups (30 days)</div>
-            <div style={S.cardValue}>{stats.signups_30d}</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Weddings (30 days)</div>
-            <div style={S.cardValue}>{stats.weddings_30d}</div>
-          </div>
-        </div>
-
-        {/* ── Usage ─────────────────────────────────────────────────── */}
-        <div style={S.sectionTitle}>Usage</div>
-        <div style={S.grid}>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Total Weddings</div>
-            <div style={S.cardValue}>{stats.total_weddings}</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Avg Weddings / User</div>
-            <div style={S.cardValue}>{stats.avg_weddings_per_user}</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Total Vendors</div>
-            <div style={S.cardValue}>{Number(stats.total_vendors).toLocaleString()}</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Total Messages</div>
-            <div style={S.cardValue}>{Number(stats.total_messages).toLocaleString()}</div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardLabel}>Storage</div>
-            <div style={S.cardValue}>{storage ? storage.file_count : 0}</div>
-            <div style={S.cardSub}>
-              {storage ? `${storage.total_mb} MB used` : '0 MB used'} · files uploaded
-            </div>
-          </div>
-        </div>
-
-        {/* ── System Health ──────────────────────────────────────────── */}
-        <div style={S.sectionTitle}>System Health</div>
-        <div style={S.card}>
-          <div style={S.healthRow}>
-            <span style={S.dot(true)} />
-            <span style={S.healthLabel}>Supabase DB</span>
-            <span style={S.healthValue}>connected</span>
-          </div>
-          <div style={S.healthRow}>
-            <span style={S.dot(!!health?.last_login)} />
-            <span style={S.healthLabel}>Last User Login</span>
-            <span style={S.healthValue}>{health?.last_login ? timeAgo(health.last_login) : 'no data'}</span>
-          </div>
-          <div style={S.healthRow}>
-            <span style={S.dot(false)} />
-            <span style={S.healthLabel}>Stripe Webhook</span>
-            <span style={S.healthValue}>not yet tracked</span>
-          </div>
-          <div style={S.healthRow}>
-            <span style={S.dot(false)} />
-            <span style={S.healthLabel}>Resend Last Email</span>
-            <span style={S.healthValue}>not yet tracked</span>
-          </div>
-          <div style={{ ...S.healthRow, borderBottom: 'none' }}>
-            <span style={S.dot(!!health?.last_ticket)} />
-            <span style={S.healthLabel}>Last Support Ticket</span>
-            <span style={S.healthValue}>{health?.last_ticket ? timeAgo(health.last_ticket) : 'none yet'}</span>
-          </div>
-        </div>
-
-        {/* ── Organizations (placeholder) ─────────────────────────────── */}
-        <div style={S.sectionTitle}>Organizations</div>
-        <div style={S.placeholder}>
-          Organization system not built yet. Stats will appear here once orgs are live.
-        </div>
-
-        {/* ── Support Tickets ──────────────────────────────────────────── */}
-        <div style={S.sectionTitle}>Support Tickets ({tickets.length})</div>
-        <div style={S.tabBar}>
-          <button style={S.tabBtn(ticketFilter === 'open')} onClick={() => setTicketFilter('open')}>
-            OPEN ({tickets.filter(t => t.status === 'open').length})
-          </button>
-          <button style={S.tabBtn(ticketFilter === 'resolved')} onClick={() => setTicketFilter('resolved')}>
-            RESOLVED ({tickets.filter(t => t.status === 'resolved').length})
-          </button>
-        </div>
-        {filteredTickets.length === 0 ? (
-          <div style={S.placeholder}>No {ticketFilter} tickets.</div>
+      {/* ── Page content ─────────────────────────────────────────────── */}
+      <div style={S.container}>
+        {page === 'dashboard' ? (
+          <DashboardPage stats={stats} signups={signups} storage={storage} health={health} />
         ) : (
-          <div style={{ ...S.card, padding: 0, overflow: 'auto' }}>
-            <table style={S.table}>
-              <thead>
-                <tr>
-                  <th style={S.th}>Email</th>
-                  <th style={S.th}>Subject</th>
-                  <th style={S.th}>Message</th>
-                  <th style={S.th}>Submitted</th>
-                  <th style={S.th}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTickets.map(t => (
-                  <tr key={t.id}>
-                    <td style={S.td}>{t.email}</td>
-                    <td style={{ ...S.td, fontWeight: 600 }}>{t.subject}</td>
-                    <td style={{ ...S.td, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.message}</td>
-                    <td style={S.td}>{fmtDateTime(t.created_at)}</td>
-                    <td style={S.td}>
-                      <span
-                        style={S.statusBadge(t.status)}
-                        onClick={() => handleToggleTicketStatus(t)}
-                        title={`Click to mark as ${t.status === 'open' ? 'resolved' : 'open'}`}
-                      >
-                        {t.status.toUpperCase()}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TicketsPage tickets={tickets} onToggleStatus={handleToggleTicketStatus} />
         )}
-
-        {/* ── Recent Signups ──────────────────────────────────────────── */}
-        <div style={S.sectionTitle}>Recent Signups ({signups.length})</div>
-        <div style={{ ...S.card, padding: 0, overflow: 'auto' }}>
-          <table style={S.table}>
-            <thead>
-              <tr>
-                <th style={S.th} onClick={() => toggleSort('email')}>Email{sortArrow('email')}</th>
-                <th style={S.th} onClick={() => toggleSort('created_at')}>Joined{sortArrow('created_at')}</th>
-                <th style={S.th} onClick={() => toggleSort('last_sign_in_at')}>Last Active{sortArrow('last_sign_in_at')}</th>
-                <th style={S.th} onClick={() => toggleSort('wedding_count')}>Weddings{sortArrow('wedding_count')}</th>
-                <th style={S.th} onClick={() => toggleSort('plan')}>Plan{sortArrow('plan')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map(u => (
-                <tr key={u.id}>
-                  <td style={S.td}>{u.email}</td>
-                  <td style={S.td}>{fmtDate(u.created_at)}</td>
-                  <td style={S.td}>{fmtDateTime(u.last_sign_in_at)}</td>
-                  <td style={S.td}>{u.wedding_count}</td>
-                  <td style={S.td}><span style={S.badge(u.plan)}>{u.plan.toUpperCase()}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Footer */}
-        <div style={{ textAlign: 'center', color: '#bbb', fontSize: 11, marginTop: 40, paddingBottom: 20 }}>
-          Vow & Venue Admin — Internal Use Only
-        </div>
       </div>
     </div>
   )
