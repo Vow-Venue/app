@@ -21,6 +21,7 @@ import MarketingLayout from './layouts/MarketingLayout'
 import HomePage from './pages/HomePage'
 import FeaturesPage from './pages/FeaturesPage'
 import PricingPage from './pages/PricingPage'
+import AdminDashboard from './pages/AdminDashboard'
 
 const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 
@@ -974,7 +975,6 @@ export default function App() {
         },
         body: JSON.stringify({
           weddingId,
-          userId: session.user.id,
           successUrl: `${origin}/app?stripe_success=1`,
           cancelUrl: `${origin}/app`,
         }),
@@ -1280,6 +1280,9 @@ export default function App() {
 
       {/* Authenticated app */}
       <Route path="/app" element={renderApp()} />
+
+      {/* Hidden admin dashboard */}
+      <Route path="/admin-x7k2p" element={<AdminDashboard />} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
