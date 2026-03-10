@@ -59,6 +59,7 @@ React 18 + Vite + Supabase + Custom CSS + Stripe + Resend, deployed on Vercel. G
 10. AI assistant / document reader
 11. Cancel plan: implement Stripe cancel_at_period_end = true so cancellation takes effect at end of billing period (monthly or annual)
 12. 2-wedding access limit: applies to weddings a user creates, not weddings they're invited to
+13. Pro intake card: When a planner upgrades to Pro, prompt them to complete their profile — display name, studio name, phone, location, website, bio/about. Show as a modal or onboarding step immediately after upgrade confirmation.
 
 ---
 

@@ -104,7 +104,7 @@ export default function Overview({ guests, tasks, vendors, invoices, onNavigate,
             color: 'var(--deep)',
             marginBottom: 4,
           }}>
-            {weddingPassed ? 'The Big Day Has Arrived!' : 'Days Until the Big Day'}
+            {weddingPassed ? 'The Big Day Has Arrived!' : 'Countdown'}
           </div>
           {weddingDate && (
             <div style={{ fontSize: 11, letterSpacing: 2, color: 'var(--muted)', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
