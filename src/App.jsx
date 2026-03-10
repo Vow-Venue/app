@@ -632,7 +632,8 @@ export default function App() {
     const url = `${publicUrl}?t=${Date.now()}`
 
     // Update wedding record
-    await supabase.from('weddings').update({ cover_url: url }).eq('id', wId)
+    const { error: dbErr } = await supabase.from('weddings').update({ cover_url: url }).eq('id', wId)
+    if (dbErr) { console.error('Cover URL update failed:', dbErr.message); return }
     setMyWeddings(prev => prev.map(w => w.id === wId ? { ...w, cover_url: url } : w))
     if (wedding?.id === wId) setWedding(prev => ({ ...prev, cover_url: url }))
   }
