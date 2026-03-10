@@ -587,12 +587,15 @@ export default function OrgDashboard({
               <div>
                 <h1 className="section-title" style={{ marginBottom: 4 }}>Team Members</h1>
                 <p className="section-subtitle">
-                  {teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}
+                  Manage who has access to your studio
                 </p>
               </div>
+              <button className="btn btn-primary" onClick={() => setInviteModalOpen(true)}>
+                <UserPlus size={16} /> Invite Planner
+              </button>
             </div>
 
-            {teamMembers.length > 0 ? (
+            {teamMembers.length > 1 ? (
               <div className="org-team-grid">
                 {teamMembers.map(m => (
                   <div key={m.userId} className="org-team-card">
@@ -603,24 +606,29 @@ export default function OrgDashboard({
                         {(m.displayName || 'U').charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <div className="org-team-name">{m.displayName || 'Unknown'}</div>
-                    <span className={`wedding-card-role-inline role-${m.role}`}>
-                      {ROLE_LABELS[m.role] || 'MEMBER'}
-                    </span>
-                    <div className="org-team-count">
-                      {m.weddingCount} wedding{m.weddingCount !== 1 ? 's' : ''}
+                    <div className="org-team-info">
+                      <div className="org-team-name">{m.displayName || 'Unknown'}</div>
+                      <span className={`wedding-card-role-inline role-${m.role}`}>
+                        {ROLE_LABELS[m.role] || 'MEMBER'}
+                      </span>
+                      <div className="org-team-meta">
+                        {m.weddingCount} wedding{m.weddingCount !== 1 ? 's' : ''}
+                        {m.email && <> &middot; {m.email}</>}
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-                No team members yet. Invite a planner to get started.
-              </p>
+              <div className="org-team-empty">
+                <Users size={40} strokeWidth={1.2} />
+                <h3>No co-planners yet</h3>
+                <p>Invite another planner to collaborate on weddings together. Both planners need an active Pro subscription to share access.</p>
+                <button className="btn btn-primary" onClick={() => setInviteModalOpen(true)}>
+                  <UserPlus size={16} /> Invite Planner
+                </button>
+              </div>
             )}
-            <button className="org-quick-btn" style={{ marginTop: 16 }} onClick={() => setInviteModalOpen(true)}>
-              <UserPlus size={14} /> Invite Planner
-            </button>
           </>
         )
 
