@@ -1847,6 +1847,114 @@ body {
   gap: 16px;
 }
 
+/* ─── Overview ──────────────────────────────────── */
+
+.overview-couple-title {
+  font-family: Georgia, 'Cormorant Garamond', serif;
+  font-size: 36px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--deep);
+  margin-bottom: 4px;
+}
+
+.overview-countdown-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.overview-countdown-unit {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 10px;
+  text-align: center;
+  min-width: 56px;
+  flex: 0 1 auto;
+}
+
+.overview-countdown-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.overview-countdown-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Quick info row */
+.overview-quick-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.overview-quick-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+}
+
+.overview-quick-clickable {
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.overview-quick-clickable:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+}
+
+.overview-quick-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.overview-quick-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--deep);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.overview-quick-meta {
+  font-size: 12px;
+  color: var(--gold);
+  font-weight: 500;
+}
+
+/* Progress bar */
+.overview-progress-track {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.overview-progress-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
 /* ─── Stats ─────────────────────────────────────── */
 
 .stats-row {

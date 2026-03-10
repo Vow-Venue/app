@@ -1677,8 +1677,12 @@ export default function App() {
             tasks={tasks}
             vendors={vendors}
             invoices={invoices}
+            messages={messages}
             onNavigate={setActiveTab}
             weddingDate={wedding?.wedding_date ?? null}
+            partner1={wedding?.partner1 ?? ''}
+            partner2={wedding?.partner2 ?? ''}
+            budget={wedding?.budget ?? 0}
             isPro={wedding?.plan === 'pro'}
             onUpgrade={permissions.isOwner ? handleUpgrade : undefined}
             isOwner={permissions.isOwner}
