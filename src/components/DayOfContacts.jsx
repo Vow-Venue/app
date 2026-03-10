@@ -41,12 +41,12 @@ export default function DayOfTimeline({
 }) {
   const [activeDay, setActiveDay] = useState(null)
   const [addDayOpen, setAddDayOpen] = useState(false)
-  const [dayForm, setDayForm] = useState({ label: '', date: '' })
+  const [dayForm, setDayForm] = useState({ label: '', date: '', description: '' })
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState(null)
-  const [eventForm, setEventForm] = useState({ time: '12:00', title: '', location: '', assigned_to: '', notes: '' })
+  const [eventForm, setEventForm] = useState({ time: '12:00', title: '', location: '', address: '', vendor_id: '', assignees: [], notes: '' })
   const [editingDayId, setEditingDayId] = useState(null)
-  const [editDayForm, setEditDayForm] = useState({ label: '', date: '' })
+  const [editDayForm, setEditDayForm] = useState({ label: '', date: '', description: '' })
   const dragItem = useRef(null)
   const dragOver = useRef(null)
 
@@ -67,15 +67,15 @@ export default function DayOfTimeline({
   const handleAddDay = async (e) => {
     e.preventDefault()
     if (!dayForm.label.trim()) return
-    const created = await onAddDay({ label: dayForm.label.trim(), date: dayForm.date || null })
+    const created = await onAddDay({ label: dayForm.label.trim(), date: dayForm.date || null, description: dayForm.description.trim() || null })
     if (created) setActiveDay(created.id)
-    setDayForm({ label: '', date: '' })
+    setDayForm({ label: '', date: '', description: '' })
     setAddDayOpen(false)
   }
 
   const handleSaveDayEdit = async () => {
     if (!editDayForm.label.trim()) return
-    await onUpdateDay(editingDayId, { label: editDayForm.label.trim(), date: editDayForm.date || null })
+    await onUpdateDay(editingDayId, { label: editDayForm.label.trim(), date: editDayForm.date || null, description: editDayForm.description?.trim() || null })
     setEditingDayId(null)
   }
 
@@ -88,7 +88,7 @@ export default function DayOfTimeline({
   // ── Event CRUD ──
   const openAddEvent = () => {
     setEditingEvent(null)
-    setEventForm({ time: '12:00', title: '', location: '', assigned_to: '', notes: '' })
+    setEventForm({ time: '12:00', title: '', location: '', address: '', vendor_id: '', assignees: [], notes: '' })
     setAddEventOpen(true)
   }
 
@@ -96,7 +96,8 @@ export default function DayOfTimeline({
     setEditingEvent(ev)
     setEventForm({
       time: ev.time || '12:00', title: ev.title || '', location: ev.location || '',
-      assigned_to: ev.assigned_to || '', notes: ev.notes || '',
+      address: ev.address || '', vendor_id: ev.vendor_id || '',
+      assignees: ev.assignees || [], notes: ev.notes || '',
     })
     setAddEventOpen(true)
   }
@@ -104,10 +105,15 @@ export default function DayOfTimeline({
   const handleSaveEvent = async (e) => {
     e.preventDefault()
     if (!eventForm.title.trim()) return
+    const payload = {
+      ...eventForm,
+      vendor_id: eventForm.vendor_id || null,
+      assignees: eventForm.assignees.length > 0 ? eventForm.assignees : [],
+    }
     if (editingEvent) {
-      await onUpdateEvent(editingEvent.id, { ...eventForm })
+      await onUpdateEvent(editingEvent.id, payload)
     } else {
-      await onAddEvent({ day_id: activeDayId, ...eventForm })
+      await onAddEvent({ day_id: activeDayId, ...payload })
     }
     setAddEventOpen(false)
     setEditingEvent(null)
@@ -196,6 +202,14 @@ export default function DayOfTimeline({
                   onChange={e => setDayForm(p => ({ ...p, date: e.target.value }))}
                 />
               </div>
+              <div className="form-group">
+                <label>DESCRIPTION</label>
+                <input
+                  type="text" value={dayForm.description}
+                  onChange={e => setDayForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="e.g. Friday evening events"
+                />
+              </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setAddDayOpen(false)}>CANCEL</button>
                 <button type="submit" className="btn btn-primary">ADD DAY</button>
@@ -227,20 +241,31 @@ export default function DayOfTimeline({
           {/* Day header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             {editingDayId === currentDay.id ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
-                <input
-                  type="text" value={editDayForm.label}
-                  onChange={e => setEditDayForm(p => ({ ...p, label: e.target.value }))}
-                  style={{ flex: 1, fontSize: 14 }}
-                  autoFocus
-                />
-                <input
-                  type="date" value={editDayForm.date}
-                  onChange={e => setEditDayForm(p => ({ ...p, date: e.target.value }))}
-                  style={{ width: 160 }}
-                />
-                <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={handleSaveDayEdit}>SAVE</button>
-                <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setEditingDayId(null)}>CANCEL</button>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="text" value={editDayForm.label}
+                    onChange={e => setEditDayForm(p => ({ ...p, label: e.target.value }))}
+                    style={{ flex: 1, fontSize: 14 }}
+                    placeholder="Day label"
+                    autoFocus
+                  />
+                  <input
+                    type="date" value={editDayForm.date}
+                    onChange={e => setEditDayForm(p => ({ ...p, date: e.target.value }))}
+                    style={{ width: 160 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="text" value={editDayForm.description || ''}
+                    onChange={e => setEditDayForm(p => ({ ...p, description: e.target.value }))}
+                    style={{ flex: 1, fontSize: 13 }}
+                    placeholder="Short description (e.g. Friday evening events)"
+                  />
+                  <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={handleSaveDayEdit}>SAVE</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setEditingDayId(null)}>CANCEL</button>
+                </div>
               </div>
             ) : (
               <>
@@ -250,6 +275,11 @@ export default function DayOfTimeline({
                   }}>
                     {currentDay.label}
                   </div>
+                  {currentDay.description && (
+                    <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>
+                      {currentDay.description}
+                    </div>
+                  )}
                   {currentDay.date && (
                     <div style={{ fontSize: 12, color: 'var(--muted)', letterSpacing: 1, marginTop: 2 }}>
                       {fmtDate(currentDay.date)}
@@ -260,7 +290,7 @@ export default function DayOfTimeline({
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button
                       className="btn btn-ghost" style={{ fontSize: 11 }}
-                      onClick={() => { setEditingDayId(currentDay.id); setEditDayForm({ label: currentDay.label, date: currentDay.date || '' }) }}
+                      onClick={() => { setEditingDayId(currentDay.id); setEditDayForm({ label: currentDay.label, date: currentDay.date || '', description: currentDay.description || '' }) }}
                     >
                       EDIT DAY
                     </button>
@@ -335,11 +365,31 @@ export default function DayOfTimeline({
                         📍 {ev.location}
                       </div>
                     )}
-                    {ev.assigned_to && (
-                      <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 500, marginBottom: 2 }}>
-                        → {ev.assigned_to}
+                    {ev.address && (
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>
+                        {ev.address}
                       </div>
                     )}
+                    {(() => {
+                      const primaryVendor = ev.vendor_id ? vendors.find(v => v.id === ev.vendor_id) : null
+                      const extraAssignees = (ev.assignees || []).filter(id => id !== ev.vendor_id).map(id => vendors.find(v => v.id === id)).filter(Boolean)
+                      const allAssigned = [primaryVendor, ...extraAssignees].filter(Boolean)
+                      if (allAssigned.length > 0) {
+                        return (
+                          <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 500, marginBottom: 2 }}>
+                            {allAssigned.map(v => `${v.name}${v.role ? ` (${v.role})` : ''}`).join(', ')}
+                          </div>
+                        )
+                      }
+                      if (ev.assigned_to) {
+                        return (
+                          <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 500, marginBottom: 2 }}>
+                            → {ev.assigned_to}
+                          </div>
+                        )
+                      }
+                      return null
+                    })()}
                     {ev.notes && (
                       <div style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', marginTop: 4, lineHeight: 1.5 }}>
                         {ev.notes}
@@ -418,17 +468,49 @@ export default function DayOfTimeline({
                 />
               </div>
               <div className="form-group">
-                <label>ASSIGNED TO</label>
+                <label>ADDRESS</label>
                 <input
-                  type="text" value={eventForm.assigned_to}
-                  onChange={e => setEventForm(p => ({ ...p, assigned_to: e.target.value }))}
-                  placeholder="Vendor or team member"
-                  list="assign-options"
+                  type="text" value={eventForm.address}
+                  onChange={e => setEventForm(p => ({ ...p, address: e.target.value }))}
+                  placeholder="e.g. 123 Main St, Austin TX"
                 />
-                <datalist id="assign-options">
-                  {assignOptions.map((name, i) => <option key={i} value={name} />)}
-                </datalist>
               </div>
+              <div className="form-group">
+                <label>VENDOR</label>
+                <select
+                  value={eventForm.vendor_id}
+                  onChange={e => setEventForm(p => ({ ...p, vendor_id: e.target.value }))}
+                >
+                  <option value="">— None —</option>
+                  {vendors.map(v => (
+                    <option key={v.id} value={v.id}>{v.name}{v.role ? ` — ${v.role}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+              {vendors.length > 1 && (
+                <div className="form-group">
+                  <label>ADDITIONAL ASSIGNEES</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                    {vendors.filter(v => v.id !== eventForm.vendor_id).map(v => (
+                      <label key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={eventForm.assignees.includes(v.id)}
+                          onChange={e => {
+                            setEventForm(p => ({
+                              ...p,
+                              assignees: e.target.checked
+                                ? [...p.assignees, v.id]
+                                : p.assignees.filter(id => id !== v.id),
+                            }))
+                          }}
+                        />
+                        {v.name}{v.role ? ` (${v.role})` : ''}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="form-group">
                 <label>NOTES</label>
                 <textarea

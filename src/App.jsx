@@ -1095,7 +1095,7 @@ export default function App() {
     if (!session || !weddingId) return
     const maxSort = timelineDays.reduce((m, d) => Math.max(m, d.sort_order), -1)
     const { data, error } = await supabase.from('timeline_days').insert({
-      wedding_id: weddingId, label: day.label, date: day.date || null, sort_order: maxSort + 1,
+      wedding_id: weddingId, label: day.label, date: day.date || null, description: day.description || null, sort_order: maxSort + 1,
     }).select().single()
     if (error) { console.error('Add timeline day failed:', error.message); return }
     if (data) setTimelineDays(prev => [...prev, data])
@@ -1124,7 +1124,9 @@ export default function App() {
     const { data, error } = await supabase.from('timeline_events').insert({
       wedding_id: weddingId, day_id: event.day_id,
       time: event.time, title: event.title,
-      location: event.location || null, assigned_to: event.assigned_to || null,
+      location: event.location || null, address: event.address || null,
+      assigned_to: event.assigned_to || null,
+      vendor_id: event.vendor_id || null, assignees: event.assignees || [],
       notes: event.notes || null, sort_order: maxSort + 1,
     }).select().single()
     if (error) { console.error('Add timeline event failed:', error.message); return }
