@@ -206,14 +206,17 @@ export default function OrgDashboard({
   const handleCoverClick = (e, wId) => {
     e.stopPropagation()
     e.preventDefault()
-    // Delay to ensure the click event fully resolves before opening file picker
-    setTimeout(() => fileInputRefs.current[wId]?.click(), 0)
+    console.log('[cover] camera clicked for wedding:', wId)
+    const input = fileInputRefs.current[wId]
+    console.log('[cover] file input ref:', input)
+    if (input) input.click()
   }
 
   const handleCoverChange = (e, wId) => {
     e.stopPropagation()
     e.preventDefault()
     const file = e.target.files?.[0]
+    console.log('[cover] file selected:', file?.name, file?.size)
     if (!file) return
     onUploadCover(wId, file)
     e.target.value = ''
@@ -343,7 +346,7 @@ export default function OrgDashboard({
               <div className="wedding-card-arch" style={bgStyle}>
                 <div className="wedding-card-arch-overlay" />
                 {w.myRole === 'owner' && (
-                  <div onClick={e => { e.stopPropagation(); e.preventDefault() }}>
+                  <>
                     <button
                       className="wedding-card-upload-btn"
                       onClick={(e) => handleCoverClick(e, w.id)}
@@ -358,7 +361,7 @@ export default function OrgDashboard({
                       style={{ display: 'none' }}
                       onChange={(e) => handleCoverChange(e, w.id)}
                     />
-                  </div>
+                  </>
                 )}
               </div>
               <div className="wedding-card-body">

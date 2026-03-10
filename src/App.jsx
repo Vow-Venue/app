@@ -614,6 +614,7 @@ export default function App() {
   // ── Cover photo upload ────────────────────────────────────────────────────
   const handleUploadCover = async (wId, file) => {
     if (!session || !file) return
+    console.log('[cover] upload starting for wedding:', wId, 'file:', file.name, 'size:', file.size)
     const ext = file.name.split('.').pop()
     const path = `${wId}/cover.${ext}`
 
@@ -621,7 +622,8 @@ export default function App() {
     const { error: upErr } = await supabase.storage
       .from('wedding-covers')
       .upload(path, file, { upsert: true })
-    if (upErr) { console.error('Cover upload failed:', upErr.message); return }
+    if (upErr) { console.error('[cover] storage upload failed:', upErr.message); return }
+    console.log('[cover] storage upload complete')
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
@@ -630,10 +632,12 @@ export default function App() {
 
     // Bust cache with timestamp
     const url = `${publicUrl}?t=${Date.now()}`
+    console.log('[cover] public URL:', url)
 
     // Update wedding record
     const { error: dbErr } = await supabase.from('weddings').update({ cover_url: url }).eq('id', wId)
-    if (dbErr) { console.error('Cover URL update failed:', dbErr.message); return }
+    if (dbErr) { console.error('[cover] DB update failed:', dbErr.message); return }
+    console.log('[cover] DB updated, refreshing state')
     setMyWeddings(prev => prev.map(w => w.id === wId ? { ...w, cover_url: url } : w))
     if (wedding?.id === wId) setWedding(prev => ({ ...prev, cover_url: url }))
   }
