@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import {
-  LayoutGrid, List, Phone, Mail, Camera,
+  LayoutGrid, List, Phone, Mail, Camera, Search,
   Pencil, Check, X, Plus, Trash2, Globe, Users, Download, FileText,
   Calendar, DollarSign, ClipboardList, UserPlus,
   Home, Heart, Settings, TrendingUp, Contact, Menu,
@@ -112,6 +112,7 @@ export default function OrgDashboard({
   // New template name
   const [newTemplateName, setNewTemplateName] = useState('')
   const [creatingTemplate, setCreatingTemplate] = useState(false)
+  const [resourceSearch, setResourceSearch] = useState('')
 
   const [recentOrder, setRecentOrder] = useState(() => {
     try { return JSON.parse(localStorage.getItem('vv_recent_weddings') || '[]') }
@@ -635,89 +636,129 @@ export default function OrgDashboard({
           </>
         )
 
-      case 'resources':
+      case 'resources': {
+        const q = resourceSearch.toLowerCase()
+        const filteredVendors = q
+          ? sharedVendors.filter(v =>
+              (v.name || '').toLowerCase().includes(q) ||
+              (v.role || '').toLowerCase().includes(q) ||
+              (VENDOR_ROLES[v.role] || '').toLowerCase().includes(q) ||
+              (v.email || '').toLowerCase().includes(q)
+            )
+          : sharedVendors
+        const filteredTemplates = q
+          ? taskTemplates.filter(t => t.name.toLowerCase().includes(q))
+          : taskTemplates
+
         return (
           <>
             <div className="org-dashboard-header">
               <div>
                 <h1 className="section-title" style={{ marginBottom: 4 }}>Shared Resources</h1>
                 <p className="section-subtitle">
-                  Vendors and task templates shared across weddings
+                  Your vendor contacts and task templates across all weddings
                 </p>
               </div>
             </div>
 
-            {/* Shared Vendors */}
-            {sharedVendors.length > 0 && (
-              <>
-                <div className="org-section-label" style={{ marginBottom: 12 }}>VENDOR CONTACTS</div>
-                <div className="org-shared-grid">
-                  {sharedVendors.map((v, i) => (
-                    <div key={i} className="org-shared-vendor-card">
-                      <div className="org-shared-vendor-name">{v.name}</div>
-                      <div className="org-shared-vendor-role">{VENDOR_ROLES[v.role] || v.role || 'Vendor'}</div>
-                      <div className="org-shared-vendor-meta">
-                        {v.phone && <span><Phone size={12} /> {v.phone}</span>}
-                        {v.email && <span><Mail size={12} /> {v.email}</span>}
-                        {v.website && <span><Globe size={12} /> {v.website}</span>}
+            <input
+              className="org-resource-search"
+              placeholder="Search vendors and templates..."
+              value={resourceSearch}
+              onChange={e => setResourceSearch(e.target.value)}
+            />
+
+            {/* Vendor Black Book */}
+            <div className="org-section-label" style={{ marginBottom: 12 }}>VENDOR BLACK BOOK</div>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -8, marginBottom: 16 }}>
+              Your contacts across all weddings
+            </p>
+
+            {filteredVendors.length === 0 ? (
+              <div className="org-vbb-empty">
+                {q ? 'No vendors match your search.' : 'No vendors added to any wedding yet.'}
+              </div>
+            ) : (
+              <div className="org-vbb-grid">
+                {filteredVendors.map((v, i) => (
+                  <div key={i} className="org-vbb-card">
+                    <div className="org-vbb-name">{v.name}</div>
+                    <div className="org-vbb-role">{VENDOR_ROLES[v.role] || v.role || 'Vendor'}</div>
+                    <div className="org-vbb-contact">
+                      {v.phone && <span><Phone size={12} /> {v.phone}</span>}
+                      {v.email && <span><Mail size={12} /> {v.email}</span>}
+                      {v.website && <span><Globe size={12} /> {v.website}</span>}
+                    </div>
+                    {v.weddingNames && v.weddingNames.length > 0 && (
+                      <div className="org-vbb-weddings">
+                        Used in: {v.weddingNames.join(', ')}
                       </div>
-                      {v.weddingNames && (
-                        <div className="org-shared-vendor-weddings">
-                          {v.weddingNames.join(', ')}
-                        </div>
-                      )}
-                      <div className="org-shared-vendor-actions">
-                        <div className="org-shared-vendor-count">
-                          Used in {v.weddingCount} wedding{v.weddingCount !== 1 ? 's' : ''}
-                        </div>
-                        <div style={{ position: 'relative' }}>
-                          <button
-                            className="org-vendor-copy-btn"
-                            onClick={() => setCopyVendorIdx(copyVendorIdx === i ? null : i)}
-                          >
-                            <Plus size={12} /> Add to Wedding
-                          </button>
-                          {copyVendorIdx === i && (
-                            <div className="org-vendor-copy-dropdown">
-                              {weddings.map(w => (
-                                <button
-                                  key={w.id}
-                                  className="org-vendor-copy-option"
-                                  onClick={() => handleCopyVendor(v, w.id)}
-                                >
-                                  {w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled'}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                    )}
+                    <div className="org-vbb-footer">
+                      <div className="org-vbb-count">
+                        {v.weddingCount} wedding{v.weddingCount !== 1 ? 's' : ''}
+                      </div>
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          className="org-vendor-copy-btn"
+                          onClick={() => setCopyVendorIdx(copyVendorIdx === i ? null : i)}
+                        >
+                          <Plus size={12} /> Add to Wedding
+                        </button>
+                        {copyVendorIdx === i && (
+                          <div className="org-vendor-copy-dropdown">
+                            {weddings.map(w => (
+                              <button
+                                key={w.id}
+                                className="org-vendor-copy-option"
+                                onClick={() => handleCopyVendor(v, w.id)}
+                              >
+                                {w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled'}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </>
+                  </div>
+                ))}
+              </div>
             )}
 
             {/* Task Templates */}
-            <div className="org-templates-section" style={{ marginTop: sharedVendors.length > 0 ? 32 : 0 }}>
-              <div className="org-section-label" style={{ marginBottom: 8 }}>TASK TEMPLATES</div>
-              {taskTemplates.length === 0 ? (
+            <div className="org-templates-section">
+              <div className="org-section-label" style={{ marginBottom: 12 }}>TASK TEMPLATES</div>
+              {filteredTemplates.length === 0 && taskTemplates.length === 0 ? (
                 <div className="org-templates-empty">
                   <p>No templates yet. Create one or load the starter checklist.</p>
                   <button className="org-quick-btn" onClick={onSeedStarterTemplates}>
                     <FileText size={14} /> Load Starter Templates
                   </button>
                 </div>
+              ) : filteredTemplates.length === 0 ? (
+                <div className="org-templates-empty">
+                  <p>No templates match your search.</p>
+                </div>
               ) : (
-                <div className="org-templates-list">
-                  {taskTemplates.map(tmpl => {
+                <div className="org-tmpl-grid">
+                  {filteredTemplates.map(tmpl => {
                     const tasks = templateTasks[tmpl.id] || []
+                    const preview = tasks.slice(0, 3)
                     return (
-                      <button key={tmpl.id} className="org-template-row" onClick={() => handleOpenTemplate(tmpl)}>
-                        <FileText size={14} />
-                        <span className="org-template-name">{tmpl.name}</span>
-                        <span className="org-template-count">{tasks.length} tasks</span>
-                      </button>
+                      <div key={tmpl.id} className="org-tmpl-card" onClick={() => handleOpenTemplate(tmpl)}>
+                        <div className="org-tmpl-card-name">{tmpl.name}</div>
+                        <div className="org-tmpl-card-count">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</div>
+                        {preview.length > 0 && (
+                          <ul className="org-tmpl-card-preview">
+                            {preview.map((t, idx) => (
+                              <li key={idx}>{t.title}</li>
+                            ))}
+                            {tasks.length > 3 && (
+                              <li style={{ fontStyle: 'italic' }}>+{tasks.length - 3} more</li>
+                            )}
+                          </ul>
+                        )}
+                      </div>
                     )
                   })}
                 </div>
@@ -738,9 +779,17 @@ export default function OrgDashboard({
                   <Plus size={14} /> Create
                 </button>
               </div>
+              {taskTemplates.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <button className="org-quick-btn" onClick={onSeedStarterTemplates}>
+                    <FileText size={14} /> Load Starter Templates
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )
+      }
 
       case 'settings':
         return (

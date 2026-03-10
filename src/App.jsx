@@ -395,8 +395,8 @@ export default function App() {
         }
       }
 
-      // ── Step 3d: Fetch shared vendor contacts ───────────────────────────────
-      if (weddings.length > 1) {
+      // ── Step 3d: Fetch all vendor contacts (Vendor Black Book) ─────────────
+      {
         const weddingIds = weddings.map(w => w.id)
         const weddingNameMap = {}
         weddings.forEach(w => { weddingNameMap[w.id] = w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled' })
@@ -407,18 +407,20 @@ export default function App() {
         if (allVendors) {
           const vendorMap = {}
           allVendors.forEach(v => {
-            const key = `${(v.name || '').toLowerCase()}|${v.role}`
-            if (!vendorMap[key]) vendorMap[key] = { name: v.name, role: v.role, phone: v.phone, email: v.email, website: v.website, weddingIds: new Set(), weddingNames: [] }
+            const key = `${(v.name || '').toLowerCase()}|${(v.email || '').toLowerCase()}`
+            if (!vendorMap[key]) vendorMap[key] = { name: v.name, role: v.role, phone: v.phone, email: v.email, website: v.website, weddingIds: new Set() }
             vendorMap[key].weddingIds.add(v.wedding_id)
+            if (v.phone && !vendorMap[key].phone) vendorMap[key].phone = v.phone
+            if (v.website && !vendorMap[key].website) vendorMap[key].website = v.website
           })
           setSharedVendors(
             Object.values(vendorMap)
-              .filter(v => v.weddingIds.size >= 2)
               .map(v => ({
                 name: v.name, role: v.role, phone: v.phone, email: v.email, website: v.website,
                 weddingCount: v.weddingIds.size,
                 weddingNames: [...v.weddingIds].map(id => weddingNameMap[id] || 'Untitled'),
               }))
+              .sort((a, b) => b.weddingCount - a.weddingCount || a.name.localeCompare(b.name))
           )
         }
       }

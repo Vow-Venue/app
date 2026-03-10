@@ -753,56 +753,100 @@ body {
   background: var(--cream);
 }
 
-/* Shared Resources */
+/* Shared Resources — Search */
 
-.org-shared-grid {
+.org-resource-search {
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-family: 'Jost', sans-serif;
+  border: 1px solid #e8e0d8;
+  border-radius: 8px;
+  background: white;
+  color: var(--deep);
+  margin-bottom: 24px;
+  transition: border-color 0.2s;
+}
+.org-resource-search:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.org-resource-search::placeholder {
+  color: var(--muted);
+}
+
+/* Shared Resources — Vendor Black Book */
+
+.org-vbb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
   margin-bottom: 16px;
 }
 
-.org-shared-vendor-card {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 16px;
-  background: var(--cream);
+.org-vbb-card {
+  background: white;
+  border: 1px solid #e8e0d8;
+  border-radius: 12px;
+  padding: 20px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.org-vbb-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  border-color: var(--gold);
 }
 
-.org-shared-vendor-name {
-  font-weight: 500;
-  font-size: 14px;
+.org-vbb-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 600;
   color: var(--deep);
   margin-bottom: 2px;
 }
 
-.org-shared-vendor-role {
+.org-vbb-role {
   font-size: 10px;
   letter-spacing: 1.5px;
-  color: var(--gold);
-  font-weight: 500;
-  margin-bottom: 8px;
   text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 12px;
 }
 
-.org-shared-vendor-meta {
+.org-vbb-contact {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.org-vbb-contact span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 12px;
   color: var(--muted);
 }
 
-.org-shared-vendor-meta span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.org-vbb-weddings {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--muted);
 }
 
-.org-shared-vendor-count {
+.org-vbb-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0ece6;
+}
+
+.org-vbb-count {
   font-size: 10px;
   color: var(--muted);
-  margin-top: 8px;
   font-style: italic;
 }
 
@@ -1370,52 +1414,71 @@ body {
 /* ── Task Templates ───────────────────────────────────────────────────────── */
 
 .org-templates-section {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 32px;
+  padding-top: 24px;
   border-top: 1px solid #eee;
 }
 .org-templates-empty {
   text-align: center;
-  padding: 16px;
+  padding: 24px;
   color: var(--muted);
   font-size: 13px;
 }
 .org-templates-empty p {
   margin-bottom: 12px;
 }
-.org-templates-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
+
+/* Template card grid */
+.org-tmpl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
 }
-.org-template-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid #e8e0d8;
-  border-radius: 6px;
+.org-tmpl-card {
   background: white;
+  border: 1px solid #e8e0d8;
+  border-radius: 12px;
+  padding: 20px;
   cursor: pointer;
-  transition: border-color 0.2s;
-  color: var(--deep);
-  width: 100%;
-  text-align: left;
-  font-family: 'Jost', sans-serif;
-  font-size: 13px;
+  transition: box-shadow 0.2s, border-color 0.2s;
 }
-.org-template-row:hover {
+.org-tmpl-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
   border-color: var(--gold);
 }
-.org-template-name {
-  flex: 1;
-  font-weight: 500;
+.org-tmpl-card-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--deep);
+  margin-bottom: 4px;
 }
-.org-template-count {
-  font-size: 11px;
+.org-tmpl-card-count {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
   color: var(--muted);
-  letter-spacing: 0.3px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.org-tmpl-card-preview {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.org-tmpl-card-preview li {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.org-tmpl-card-preview li::before {
+  content: '•';
+  color: var(--gold);
+  font-weight: bold;
 }
 .org-tmpl-create-row {
   display: flex;
@@ -1553,17 +1616,11 @@ body {
 
 /* ── Vendor Copy Dropdown ─────────────────────────────────────────────────── */
 
-.org-shared-vendor-weddings {
-  font-size: 11px;
+.org-vbb-empty {
+  text-align: center;
+  padding: 24px;
   color: var(--muted);
-  margin-top: 4px;
-  font-style: italic;
-}
-.org-shared-vendor-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8px;
+  font-size: 13px;
 }
 .org-vendor-copy-btn {
   display: inline-flex;
@@ -1716,7 +1773,8 @@ body {
     width: 100%;
     min-width: 100%;
   }
-  .org-shared-grid { grid-template-columns: 1fr; }
+  .org-vbb-grid { grid-template-columns: 1fr; }
+  .org-tmpl-grid { grid-template-columns: 1fr; }
   .org-view-toggle { display: none; }
   .org-stats-bar { grid-template-columns: 1fr; }
   .org-team-grid { grid-template-columns: repeat(2, 1fr); }
