@@ -23,6 +23,7 @@ export default function usePermissions(myRole) {
     isViewer,
 
     canEdit,
+    canMessage: true,
     canEditGuests: canEdit,
     canEditTasks: canEdit,
     canEditVendors: canEdit,
