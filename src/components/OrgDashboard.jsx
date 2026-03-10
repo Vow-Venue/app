@@ -285,9 +285,6 @@ export default function OrgDashboard({
                 <div className="org-list-stat">
                   <span className="org-list-pct">{taskPct}%</span>
                 </div>
-                <span className={`wedding-card-role-inline role-${w.myRole || 'viewer'}`}>
-                  {ROLE_LABELS[w.myRole] || 'MEMBER'}
-                </span>
               </button>
             )
           }
@@ -321,9 +318,6 @@ export default function OrgDashboard({
                     />
                   </>
                 )}
-                <span className={`wedding-card-role role-${w.myRole || 'viewer'}`}>
-                  {ROLE_LABELS[w.myRole] || 'MEMBER'}
-                </span>
               </div>
               <div className="wedding-card-body">
                 <div className="wedding-card-couple">
