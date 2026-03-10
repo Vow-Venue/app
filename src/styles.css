@@ -1764,6 +1764,7 @@ body {
 }
 
 .tab {
+  position: relative;
   padding: 16px 22px;
   font-size: 11px;
   letter-spacing: 2px;
@@ -1785,6 +1786,30 @@ body {
 
 .tab:hover:not(.active) {
   color: var(--deep);
+}
+
+.tab-tooltip {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  padding: 5px 12px;
+  background: var(--deep);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 100;
+}
+
+.tab:hover .tab-tooltip {
+  opacity: 1;
 }
 
 /* ─── Section headings ──────────────────────────── */
