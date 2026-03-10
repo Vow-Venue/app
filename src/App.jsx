@@ -565,14 +565,16 @@ export default function App() {
     const isPro = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro')
     if (!isPro && ownedCount >= 2) return
 
+    const insertRow = {
+      user_id: userId,
+      setup_complete: !!(fields.partner1 && fields.partner2),
+    }
+    if (fields.partner1) insertRow.partner1 = fields.partner1
+    if (fields.partner2) insertRow.partner2 = fields.partner2
+    if (fields.weddingDate) insertRow.wedding_date = fields.weddingDate
+
     const { data: created, error } = await supabase
-      .from('weddings').insert({
-        user_id: userId,
-        partner1: fields.partner1 || null,
-        partner2: fields.partner2 || null,
-        wedding_date: fields.weddingDate || null,
-        setup_complete: !!(fields.partner1 && fields.partner2),
-      }).select('*').single()
+      .from('weddings').insert(insertRow).select('*').single()
 
     if (error || !created) {
       console.error('Failed to create wedding:', error?.message)
