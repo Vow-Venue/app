@@ -20,6 +20,9 @@ const ELEMENT_DEFAULTS = {
   photo_booth: { width: 120, height: 120, label: 'Photo Booth' },
 }
 
+const ROOM_W = 2400
+const ROOM_H = 1600
+
 const ELEMENT_STYLES = {
   dance_floor: { bg: 'rgba(200,180,160,0.18)', border: '2px dashed rgba(200,180,160,0.5)', icon: '💃' },
   stage:       { bg: 'rgba(184,151,90,0.14)',   border: '2px dashed rgba(184,151,90,0.4)',  icon: '🎤' },
@@ -66,6 +69,7 @@ const snap = v => Math.round(v / GRID_SIZE) * GRID_SIZE
 
 // ── Memoized Seat Component ─────────────────────────────────────────────────
 const SeatCircle = memo(function SeatCircle({ sp, seatNum, guest, padX, padY, onSelect }) {
+  const isOccupied = !!guest
   const rsvpColor = guest ? (RSVP_COLORS[guest.rsvp] || RSVP_COLORS.pending) : null
   return (
     <div
@@ -75,15 +79,15 @@ const SeatCircle = memo(function SeatCircle({ sp, seatNum, guest, padX, padY, on
         left: padX + sp.x - SEAT_R,
         top: padY + sp.y - SEAT_R,
         width: SEAT_R * 2, height: SEAT_R * 2,
-        background: guest ? rsvpColor : 'rgba(255,255,255,0.95)',
-        border: `2px solid ${sp.isHead ? 'var(--deep)' : 'var(--gold)'}`,
-        color: guest ? '#fff' : (sp.isHead ? 'var(--deep)' : 'var(--gold)'),
-        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+        background: isOccupied ? (rsvpColor || '#C9A96E') : 'rgba(255,255,255,0.95)',
+        border: `2px solid ${isOccupied ? 'transparent' : (sp.isHead ? 'var(--deep)' : '#C9A96E')}`,
+        color: isOccupied ? '#fff' : (sp.isHead ? 'var(--deep)' : '#C9A96E'),
+        boxShadow: isOccupied ? '0 1px 4px rgba(0,0,0,0.15)' : 'none',
       }}
-      title={guest ? `${guest.name} (${guest.rsvp})` : `Seat ${seatNum + 1}${sp.isHead ? ' (Head)' : ''}`}
+      title={guest ? `${guest.name} (${guest.rsvp})` : `Seat ${seatNum + 1}${sp.isHead ? ' (Head)' : ''} — Empty`}
       onClick={onSelect}
     >
-      {guest ? guest.name.charAt(0).toUpperCase() : (sp.isHead ? '★' : '+')}
+      {isOccupied ? guest.name.charAt(0).toUpperCase() : (sp.isHead ? '★' : '')}
     </div>
   )
 })
@@ -91,13 +95,14 @@ const SeatCircle = memo(function SeatCircle({ sp, seatNum, guest, padX, padY, on
 // ── Memoized Table Shape ────────────────────────────────────────────────────
 const TableShape = memo(function TableShape({ shape, s, isOver, isSel, cursorStyle, padX, padY }) {
   const bg = isOver ? 'rgba(184,151,90,0.3)' : isSel ? 'rgba(184,151,90,0.25)' : 'rgba(184,151,90,0.14)'
-  const borderStyle = `2px ${isSel ? 'solid' : 'dashed'} var(--gold)`
+  const borderStyle = isSel ? '2.5px solid #C9A96E' : '2px dashed var(--gold)'
   const base = {
     position: 'absolute', left: padX, top: padY,
     width: s.w, height: s.h,
     background: bg, border: borderStyle,
-    transition: 'background 0.15s',
+    transition: 'background 0.15s, box-shadow 0.15s, border 0.15s',
     cursor: cursorStyle,
+    boxShadow: isSel ? '0 0 0 3px rgba(201,169,110,0.25), 0 4px 16px rgba(201,169,110,0.2)' : 'none',
   }
   if (shape === 'round') return <div style={{ ...base, borderRadius: '50%' }} />
   if (shape === 'sweetheart') return <div style={{ ...base, borderRadius: '50px 50px 0 0' }} />
@@ -105,6 +110,8 @@ const TableShape = memo(function TableShape({ shape, s, isOver, isSel, cursorSty
 })
 
 // ── Memoized Table Component ────────────────────────────────────────────────
+const LABEL_HEIGHT = 32
+
 const TableNode = memo(function TableNode({
   table, seatedHere, isDragging, isOver, isSel,
   activeTool, onMouseDown, onDragOver, onDragLeave, onDrop, onSelectTable,
@@ -114,14 +121,14 @@ const TableNode = memo(function TableNode({
   const capacity = shape === 'sweetheart' ? 2 : (table.capacity ?? 8)
   const seats = useMemo(() => getSeatPositions(shape, capacity), [shape, capacity])
   const isFull = seatedHere.length >= capacity
-  const padX = 30, padY = 30
+  const padX = 30, padY = 30 + LABEL_HEIGHT
   const cursorStyle = activeTool === 'select' ? 'grab' : activeTool === 'delete' ? 'pointer' : 'default'
 
   return (
     <div
       style={{
-        position: 'absolute', left: table.x - padX, top: table.y - padY,
-        width: s.w + padX * 2, height: s.h + padY * 2 + 20,
+        position: 'absolute', left: table.x - 30, top: table.y - padY,
+        width: s.w + 30 * 2, height: s.h + padY + 30 + 4,
         zIndex: isDragging ? 100 : 2,
         filter: isDragging ? 'drop-shadow(0 6px 20px rgba(61,44,44,0.2))' : 'none',
       }}
@@ -130,27 +137,32 @@ const TableNode = memo(function TableNode({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <TableShape shape={shape} s={s} isOver={isOver} isSel={isSel} cursorStyle={cursorStyle} padX={padX} padY={padY} />
+      {/* Table name ABOVE the shape */}
+      <div className="fp-table-label" style={{
+        position: 'absolute', left: 30, top: 0,
+        width: s.w, textAlign: 'center',
+      }}>
+        {table.name}
+      </div>
+      <div className="fp-table-capacity" style={{
+        position: 'absolute', left: 30, top: 16,
+        width: s.w,
+        color: isFull ? 'var(--rose)' : 'var(--muted)',
+      }}>
+        {seatedHere.length}/{capacity}{isFull ? ' FULL' : ''}
+      </div>
+
+      <TableShape shape={shape} s={s} isOver={isOver} isSel={isSel} cursorStyle={cursorStyle} padX={30} padY={padY} />
 
       {seats.map((sp, seatNum) => (
         <SeatCircle
           key={seatNum}
           sp={sp} seatNum={seatNum}
           guest={seatedHere.find(g => g.seatNumber === seatNum)}
-          padX={padX} padY={padY}
+          padX={30} padY={padY}
           onSelect={onSelectTable}
         />
       ))}
-
-      <div className="fp-table-label" style={{
-        position: 'absolute', left: padX, top: padY + s.h + (shape === 'sweetheart' ? 24 : 18),
-        width: s.w, textAlign: 'center',
-      }}>
-        {table.name}
-        <span style={{ fontSize: 9, color: isFull ? 'var(--rose)' : 'var(--muted)', marginLeft: 4, fontStyle: 'normal', fontWeight: 400 }}>
-          {seatedHere.length}/{capacity}{isFull ? ' FULL' : ''}
-        </span>
-      </div>
 
       <div className="fp-print-guests" style={{ display: 'none' }}>
         {seatedHere.map(g => g.name).join(', ')}
@@ -318,10 +330,12 @@ export default function SeatingChart({
     if (dragRef.current) {
       const pos = screenToCanvas(e.clientX, e.clientY)
       const d = dragRef.current
+      const clampX = (v) => Math.max(0, Math.min(ROOM_W - 60, v))
+      const clampY = (v) => Math.max(0, Math.min(ROOM_H - 60, v))
       if (d.type === 'table') {
-        onUpdateTable(d.id, { x: Math.max(0, pos.x - d.ox), y: Math.max(0, pos.y - d.oy) })
+        onUpdateTable(d.id, { x: clampX(pos.x - d.ox), y: clampY(pos.y - d.oy) })
       } else {
-        onUpdateRoomElement(d.id, { x: Math.max(0, pos.x - d.ox), y: Math.max(0, pos.y - d.oy) })
+        onUpdateRoomElement(d.id, { x: clampX(pos.x - d.ox), y: clampY(pos.y - d.oy) })
       }
     }
   }, [isPanning, zoom, screenToCanvas, onUpdateTable, onUpdateRoomElement])
@@ -330,12 +344,13 @@ export default function SeatingChart({
     if (isPanning) { setIsPanning(false); return }
     if (dragRef.current) {
       const d = dragRef.current
+      const clampSnap = (v, max) => Math.max(0, Math.min(max, snap(v)))
       if (d.type === 'table') {
         const t = tables.find(t => t.id === d.id)
-        if (t) onUpdateTable(d.id, { x: snap(t.x), y: snap(t.y) })
+        if (t) onUpdateTable(d.id, { x: clampSnap(t.x, ROOM_W - 60), y: clampSnap(t.y, ROOM_H - 60) })
       } else {
         const el = roomElements.find(e => e.id === d.id)
-        if (el) onUpdateRoomElement(d.id, { x: snap(el.x), y: snap(el.y) })
+        if (el) onUpdateRoomElement(d.id, { x: clampSnap(el.x, ROOM_W - 60), y: clampSnap(el.y, ROOM_H - 60) })
       }
       dragRef.current = null
       setDragging(null)
@@ -431,26 +446,31 @@ export default function SeatingChart({
         {canEdit && (
           <>
             <button className={`fp-tool-btn${activeTool === 'select' ? ' active' : ''}`}
-              onClick={() => { setActiveTool('select'); setElementMenu(false) }} title="Select / Move">
+              onClick={() => { setActiveTool('select'); setElementMenu(false) }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+              <span className="fp-tooltip">Select</span>
             </button>
             <button className={`fp-tool-btn${activeTool === 'add_round' ? ' active' : ''}`}
-              onClick={() => { setActiveTool('add_round'); setElementMenu(false) }} title="Add Round Table">
+              onClick={() => { setActiveTool('add_round'); setElementMenu(false) }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/></svg>
+              <span className="fp-tooltip">Round Table</span>
             </button>
             <button className={`fp-tool-btn${activeTool === 'add_rect' ? ' active' : ''}`}
-              onClick={() => { setActiveTool('add_rect'); setElementMenu(false) }} title="Add Rectangular Table">
+              onClick={() => { setActiveTool('add_rect'); setElementMenu(false) }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="7" width="18" height="10" rx="2"/></svg>
+              <span className="fp-tooltip">Rectangular Table</span>
             </button>
             <button className={`fp-tool-btn${activeTool === 'add_sweetheart' ? ' active' : ''}`}
-              onClick={() => { setActiveTool('add_sweetheart'); setElementMenu(false) }} title="Add Sweetheart Table">
+              onClick={() => { setActiveTool('add_sweetheart'); setElementMenu(false) }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 14a8 8 0 0 1 16 0H4z"/></svg>
+              <span className="fp-tooltip">Sweetheart Table</span>
             </button>
 
             <div style={{ position: 'relative' }}>
               <button className={`fp-tool-btn${activeTool === 'add_element' ? ' active' : ''}`}
-                onClick={() => { setActiveTool('add_element'); setElementMenu(!elementMenu) }} title="Add Room Element">
+                onClick={() => { setActiveTool('add_element'); setElementMenu(!elementMenu) }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                <span className="fp-tooltip">Add Element</span>
               </button>
               {elementMenu && (
                 <div className="fp-element-menu">
@@ -465,22 +485,26 @@ export default function SeatingChart({
             </div>
 
             <button className={`fp-tool-btn${activeTool === 'delete' ? ' active' : ''}`}
-              onClick={() => { setActiveTool('delete'); setElementMenu(false) }} title="Delete">
+              onClick={() => { setActiveTool('delete'); setElementMenu(false) }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span className="fp-tooltip">Delete</span>
             </button>
           </>
         )}
 
         <div className="fp-tool-divider" />
 
-        <button className="fp-tool-btn" onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + 0.15))} title="Zoom In">
+        <button className="fp-tool-btn" onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + 0.15))}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          <span className="fp-tooltip">Zoom In</span>
         </button>
-        <button className="fp-tool-btn" onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - 0.15))} title="Zoom Out">
+        <button className="fp-tool-btn" onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - 0.15))}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          <span className="fp-tooltip">Zoom Out</span>
         </button>
-        <button className="fp-tool-btn" onClick={() => { setZoom(DEFAULT_ZOOM); setPan({ x: 0, y: 0 }) }} title="Reset View">
+        <button className="fp-tool-btn" onClick={() => { setZoom(DEFAULT_ZOOM); setPan({ x: 0, y: 0 }) }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <span className="fp-tooltip">Fit to Screen</span>
         </button>
         <div className="fp-zoom-display">{Math.round(zoom * 100)}%</div>
       </div>
@@ -496,6 +520,9 @@ export default function SeatingChart({
         onMouseLeave={handleMouseUp}
       >
         <div className="fp-canvas" style={canvasTransform}>
+          {/* Room boundary */}
+          <div className="fp-room-boundary" style={{ left: -10, top: -10, width: ROOM_W + 20, height: ROOM_H + 20 }} />
+
           {/* Room elements (behind tables) */}
           {roomElements.map(elem => (
             <RoomElementNode

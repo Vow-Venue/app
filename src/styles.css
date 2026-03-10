@@ -3387,6 +3387,7 @@ label {
   flex-direction: column;
   background: var(--white);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .fp-panel-section {
@@ -3500,6 +3501,52 @@ label {
 
 .fp-print-guests {
   display: none;
+}
+
+.fp-tool-btn {
+  position: relative;
+}
+
+.fp-tool-btn .fp-tooltip {
+  display: none;
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+.fp-tool-btn:hover .fp-tooltip {
+  display: block;
+}
+
+.fp-room-boundary {
+  position: absolute;
+  border: 2px dashed rgba(184,151,90,0.35);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.fp-table-capacity {
+  font-family: 'Jost', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: 0.5px;
 }
 
 /* ─── Category chips ────────────────────────────── */
