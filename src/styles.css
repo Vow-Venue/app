@@ -1118,6 +1118,125 @@ body {
   letter-spacing: 0.3px;
 }
 
+/* ── Day-Of Timeline ──────────────────────────────────────────────────────── */
+
+.tl-date {
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.tl-section-bar {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-style: italic;
+  color: var(--deep);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.tl-section-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.tl-day-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.tl-event-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+  cursor: grab;
+}
+.tl-event-row:last-child { border-bottom: none; }
+.tl-event-row:hover { background: rgba(184,151,90,0.03); }
+.tl-event-row.readonly { cursor: default; }
+.tl-event-time {
+  width: 80px;
+  flex-shrink: 0;
+  text-align: right;
+  padding-top: 2px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--deep);
+}
+.tl-event-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 6px;
+  flex-shrink: 0;
+}
+.tl-dot-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold);
+  border: 2px solid var(--white);
+  flex-shrink: 0;
+}
+.tl-dot-line {
+  width: 2px;
+  flex: 1;
+  background: rgba(184,151,90,0.2);
+  margin-top: 4px;
+}
+.tl-event-body { flex: 1; min-width: 0; }
+.tl-event-title { font-weight: 600; font-size: 15px; color: var(--deep); margin-bottom: 2px; }
+.tl-event-address { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.tl-event-desc { font-size: 12px; color: var(--muted); font-style: italic; line-height: 1.5; margin-top: 4px; }
+.tl-event-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tl-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border-solid);
+  background: var(--cream);
+  color: var(--deep);
+}
+.tl-pill[data-type="vendor"] { border-color: var(--gold); color: var(--gold); }
+.tl-pill[data-type="collaborator"] { border-color: var(--rose); color: var(--rose); }
+.tl-pill[data-type="guest"] { border-color: var(--blush); color: var(--deep); }
+.tl-pill-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.5;
+  padding: 0;
+}
+.tl-pill-remove:hover { opacity: 1; }
+.tl-event-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+.tl-edit-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 /* ── Studio Stats Bar ─────────────────────────────────────────────────────── */
 
 .org-stats-bar {
@@ -4416,6 +4535,16 @@ label {
   .fp-canvas-wrapper { overflow: visible !important; }
   .fp-canvas { transform: none !important; position: relative !important; width: auto !important; height: auto !important; }
   .fp-print-guests { display: block !important; font-size: 8px; color: #333; text-align: center; margin-top: 2px; }
+
+  /* Timeline print */
+  .tl-event-row { break-inside: avoid; padding: 10px 0; border-bottom: 1px solid #eee; }
+  .tl-event-time { font-size: 14px; width: 70px; }
+  .tl-event-dot { display: none; }
+  .tl-section-bar { font-size: 20px; border-bottom: 1px solid #ccc; margin-bottom: 8px; padding-bottom: 6px; }
+  .tl-date { font-size: 10px; letter-spacing: 2px; }
+  .tl-section-desc { font-size: 11px; margin-bottom: 12px; }
+  .tl-pill { font-size: 9px; padding: 1px 6px; border: 1px solid #999; }
+  .tl-pill-remove, .tl-event-actions, .tl-day-actions { display: none !important; }
 
   @page { margin: 1.5cm; }
 }

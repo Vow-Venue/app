@@ -1,6 +1,22 @@
 import { useState, useRef, useCallback } from 'react'
 
-const fmtDate = (d) => {
+const ordinal = (n) => {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
+const fmtDateFull = (d) => {
+  if (!d) return ''
+  const dt = new Date(d + 'T00:00:00')
+  const weekday = dt.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()
+  const month = dt.toLocaleDateString('en-US', { month: 'long' }).toUpperCase()
+  const day = ordinal(dt.getDate())
+  const year = dt.getFullYear()
+  return `${weekday}, ${month} ${day}, ${year}`
+}
+
+const fmtDateShort = (d) => {
   if (!d) return ''
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric',
@@ -21,20 +37,20 @@ const googleCalUrl = (event, day, wedding) => {
   if (!dateStr || !event.time) return null
   const [h, m] = event.time.split(':').map(Number)
   const start = new Date(`${dateStr}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`)
-  const end = new Date(start.getTime() + 60 * 60 * 1000) // 1hr default
+  const end = new Date(start.getTime() + 60 * 60 * 1000)
   const pad = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: event.title || 'Wedding Event',
     dates: `${pad(start)}/${pad(end)}`,
     details: [event.notes, couple ? `Wedding: ${couple}` : ''].filter(Boolean).join('\n'),
-    location: event.location || '',
+    location: [event.location, event.address].filter(Boolean).join(', '),
   })
   return `https://calendar.google.com/calendar/render?${params}`
 }
 
 export default function DayOfTimeline({
-  days, events, wedding, vendors, collaborators,
+  days, events, wedding, vendors, collaborators, guests = [],
   onAddDay, onUpdateDay, onDeleteDay,
   onAddEvent, onUpdateEvent, onDeleteEvent, onReorderEvents,
   canEdit = true,
@@ -44,7 +60,7 @@ export default function DayOfTimeline({
   const [dayForm, setDayForm] = useState({ label: '', date: '', description: '' })
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState(null)
-  const [eventForm, setEventForm] = useState({ time: '12:00', title: '', location: '', address: '', vendor_id: '', assignees: [], notes: '' })
+  const [eventForm, setEventForm] = useState({ time: '12:00', title: '', location: '', address: '', assignees: [], notes: '' })
   const [editingDayId, setEditingDayId] = useState(null)
   const [editDayForm, setEditDayForm] = useState({ label: '', date: '', description: '' })
   const dragItem = useRef(null)
@@ -57,11 +73,29 @@ export default function DayOfTimeline({
     .filter(e => e.day_id === activeDayId)
     .sort((a, b) => a.sort_order - b.sort_order)
 
-  // Assignable people list
-  const assignOptions = [
-    ...collaborators.map(c => c.name),
-    ...vendors.map(v => v.name),
-  ].filter(Boolean)
+  // Combined assignee pool from vendors, collaborators, and guests
+  const assigneePool = [
+    ...vendors.map(v => ({ type: 'vendor', id: v.id, name: v.name, label: v.role || 'Vendor' })),
+    ...collaborators.map(c => ({ type: 'collaborator', id: c.id, name: c.name, label: 'Team' })),
+    ...guests.filter(g => g.name).map(g => ({ type: 'guest', id: g.id, name: g.name, label: 'Guest' })),
+  ]
+
+  // Resolve assignee objects from stored array
+  const resolveAssignees = (assignees) => {
+    if (!assignees || !Array.isArray(assignees)) return []
+    return assignees.map(a => {
+      if (typeof a === 'object' && a.type && a.id) {
+        const match = assigneePool.find(p => p.id === a.id && p.type === a.type)
+        return match || a
+      }
+      // Backward compat: plain vendor ID string
+      if (typeof a === 'string') {
+        const match = vendors.find(v => v.id === a)
+        if (match) return { type: 'vendor', id: match.id, name: match.name, label: match.role || 'Vendor' }
+      }
+      return null
+    }).filter(Boolean)
+  }
 
   // ── Day CRUD ──
   const handleAddDay = async (e) => {
@@ -88,16 +122,22 @@ export default function DayOfTimeline({
   // ── Event CRUD ──
   const openAddEvent = () => {
     setEditingEvent(null)
-    setEventForm({ time: '12:00', title: '', location: '', address: '', vendor_id: '', assignees: [], notes: '' })
+    setEventForm({ time: '12:00', title: '', location: '', address: '', assignees: [], notes: '' })
     setAddEventOpen(true)
   }
 
   const openEditEvent = (ev) => {
     setEditingEvent(ev)
+    // Normalize assignees from DB (could be old vendor IDs or new {type, id} objects)
+    const normalized = resolveAssignees(ev.assignees || [])
+    // Also include vendor_id if set and not already in assignees (backward compat)
+    if (ev.vendor_id && !normalized.some(a => a.id === ev.vendor_id)) {
+      const v = vendors.find(v => v.id === ev.vendor_id)
+      if (v) normalized.unshift({ type: 'vendor', id: v.id, name: v.name, label: v.role || 'Vendor' })
+    }
     setEventForm({
       time: ev.time || '12:00', title: ev.title || '', location: ev.location || '',
-      address: ev.address || '', vendor_id: ev.vendor_id || '',
-      assignees: ev.assignees || [], notes: ev.notes || '',
+      address: ev.address || '', assignees: normalized, notes: ev.notes || '',
     })
     setAddEventOpen(true)
   }
@@ -106,9 +146,13 @@ export default function DayOfTimeline({
     e.preventDefault()
     if (!eventForm.title.trim()) return
     const payload = {
-      ...eventForm,
-      vendor_id: eventForm.vendor_id || null,
-      assignees: eventForm.assignees.length > 0 ? eventForm.assignees : [],
+      time: eventForm.time,
+      title: eventForm.title,
+      location: eventForm.location || null,
+      address: eventForm.address || null,
+      notes: eventForm.notes || null,
+      assignees: eventForm.assignees.map(a => ({ type: a.type, id: a.id })),
+      vendor_id: null,
     }
     if (editingEvent) {
       await onUpdateEvent(editingEvent.id, payload)
@@ -121,6 +165,21 @@ export default function DayOfTimeline({
 
   const handleDeleteEvent = async (id) => {
     await onDeleteEvent(id)
+  }
+
+  const addAssignee = (poolItem) => {
+    if (!poolItem) return
+    setEventForm(p => ({
+      ...p,
+      assignees: [...p.assignees, poolItem],
+    }))
+  }
+
+  const removeAssignee = (idx) => {
+    setEventForm(p => ({
+      ...p,
+      assignees: p.assignees.filter((_, i) => i !== idx),
+    }))
   }
 
   // ── Drag reorder ──
@@ -140,8 +199,11 @@ export default function DayOfTimeline({
     dragOver.current = null
   }, [dayEvents, activeDayId, onReorderEvents])
 
-  // ── Print ──
   const handlePrint = () => window.print()
+
+  // IDs already assigned in the current form
+  const assignedIds = new Set(eventForm.assignees.map(a => a.id))
+  const availablePool = assigneePool.filter(p => !assignedIds.has(p.id))
 
   return (
     <div>
@@ -149,30 +211,25 @@ export default function DayOfTimeline({
       <div className="section-subtitle">PLAN EVERY MOMENT OF YOUR CELEBRATION</div>
 
       {/* ── Day Tabs ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="chip-row no-print" style={{ marginBottom: 20, alignItems: 'center' }}>
         {days.map(d => (
           <button
             key={d.id}
             className={`chip ${d.id === activeDayId ? 'active' : ''}`}
             onClick={() => setActiveDay(d.id)}
-            style={{ cursor: 'pointer', border: 'none', fontFamily: 'inherit', position: 'relative' }}
           >
             {d.label}
-            {d.date && <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 6 }}>{fmtDate(d.date)}</span>}
+            {d.date && <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 6 }}>{fmtDateShort(d.date)}</span>}
           </button>
         ))}
         {canEdit && (
-          <button
-            className="btn btn-ghost"
-            style={{ fontSize: 11, padding: '6px 12px' }}
-            onClick={() => setAddDayOpen(true)}
-          >
+          <button className="btn btn-ghost" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => setAddDayOpen(true)}>
             + ADD DAY
           </button>
         )}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost no-print" style={{ fontSize: 11 }} onClick={handlePrint}>
-            ↓ PRINT TIMELINE
+        <div style={{ marginLeft: 'auto' }}>
+          <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={handlePrint}>
+            PRINT TIMELINE
           </button>
         </div>
       </div>
@@ -239,72 +296,62 @@ export default function DayOfTimeline({
       {currentDay && (
         <div>
           {/* Day header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            {editingDayId === currentDay.id ? (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="text" value={editDayForm.label}
-                    onChange={e => setEditDayForm(p => ({ ...p, label: e.target.value }))}
-                    style={{ flex: 1, fontSize: 14 }}
-                    placeholder="Day label"
-                    autoFocus
-                  />
-                  <input
-                    type="date" value={editDayForm.date}
-                    onChange={e => setEditDayForm(p => ({ ...p, date: e.target.value }))}
-                    style={{ width: 160 }}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="text" value={editDayForm.description || ''}
-                    onChange={e => setEditDayForm(p => ({ ...p, description: e.target.value }))}
-                    style={{ flex: 1, fontSize: 13 }}
-                    placeholder="Short description (e.g. Friday evening events)"
-                  />
-                  <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={handleSaveDayEdit}>SAVE</button>
-                  <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setEditingDayId(null)}>CANCEL</button>
-                </div>
+          {editingDayId === currentDay.id ? (
+            <div style={{ marginBottom: 24 }}>
+              <div className="tl-edit-row" style={{ marginBottom: 8 }}>
+                <input
+                  type="text" value={editDayForm.label}
+                  onChange={e => setEditDayForm(p => ({ ...p, label: e.target.value }))}
+                  style={{ flex: 1, fontSize: 14 }}
+                  placeholder="Day label"
+                  autoFocus
+                />
+                <input
+                  type="date" value={editDayForm.date}
+                  onChange={e => setEditDayForm(p => ({ ...p, date: e.target.value }))}
+                  style={{ width: 160 }}
+                />
               </div>
-            ) : (
-              <>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontStyle: 'italic', color: 'var(--deep)',
-                  }}>
-                    {currentDay.label}
-                  </div>
-                  {currentDay.description && (
-                    <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>
-                      {currentDay.description}
-                    </div>
-                  )}
-                  {currentDay.date && (
-                    <div style={{ fontSize: 12, color: 'var(--muted)', letterSpacing: 1, marginTop: 2 }}>
-                      {fmtDate(currentDay.date)}
-                    </div>
-                  )}
-                </div>
-                {canEdit && (
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      className="btn btn-ghost" style={{ fontSize: 11 }}
-                      onClick={() => { setEditingDayId(currentDay.id); setEditDayForm({ label: currentDay.label, date: currentDay.date || '', description: currentDay.description || '' }) }}
-                    >
-                      EDIT DAY
-                    </button>
-                    <button
-                      className="btn-danger" style={{ fontSize: 11, padding: '4px 10px' }}
-                      onClick={() => handleDeleteDay(currentDay.id)}
-                    >
-                      DELETE DAY
-                    </button>
-                  </div>
+              <div className="tl-edit-row">
+                <input
+                  type="text" value={editDayForm.description || ''}
+                  onChange={e => setEditDayForm(p => ({ ...p, description: e.target.value }))}
+                  style={{ flex: 1, fontSize: 13 }}
+                  placeholder="Short description (e.g. Friday evening events)"
+                />
+                <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={handleSaveDayEdit}>SAVE</button>
+                <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setEditingDayId(null)}>CANCEL</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 24 }}>
+              <div style={{ flex: 1 }}>
+                {currentDay.date && (
+                  <div className="tl-date">{fmtDateFull(currentDay.date)}</div>
                 )}
-              </>
-            )}
-          </div>
+                <div className="tl-section-bar">{currentDay.label}</div>
+                {currentDay.description && (
+                  <div className="tl-section-desc">{currentDay.description}</div>
+                )}
+              </div>
+              {canEdit && (
+                <div className="tl-day-actions no-print">
+                  <button
+                    className="btn btn-ghost" style={{ fontSize: 11 }}
+                    onClick={() => { setEditingDayId(currentDay.id); setEditDayForm({ label: currentDay.label, date: currentDay.date || '', description: currentDay.description || '' }) }}
+                  >
+                    EDIT DAY
+                  </button>
+                  <button
+                    className="btn-danger" style={{ fontSize: 11, padding: '4px 10px' }}
+                    onClick={() => handleDeleteDay(currentDay.id)}
+                  >
+                    DELETE DAY
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Events list */}
           {dayEvents.length === 0 ? (
@@ -313,118 +360,84 @@ export default function DayOfTimeline({
             </div>
           ) : (
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              {dayEvents.map((ev, idx) => (
-                <div
-                  key={ev.id}
-                  draggable={canEdit}
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragEnter={() => handleDragEnter(idx)}
-                  onDragEnd={handleDragEnd}
-                  onDragOver={e => e.preventDefault()}
-                  style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 16,
-                    padding: '16px 20px',
-                    borderBottom: idx < dayEvents.length - 1 ? '1px solid var(--border)' : 'none',
-                    cursor: canEdit ? 'grab' : 'default',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(184,151,90,0.03)'}
-                  onMouseLeave={e => e.currentTarget.style.background = ''}
-                >
-                  {/* Time column */}
-                  <div style={{
-                    width: 80, flexShrink: 0, textAlign: 'right', paddingTop: 2,
-                  }}>
-                    <div style={{
-                      fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 600,
-                      color: 'var(--deep)',
-                    }}>
-                      {fmtTime12(ev.time)}
+              {dayEvents.map((ev, idx) => {
+                const resolved = resolveAssignees(ev.assignees)
+                // Backward compat: include vendor_id if not in assignees
+                if (ev.vendor_id && !resolved.some(a => a.id === ev.vendor_id)) {
+                  const v = vendors.find(v => v.id === ev.vendor_id)
+                  if (v) resolved.unshift({ type: 'vendor', id: v.id, name: v.name, label: v.role || 'Vendor' })
+                }
+                return (
+                  <div
+                    key={ev.id}
+                    className={`tl-event-row ${canEdit ? '' : 'readonly'}`}
+                    draggable={canEdit}
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragEnter={() => handleDragEnter(idx)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={e => e.preventDefault()}
+                  >
+                    <div className="tl-event-time">{fmtTime12(ev.time)}</div>
+
+                    <div className="tl-event-dot">
+                      <div className="tl-dot-circle" />
+                      {idx < dayEvents.length - 1 && <div className="tl-dot-line" />}
+                    </div>
+
+                    <div className="tl-event-body">
+                      <div className="tl-event-title">{ev.title}</div>
+                      {(ev.location || ev.address) && (
+                        <div className="tl-event-address">
+                          {ev.location && <>📍 {ev.location}</>}
+                          {ev.location && ev.address && ' — '}
+                          {ev.address}
+                        </div>
+                      )}
+                      {ev.notes && <div className="tl-event-desc">{ev.notes}</div>}
+                      {resolved.length > 0 && (
+                        <div className="tl-event-pills">
+                          {resolved.map((a, i) => (
+                            <span key={i} className="tl-pill" data-type={a.type}>
+                              {a.name}{a.label ? ` (${a.label})` : ''}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {resolved.length === 0 && ev.assigned_to && (
+                        <div className="tl-event-pills">
+                          <span className="tl-pill">{ev.assigned_to}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="tl-event-actions no-print">
+                      {googleCalUrl(ev, currentDay, wedding) && (
+                        <a
+                          href={googleCalUrl(ev, currentDay, wedding)}
+                          target="_blank" rel="noopener noreferrer"
+                          className="btn btn-ghost"
+                          style={{ fontSize: 10, padding: '4px 8px', textDecoration: 'none' }}
+                          title="Add to Google Calendar"
+                        >
+                          📅
+                        </a>
+                      )}
+                      {canEdit && (
+                        <>
+                          <button className="btn-icon" style={{ fontSize: 11 }} onClick={() => openEditEvent(ev)}>Edit</button>
+                          <button className="btn-danger" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => handleDeleteEvent(ev.id)}>×</button>
+                        </>
+                      )}
                     </div>
                   </div>
-
-                  {/* Timeline dot + line */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 6, flexShrink: 0 }}>
-                    <div style={{
-                      width: 10, height: 10, borderRadius: '50%',
-                      background: 'var(--gold)', border: '2px solid var(--white)',
-                      boxShadow: '0 0 0 2px var(--gold)',
-                    }} />
-                    {idx < dayEvents.length - 1 && (
-                      <div style={{ width: 2, flex: 1, background: 'rgba(184,151,90,0.2)', marginTop: 4 }} />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--deep)', marginBottom: 2 }}>
-                      {ev.title}
-                    </div>
-                    {ev.location && (
-                      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>
-                        📍 {ev.location}
-                      </div>
-                    )}
-                    {ev.address && (
-                      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>
-                        {ev.address}
-                      </div>
-                    )}
-                    {(() => {
-                      const primaryVendor = ev.vendor_id ? vendors.find(v => v.id === ev.vendor_id) : null
-                      const extraAssignees = (ev.assignees || []).filter(id => id !== ev.vendor_id).map(id => vendors.find(v => v.id === id)).filter(Boolean)
-                      const allAssigned = [primaryVendor, ...extraAssignees].filter(Boolean)
-                      if (allAssigned.length > 0) {
-                        return (
-                          <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 500, marginBottom: 2 }}>
-                            {allAssigned.map(v => `${v.name}${v.role ? ` (${v.role})` : ''}`).join(', ')}
-                          </div>
-                        )
-                      }
-                      if (ev.assigned_to) {
-                        return (
-                          <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 500, marginBottom: 2 }}>
-                            → {ev.assigned_to}
-                          </div>
-                        )
-                      }
-                      return null
-                    })()}
-                    {ev.notes && (
-                      <div style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', marginTop: 4, lineHeight: 1.5 }}>
-                        {ev.notes}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'flex-start' }}>
-                    {googleCalUrl(ev, currentDay, wedding) && (
-                      <a
-                        href={googleCalUrl(ev, currentDay, wedding)}
-                        target="_blank" rel="noopener noreferrer"
-                        className="btn btn-ghost"
-                        style={{ fontSize: 10, padding: '4px 8px', textDecoration: 'none' }}
-                        title="Add to Google Calendar"
-                      >
-                        📅
-                      </a>
-                    )}
-                    {canEdit && (
-                      <>
-                        <button className="btn-icon" style={{ fontSize: 11 }} onClick={() => openEditEvent(ev)}>Edit</button>
-                        <button className="btn-danger" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => handleDeleteEvent(ev.id)}>×</button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
           {/* Add event button */}
           {canEdit && (
-            <div style={{ marginTop: 16 }}>
+            <div className="no-print" style={{ marginTop: 16 }}>
               <button className="btn btn-primary" onClick={openAddEvent}>+ ADD EVENT</button>
             </div>
           )}
@@ -476,41 +489,50 @@ export default function DayOfTimeline({
                 />
               </div>
               <div className="form-group">
-                <label>VENDOR</label>
-                <select
-                  value={eventForm.vendor_id}
-                  onChange={e => setEventForm(p => ({ ...p, vendor_id: e.target.value }))}
-                >
-                  <option value="">— None —</option>
-                  {vendors.map(v => (
-                    <option key={v.id} value={v.id}>{v.name}{v.role ? ` — ${v.role}` : ''}</option>
-                  ))}
-                </select>
-              </div>
-              {vendors.length > 1 && (
-                <div className="form-group">
-                  <label>ADDITIONAL ASSIGNEES</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                    {vendors.filter(v => v.id !== eventForm.vendor_id).map(v => (
-                      <label key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={eventForm.assignees.includes(v.id)}
-                          onChange={e => {
-                            setEventForm(p => ({
-                              ...p,
-                              assignees: e.target.checked
-                                ? [...p.assignees, v.id]
-                                : p.assignees.filter(id => id !== v.id),
-                            }))
-                          }}
-                        />
-                        {v.name}{v.role ? ` (${v.role})` : ''}
-                      </label>
+                <label>ASSIGNEES</label>
+                {eventForm.assignees.length > 0 && (
+                  <div className="tl-event-pills" style={{ marginBottom: 8 }}>
+                    {eventForm.assignees.map((a, i) => (
+                      <span key={i} className="tl-pill" data-type={a.type}>
+                        {a.name}{a.label ? ` (${a.label})` : ''}
+                        <button type="button" className="tl-pill-remove" onClick={() => removeAssignee(i)}>×</button>
+                      </span>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+                {availablePool.length > 0 && (
+                  <select
+                    value=""
+                    onChange={e => {
+                      const selected = availablePool.find(p => `${p.type}:${p.id}` === e.target.value)
+                      if (selected) addAssignee(selected)
+                    }}
+                  >
+                    <option value="">+ Add vendor, team member, or guest...</option>
+                    {vendors.length > 0 && availablePool.filter(p => p.type === 'vendor').length > 0 && (
+                      <optgroup label="Vendors">
+                        {availablePool.filter(p => p.type === 'vendor').map(p => (
+                          <option key={p.id} value={`${p.type}:${p.id}`}>{p.name}{p.label ? ` — ${p.label}` : ''}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {collaborators.length > 0 && availablePool.filter(p => p.type === 'collaborator').length > 0 && (
+                      <optgroup label="Team">
+                        {availablePool.filter(p => p.type === 'collaborator').map(p => (
+                          <option key={p.id} value={`${p.type}:${p.id}`}>{p.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {guests.length > 0 && availablePool.filter(p => p.type === 'guest').length > 0 && (
+                      <optgroup label="Guests">
+                        {availablePool.filter(p => p.type === 'guest').map(p => (
+                          <option key={p.id} value={`${p.type}:${p.id}`}>{p.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                )}
+              </div>
               <div className="form-group">
                 <label>NOTES</label>
                 <textarea

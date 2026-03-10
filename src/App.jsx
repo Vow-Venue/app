@@ -1679,6 +1679,7 @@ export default function App() {
             wedding={wedding}
             vendors={vendors}
             collaborators={collaborators}
+            guests={guests}
             onAddDay={handleAddTimelineDay}
             onUpdateDay={handleUpdateTimelineDay}
             onDeleteDay={handleDeleteTimelineDay}
