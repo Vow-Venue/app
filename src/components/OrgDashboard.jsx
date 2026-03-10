@@ -293,7 +293,14 @@ export default function OrgDashboard({
           }
 
           return (
-            <button key={w.id} className="wedding-card" onClick={() => handleSelect(w.id)}>
+            <div
+              key={w.id}
+              className="wedding-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => handleSelect(w.id)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleSelect(w.id) }}
+            >
               <div className="wedding-card-arch" style={bgStyle}>
                 <div className="wedding-card-arch-overlay" />
                 {w.myRole === 'owner' && (
@@ -310,7 +317,7 @@ export default function OrgDashboard({
                       type="file"
                       accept="image/*"
                       style={{ display: 'none' }}
-                      onChange={(e) => handleCoverChange(e, w.id)}
+                      onChange={(e) => { e.stopPropagation(); handleCoverChange(e, w.id) }}
                     />
                   </>
                 )}
@@ -340,7 +347,7 @@ export default function OrgDashboard({
                   <span className="wedding-card-task-pct">{taskPct}%</span>
                 </div>
               </div>
-            </button>
+            </div>
           )
         })}
 
