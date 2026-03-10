@@ -6,6 +6,7 @@ import Header from './components/Header'
 import NavTabs from './components/NavTabs'
 import Overview from './components/Overview'
 import GuestList from './components/GuestList'
+import SeatingChart from './components/SeatingChart'
 import TaskList from './components/TaskList'
 import VendorHub from './components/VendorHub'
 import Messaging from './components/Messaging'
@@ -1542,6 +1543,7 @@ export default function App() {
     if (!permissions.canViewCollaborators) h.add('collaborators')
     if (permissions.isVendor) {
       h.add('guests')
+      h.add('seating')
       h.add('tasks')
       h.add('notes')
       h.add('dayofcontacts')
@@ -1583,17 +1585,32 @@ export default function App() {
             onAddGuest={handleAddGuest}
             onUpdateGuest={handleUpdateGuest}
             onDeleteGuest={handleDeleteGuest}
-            onAddTable={handleAddTable}
-            onUpdateTable={handleUpdateTable}
-            onDeleteTable={handleDeleteTable}
             onImportGuests={handleImportGuests}
             canEdit={permissions.canEditGuests}
             rsvpSlug={wedding?.rsvp_slug ?? null}
-            roomElements={roomElements}
-            onAddRoomElement={handleAddRoomElement}
-            onUpdateRoomElement={handleUpdateRoomElement}
-            onDeleteRoomElement={handleDeleteRoomElement}
           />
+        )
+      case 'seating':
+        return (
+          <div>
+            <div className="section-title" style={{ marginBottom: 4 }}>Seating Chart</div>
+            <div className="section-subtitle" style={{ marginBottom: 20 }}>
+              {guests.length} GUESTS · {guests.filter(g => g.tableId).length} SEATED · {guests.filter(g => !g.tableId).length} UNASSIGNED
+            </div>
+            <SeatingChart
+              guests={guests}
+              tables={tables}
+              onUpdateGuest={handleUpdateGuest}
+              onUpdateTable={handleUpdateTable}
+              onAddTable={handleAddTable}
+              onDeleteTable={handleDeleteTable}
+              canEdit={permissions.canEditGuests}
+              roomElements={roomElements}
+              onAddRoomElement={handleAddRoomElement}
+              onUpdateRoomElement={handleUpdateRoomElement}
+              onDeleteRoomElement={handleDeleteRoomElement}
+            />
+          </div>
         )
       case 'tasks':
         return (

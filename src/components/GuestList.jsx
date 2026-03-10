@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import Modal from './Modal'
-import SeatingChart from './SeatingChart'
 import { parseCSVRaw, findColumn, toCSV, downloadCSV } from '../lib/csv'
 
 const BLANK_GUEST = { name: '', email: '', rsvp: 'pending', dietary: '', tableId: '', guestRole: '' }
@@ -41,17 +40,14 @@ const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
 export default function GuestList({
   guests, tables,
   onAddGuest, onUpdateGuest, onDeleteGuest,
-  onAddTable, onDeleteTable, onUpdateTable,
   onImportGuests,
   canEdit = true,
   rsvpSlug = null,
-  roomElements = [], onAddRoomElement, onUpdateRoomElement, onDeleteRoomElement,
 }) {
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingGuest, setEditingGuest]   = useState(null)
   const [form, setForm]                   = useState(BLANK_GUEST)
   const [rsvpFilter, setRsvpFilter]       = useState('all')
-  const [view, setView]                   = useState('list')
   const [importPreview, setImportPreview] = useState(null) // { guests: [] } | null
   const [copied, setCopied]               = useState(false)
   const fileInputRef                      = useRef(null)
@@ -126,36 +122,6 @@ export default function GuestList({
     ? guests
     : guests.filter(g => g.rsvp === rsvpFilter)
 
-  // ── Seating view ────────────────────────────────────────────────────────────
-  if (view === 'seating') {
-    return (
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div>
-            <div className="section-title" style={{ marginBottom: 4 }}>Seating Chart</div>
-            <div className="section-subtitle">
-              {guests.length} GUESTS · {guests.filter(g => g.tableId).length} SEATED · {guests.filter(g => !g.tableId).length} UNASSIGNED
-            </div>
-          </div>
-          <button className="btn btn-ghost" onClick={() => setView('list')}>← GUEST LIST</button>
-        </div>
-        <SeatingChart
-          guests={guests}
-          tables={tables}
-          onUpdateGuest={onUpdateGuest}
-          onUpdateTable={onUpdateTable}
-          onAddTable={onAddTable}
-          onDeleteTable={onDeleteTable}
-          canEdit={canEdit}
-          roomElements={roomElements}
-          onAddRoomElement={onAddRoomElement}
-          onUpdateRoomElement={onUpdateRoomElement}
-          onDeleteRoomElement={onDeleteRoomElement}
-        />
-      </div>
-    )
-  }
-
   // ── Guest list view ─────────────────────────────────────────────────────────
   return (
     <div>
@@ -212,9 +178,6 @@ export default function GuestList({
           ))}
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost" onClick={() => setView('seating')}>
-            ⬡ SEATING CHART
-          </button>
           <button
             className="btn btn-ghost no-print"
             style={{ fontSize: 11 }}

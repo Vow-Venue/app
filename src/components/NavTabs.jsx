@@ -1,6 +1,7 @@
 const TABS = [
   { id: 'overview',       label: 'OVERVIEW' },
   { id: 'guests',         label: 'GUESTS' },
+  { id: 'seating',        label: 'SEATING' },
   { id: 'tasks',          label: 'TASKS' },
   { id: 'vendors',        label: 'VENDORS' },
   { id: 'messaging',      label: 'MESSAGES' },
