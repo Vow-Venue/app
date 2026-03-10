@@ -203,6 +203,7 @@ export default function App() {
   const [timelineDays, setTimelineDays]     = useState([])
   const [timelineEvents, setTimelineEvents] = useState([])
   const [roomElements, setRoomElements]     = useState([])
+  const [notifications, setNotifications]   = useState([])
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -234,6 +235,7 @@ export default function App() {
         setInvoices([])
         setCollaborators([])
         setNotes([])
+        setNotifications([])
         setWeddingId(null)
         setWedding(null)
         if (!window.location.pathname.startsWith('/admin-')) navigate('/', { replace: true })
@@ -249,6 +251,7 @@ export default function App() {
     loadMyWeddings(session.user.id)
     loadProfile(session.user.id)
     loadTaskTemplates(session.user.id)
+    loadNotifications(session.user.id)
   }, [session?.user?.id])
 
   // ── Load task templates ────────────────────────────────────────────────────
@@ -470,6 +473,9 @@ export default function App() {
 
       setMyWeddings(weddings)
 
+      // Check wedding date reminders (30/7/1 days away)
+      checkWeddingReminders(weddings, userId)
+
       // ── Step 4: Auto-routing ────────────────────────────────────────────────
       // Collaborators (couple/family/vendor) with 1 wedding: auto-jump
       // Planners/owners: always land on org dashboard
@@ -511,11 +517,13 @@ export default function App() {
         supabase.from('room_elements').select('*').eq('wedding_id', wId),
       ])
 
+      const mappedTasks = (tkRes.data ?? []).map(mapTask)
+      const mappedInvoices = (invRes.data ?? []).map(mapInvoice)
       setGuests((gRes.data ?? []).map(mapGuest))
       setTables(tRes.data ?? [])
-      setTasks((tkRes.data ?? []).map(mapTask))
+      setTasks(mappedTasks)
       setVendors(vRes.data ?? [])
-      setInvoices((invRes.data ?? []).map(mapInvoice))
+      setInvoices(mappedInvoices)
       setCollaborators(collRes.data ?? [])
       setNotes((notesRes.data ?? []).map(mapNote))
       setGuidanceBlocks((gbRes.data ?? []).map(mapGuidanceBlock))
@@ -538,6 +546,10 @@ export default function App() {
         setMessages([])
         setChannelMembers([])
       }
+
+      // Check for overdue tasks/invoices
+      const uid = userId || session?.user?.id
+      if (uid) checkOverdueNotifications(wId, mappedTasks, mappedInvoices, uid)
     } catch (err) {
       console.error('loadWeddingData failed:', err)
     }
@@ -835,6 +847,131 @@ export default function App() {
     return () => supabase.removeChannel(sub)
   }, [weddingId, channelMembers, session])
 
+  // ── Notifications ──────────────────────────────────────────────────────────
+  const loadNotifications = async (userId) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (error) { console.error('loadNotifications failed:', error.message); return }
+    setNotifications(data ?? [])
+  }
+
+  // Realtime: new notifications
+  useEffect(() => {
+    if (!session) return
+    const userId = session.user.id
+    const sub = supabase
+      .channel('rt-notifications-' + userId)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        payload => {
+          setNotifications(prev => {
+            if (prev.some(n => n.id === payload.new.id)) return prev
+            return [payload.new, ...prev]
+          })
+        }
+      )
+      .subscribe()
+    return () => supabase.removeChannel(sub)
+  }, [session])
+
+  const handleMarkNotificationRead = async (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+    const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id)
+    if (error) console.error('markNotificationRead failed:', error.message)
+  }
+
+  const handleMarkAllNotificationsRead = async (weddingIdFilter) => {
+    setNotifications(prev => prev.map(n => {
+      if (weddingIdFilter && n.wedding_id !== weddingIdFilter) return n
+      return { ...n, read: true }
+    }))
+    let query = supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', session.user.id)
+      .eq('read', false)
+    if (weddingIdFilter) query = query.eq('wedding_id', weddingIdFilter)
+    const { error } = await query
+    if (error) console.error('markAllNotificationsRead failed:', error.message)
+  }
+
+  // Check for overdue tasks/invoices and wedding date reminders
+  const checkOverdueNotifications = async (wId, loadedTasks, loadedInvoices, userId) => {
+    if (!session || !wId) return
+    const today = new Date().toISOString().split('T')[0]
+    const rows = []
+
+    for (const task of loadedTasks) {
+      if (!task.dueDate || task.completed) continue
+      if (task.dueDate < today) {
+        rows.push({
+          user_id: userId, wedding_id: wId, type: 'task_overdue',
+          message: `Task overdue: "${task.title}"`,
+          link_tab: 'tasks', ref_id: 'task-overdue-' + task.id,
+        })
+      }
+    }
+
+    for (const inv of loadedInvoices) {
+      if (!inv.dueDate || inv.status === 'paid') continue
+      if (inv.dueDate < today) {
+        rows.push({
+          user_id: userId, wedding_id: wId, type: 'payment_due',
+          message: `Payment overdue: ${inv.vendorName}`,
+          link_tab: 'billing', ref_id: 'invoice-overdue-' + inv.id,
+        })
+      }
+    }
+
+    if (rows.length === 0) return
+    const { error } = await supabase
+      .from('notifications')
+      .upsert(rows, { onConflict: 'user_id,ref_id', ignoreDuplicates: true })
+    if (error) console.error('checkOverdueNotifications failed:', error.message)
+    await loadNotifications(userId)
+  }
+
+  const checkWeddingReminders = async (weddings, userId) => {
+    if (!session || !weddings.length) return
+    const now = new Date()
+    const rows = []
+    for (const w of weddings) {
+      if (!w.wedding_date) continue
+      const wDate = new Date(w.wedding_date + 'T00:00:00')
+      const daysLeft = Math.ceil((wDate - now) / 86400000)
+      const label = w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Wedding'
+      for (const milestone of [30, 7, 1]) {
+        if (daysLeft <= milestone && daysLeft > (milestone === 1 ? -1 : milestone - 1)) {
+          rows.push({
+            user_id: userId, wedding_id: w.id, type: 'wedding_reminder',
+            message: `${label}: ${milestone === 1 ? 'Tomorrow!' : milestone + ' days away'}`,
+            link_tab: 'overview', ref_id: `reminder-${w.id}-${milestone}d`,
+          })
+        }
+      }
+    }
+    if (rows.length === 0) return
+    const { error } = await supabase
+      .from('notifications')
+      .upsert(rows, { onConflict: 'user_id,ref_id', ignoreDuplicates: true })
+    if (error) console.error('checkWeddingReminders failed:', error.message)
+    await loadNotifications(userId)
+  }
+
+  // Helper: create a notification for specific users
+  const createNotification = async (targetUserIds, notif) => {
+    if (!session || !targetUserIds.length) return
+    const rows = targetUserIds.map(uid => ({ ...notif, user_id: uid }))
+    const { error } = await supabase
+      .from('notifications')
+      .upsert(rows, { onConflict: 'user_id,ref_id', ignoreDuplicates: true })
+    if (error) console.error('createNotification failed:', error.message)
+  }
+
   // ── Guest handlers ───────────────────────────────────────────────────────────
   const handleAddGuest = async (guest) => {
     if (!requireEdit()) return
@@ -1116,7 +1253,22 @@ export default function App() {
       wedding_id: weddingId, type, content, sort_order: maxSort + 1,
     }).select().single()
     if (error) { console.error('Add guidance block failed:', error.message); return }
-    if (data) setGuidanceBlocks(prev => [...prev, mapGuidanceBlock(data)])
+    if (data) {
+      setGuidanceBlocks(prev => [...prev, mapGuidanceBlock(data)])
+      // Notify couple collaborators about new guidance content
+      const { data: coupleMembers } = await supabase
+        .from('wedding_members')
+        .select('user_id')
+        .eq('wedding_id', weddingId)
+        .eq('role', 'couple')
+      if (coupleMembers?.length) {
+        const title = type === 'header' ? content.title : type === 'text' ? 'text block' : type === 'file' ? content.file_name : 'image'
+        createNotification(
+          coupleMembers.map(m => m.user_id),
+          { wedding_id: weddingId, type: 'guidance_upload', message: `New guidance added: ${title}`, link_tab: 'guidance', ref_id: 'guidance-' + data.id }
+        )
+      }
+    }
   }
 
   const handleUpdateGuidanceBlock = async (id, updates) => {
@@ -1237,7 +1389,26 @@ export default function App() {
       notes: event.notes || null, sort_order: maxSort + 1,
     }).select().single()
     if (error) { console.error('Add timeline event failed:', error.message); return }
-    if (data) setTimelineEvents(prev => [...prev, data])
+    if (data) {
+      setTimelineEvents(prev => [...prev, data])
+      // Notify assigned vendor
+      if (event.vendor_id) {
+        const vendor = vendors.find(v => v.id === event.vendor_id)
+        if (vendor) {
+          const { data: vendorMembers } = await supabase
+            .from('wedding_members')
+            .select('user_id')
+            .eq('wedding_id', weddingId)
+            .eq('role', 'vendor')
+          if (vendorMembers?.length) {
+            createNotification(
+              vendorMembers.map(m => m.user_id),
+              { wedding_id: weddingId, type: 'timeline_assigned', message: `Timeline event assigned: ${event.title}`, link_tab: 'dayofcontacts', ref_id: 'timeline-' + data.id }
+            )
+          }
+        }
+      }
+    }
   }
 
   const handleUpdateTimelineEvent = async (id, updates) => {
@@ -1882,6 +2053,7 @@ export default function App() {
             isPro={userPlan === 'pro'}
             myWeddings={myWeddings}
             activeWeddingId={null}
+            onSelectWedding={selectWedding}
             onSignIn={() => setAuthOpen(true)}
             onSignOut={handleSignOut}
             onHelp={() => setHelpOpen(true)}
@@ -1893,6 +2065,10 @@ export default function App() {
             setProfileOpen={setProfileOpen}
             deleteAccountOpen={deleteAccountOpen}
             setDeleteAccountOpen={setDeleteAccountOpen}
+            notifications={notifications}
+            onMarkRead={handleMarkNotificationRead}
+            onMarkAllRead={handleMarkAllNotificationsRead}
+            onTabChange={setActiveTab}
           />
           <main className="main" style={{ maxWidth: 'none', padding: 0 }}>
             <OrgDashboard
@@ -1955,6 +2131,10 @@ export default function App() {
           setProfileOpen={setProfileOpen}
           deleteAccountOpen={deleteAccountOpen}
           setDeleteAccountOpen={setDeleteAccountOpen}
+          notifications={notifications}
+          onMarkRead={handleMarkNotificationRead}
+          onMarkAllRead={handleMarkAllNotificationsRead}
+          onTabChange={setActiveTab}
         />
         {activeWeddingId && (
           <div className="breadcrumb-bar">

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import NotificationDropdown from './NotificationDropdown'
 
 const fmtDate = (dateStr) => {
   if (!dateStr) return ''
@@ -27,6 +28,7 @@ export default function Header({
   onSignIn, onSignOut, onHelp,
   profile, onUpdateProfile, onUploadAvatar, onDeleteAccount,
   profileOpen, setProfileOpen, deleteAccountOpen, setDeleteAccountOpen,
+  notifications = [], onMarkRead, onMarkAllRead, onTabChange,
 }) {
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -102,6 +104,17 @@ export default function Header({
         )}
 
         {isPro && <span className="header-pro-badge">PRO</span>}
+
+        {session && (
+          <NotificationDropdown
+            notifications={notifications}
+            activeWeddingId={activeWeddingId}
+            onMarkRead={onMarkRead}
+            onMarkAllRead={onMarkAllRead}
+            onSelectWedding={onSelectWedding}
+            onTabChange={onTabChange}
+          />
+        )}
 
         {/* Account menu or Sign In */}
         {session ? (
