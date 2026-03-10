@@ -263,7 +263,7 @@ body {
 .wedding-card {
   background: var(--white);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 14px;
   padding: 0;
   cursor: pointer;
   transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s;
@@ -284,10 +284,10 @@ body {
 .wedding-card-arch {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 5;
+  height: 120px;
   background-size: cover;
   background-position: center;
-  border-radius: 20px 20px 0 0;
+  border-radius: 14px 14px 0 0;
   /* Arch mask: rectangle on top, rounded bottom */
   clip-path: ellipse(100% 100% at 50% 0%);
   overflow: hidden;
@@ -355,17 +355,17 @@ body {
 
 /* ── Card Body (below arch) ────────────── */
 .wedding-card-body {
-  padding: 20px 22px 22px;
+  padding: 14px 18px 16px;
 }
 
 .wedding-card-couple {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 400;
   font-style: italic;
   color: var(--deep);
   line-height: 1.25;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .wedding-card-meta {
@@ -456,7 +456,11 @@ body {
   color: var(--muted);
   padding: 2px 8px;
   line-height: 1;
-  transition: background 0.15s, color 0.15s;
+  opacity: 0;
+  transition: background 0.15s, color 0.15s, opacity 0.2s;
+}
+.wedding-card:hover .wedding-card-menu-btn {
+  opacity: 1;
 }
 .wedding-card-menu-btn:hover {
   background: var(--blush);
@@ -842,7 +846,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 6px;
   font-size: 11px;
   color: var(--muted);
 }
