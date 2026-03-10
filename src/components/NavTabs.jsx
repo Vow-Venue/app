@@ -10,6 +10,7 @@ const TABS = [
   { id: 'dayofcontacts',  label: 'DAY-OF',    tip: 'Build your wedding day timeline' },
   { id: 'notes',          label: 'NOTES',     tip: 'Private & shared notes' },
   { id: 'guidance',       label: 'GUIDANCE',  tip: 'Welcome packet for your couple' },
+  { id: 'design',         label: 'DESIGN',    tip: 'Mood boards & style guides' },
 ]
 
 export default function NavTabs({ activeTab, onTabChange, hiddenTabs = new Set() }) {

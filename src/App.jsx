@@ -15,6 +15,7 @@ import Collaborators from './components/Collaborators'
 import DayOfContacts from './components/DayOfContacts'
 import Notes from './components/Notes'
 import Guidance from './components/Guidance'
+import DesignStudio from './components/DesignStudio'
 import AuthModal from './components/AuthModal'
 import WeddingSetup from './components/WeddingSetup'
 import RSVPPage from './components/RSVPPage'
@@ -88,6 +89,39 @@ const mapGuidanceBlock = r => ({
   sortOrder: r.sort_order,
   createdAt: r.created_at,
 })
+
+const mapDesignBoard = r => ({
+  id: r.id,
+  weddingId: r.wedding_id,
+  name: r.name,
+  category: r.category ?? '',
+  notes: r.notes ?? '',
+  sortOrder: r.sort_order,
+  isDefault: r.is_default,
+  createdAt: r.created_at,
+})
+
+const mapDesignPhoto = r => ({
+  id: r.id,
+  boardId: r.board_id,
+  weddingId: r.wedding_id,
+  fileUrl: r.file_url,
+  fileName: r.file_name ?? '',
+  sortOrder: r.sort_order,
+  createdAt: r.created_at,
+})
+
+const DEFAULT_DESIGN_BOARDS = [
+  { name: 'Mood Board', category: 'Inspiration' },
+  { name: 'Placesetting Options', category: 'Tablescapes' },
+  { name: 'Venue Photos', category: 'Venue' },
+  { name: 'Bouquets', category: 'Florals' },
+  { name: 'Ceremony Design', category: 'Ceremony' },
+  { name: 'Cake Design', category: 'Food & Beverage' },
+  { name: 'Hair Styles', category: 'Beauty' },
+  { name: 'Wedding Dress', category: 'Attire' },
+  { name: 'Lighting Design', category: 'Lighting' },
+]
 
 // ─── Support Ticket Modal ────────────────────────────────────────────────────
 
@@ -204,6 +238,8 @@ export default function App() {
   const [timelineEvents, setTimelineEvents] = useState([])
   const [roomElements, setRoomElements]     = useState([])
   const [notifications, setNotifications]   = useState([])
+  const [designBoards, setDesignBoards]     = useState([])
+  const [designPhotos, setDesignPhotos]     = useState([])
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -504,7 +540,7 @@ export default function App() {
       setWedding(weddingRow)
       setWeddingId(weddingRow.id)
 
-      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes, notesRes, gbRes, tdRes, teRes, reRes] = await Promise.all([
+      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes, notesRes, gbRes, tdRes, teRes, reRes, dbRes, dpRes] = await Promise.all([
         supabase.from('guests').select('*').eq('wedding_id', wId),
         supabase.from('seating_tables').select('*').eq('wedding_id', wId),
         supabase.from('tasks').select('*').eq('wedding_id', wId).order('created_at'),
@@ -517,6 +553,8 @@ export default function App() {
         supabase.from('timeline_days').select('*').eq('wedding_id', wId).order('sort_order'),
         supabase.from('timeline_events').select('*').eq('wedding_id', wId).order('sort_order'),
         supabase.from('room_elements').select('*').eq('wedding_id', wId),
+        supabase.from('design_boards').select('*').eq('wedding_id', wId).order('sort_order'),
+        supabase.from('design_photos').select('*').eq('wedding_id', wId).order('sort_order'),
       ])
 
       const mappedTasks = (tkRes.data ?? []).map(mapTask)
@@ -532,6 +570,8 @@ export default function App() {
       setTimelineDays(tdRes.data ?? [])
       setTimelineEvents(teRes.data ?? [])
       setRoomElements(reRes.data ?? [])
+      setDesignBoards((dbRes.data ?? []).map(mapDesignBoard))
+      setDesignPhotos((dpRes.data ?? []).map(mapDesignPhoto))
 
       const fetchedChannels = chRes.data ?? []
       setChannels(fetchedChannels)
@@ -579,6 +619,8 @@ export default function App() {
     setInvoices([])
     setCollaborators([])
     setNotes([])
+    setDesignBoards([])
+    setDesignPhotos([])
     setActiveTab('overview')
     // Re-fetch dashboard data so stats are fresh
     if (session) loadMyWeddings(session.user.id)
@@ -1332,6 +1374,84 @@ export default function App() {
     return `${publicUrl}?t=${Date.now()}`
   }
 
+  // ── Design Studio handlers ─────────────────────────────────────────────────
+  const handleInitDesignBoards = async () => {
+    if (!session || !weddingId || designBoards.length > 0) return
+    const rows = DEFAULT_DESIGN_BOARDS.map((b, i) => ({
+      wedding_id: weddingId, name: b.name, category: b.category, sort_order: i, is_default: true,
+    }))
+    const { data, error } = await supabase.from('design_boards').insert(rows).select()
+    if (error) { console.error('Init design boards failed:', error.message); return }
+    if (data) setDesignBoards(data.map(mapDesignBoard))
+  }
+
+  const handleAddDesignBoard = async (name, category) => {
+    if (!requireEdit() || !session || !weddingId) return
+    const maxSort = designBoards.reduce((m, b) => Math.max(m, b.sortOrder), -1)
+    const { data, error } = await supabase.from('design_boards').insert({
+      wedding_id: weddingId, name, category: category || '', sort_order: maxSort + 1,
+    }).select().single()
+    if (error) { console.error('Add design board failed:', error.message); return }
+    if (data) setDesignBoards(prev => [...prev, mapDesignBoard(data)])
+  }
+
+  const handleUpdateDesignBoard = async (id, updates) => {
+    if (!requireEdit()) return
+    setDesignBoards(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b))
+    if (session) {
+      const dbUpdates = {}
+      if (updates.name !== undefined) dbUpdates.name = updates.name
+      if (updates.category !== undefined) dbUpdates.category = updates.category
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes
+      if (updates.sortOrder !== undefined) dbUpdates.sort_order = updates.sortOrder
+      await supabase.from('design_boards').update(dbUpdates).eq('id', id)
+    }
+  }
+
+  const handleDeleteDesignBoard = async (id) => {
+    if (!requireEdit()) return
+    const boardPhotos = designPhotos.filter(p => p.boardId === id)
+    setDesignBoards(prev => prev.filter(b => b.id !== id))
+    setDesignPhotos(prev => prev.filter(p => p.boardId !== id))
+    if (session) {
+      if (boardPhotos.length > 0) {
+        const paths = boardPhotos
+          .map(p => p.fileUrl.split('/design-boards/')[1]?.split('?')[0])
+          .filter(Boolean)
+          .map(p => decodeURIComponent(p))
+        if (paths.length > 0) await supabase.storage.from('design-boards').remove(paths)
+      }
+      await supabase.from('design_boards').delete().eq('id', id)
+    }
+  }
+
+  const handleUploadDesignPhoto = async (boardId, file) => {
+    if (!session || !weddingId) return null
+    const ext = file.name.split('.').pop()
+    const path = `${weddingId}/${boardId}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage.from('design-boards').upload(path, file)
+    if (upErr) { console.error('Design photo upload failed:', upErr.message); return null }
+    const { data: { publicUrl } } = supabase.storage.from('design-boards').getPublicUrl(path)
+    const maxSort = designPhotos.filter(p => p.boardId === boardId).reduce((m, p) => Math.max(m, p.sortOrder), -1)
+    const { data, error } = await supabase.from('design_photos').insert({
+      board_id: boardId, wedding_id: weddingId, file_url: `${publicUrl}?t=${Date.now()}`, file_name: file.name, sort_order: maxSort + 1,
+    }).select().single()
+    if (error) { console.error('Insert design photo failed:', error.message); return null }
+    if (data) setDesignPhotos(prev => [...prev, mapDesignPhoto(data)])
+    return data
+  }
+
+  const handleDeleteDesignPhoto = async (photoId) => {
+    if (!requireEdit()) return
+    const photo = designPhotos.find(p => p.id === photoId)
+    setDesignPhotos(prev => prev.filter(p => p.id !== photoId))
+    if (session && photo) {
+      const path = photo.fileUrl.split('/design-boards/')[1]?.split('?')[0]
+      if (path) await supabase.storage.from('design-boards').remove([decodeURIComponent(path)])
+      await supabase.from('design_photos').delete().eq('id', photoId)
+    }
+  }
+
   // ── Timeline handlers ──────────────────────────────────────────────────────
   const handleAddTimelineDay = async (day) => {
     if (!session || !weddingId) return
@@ -1826,9 +1946,11 @@ export default function App() {
       h.add('tasks')
       h.add('notes')
       h.add('guidance')
+      h.add('design')
       h.add('dayofcontacts')
     }
     if (!permissions.canViewGuidance) h.add('guidance')
+    if (!permissions.canViewDesign) h.add('design')
     return h
   }, [myRole])
 
@@ -2011,6 +2133,20 @@ export default function App() {
             onReorderBlock={handleReorderGuidanceBlock}
             onUploadFile={handleUploadGuidanceFile}
             canEdit={permissions.canEditGuidance}
+          />
+        )
+      case 'design':
+        return (
+          <DesignStudio
+            boards={designBoards}
+            photos={designPhotos}
+            onInitBoards={handleInitDesignBoards}
+            onAddBoard={handleAddDesignBoard}
+            onUpdateBoard={handleUpdateDesignBoard}
+            onDeleteBoard={handleDeleteDesignBoard}
+            onUploadPhoto={handleUploadDesignPhoto}
+            onDeletePhoto={handleDeleteDesignPhoto}
+            canEdit={permissions.canEditDesign}
           />
         )
       default:

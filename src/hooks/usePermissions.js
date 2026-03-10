@@ -43,5 +43,7 @@ export default function usePermissions(myRole) {
     canViewNotes: !isVendor,
     canEditGuidance: canEdit,
     canViewGuidance: !isVendor,
+    canEditDesign: canEdit,
+    canViewDesign: !isVendor,
   }
 }
