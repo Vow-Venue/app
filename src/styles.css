@@ -1286,6 +1286,38 @@ body {
   color: var(--deep);
 }
 
+/* ── New Wedding Form ────────────────────────────────────────────────────── */
+
+.org-new-wedding-form {
+  padding: 16px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.org-new-wedding-form label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.org-new-wedding-form input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Jost', sans-serif;
+  background: white;
+  box-sizing: border-box;
+}
+.org-new-wedding-form input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
 /* ── Responsive: Enhanced Dashboard ───────────────────────────────────────── */
 
 @media (max-width: 768px) {

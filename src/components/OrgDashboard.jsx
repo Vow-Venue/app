@@ -82,6 +82,13 @@ export default function OrgDashboard({
   const [importWeddingId, setImportWeddingId] = useState(null)
   const [importing, setImporting] = useState(false)
 
+  // New wedding modal
+  const [newWeddingOpen, setNewWeddingOpen] = useState(false)
+  const [nwPartner1, setNwPartner1] = useState('')
+  const [nwPartner2, setNwPartner2] = useState('')
+  const [nwDate, setNwDate] = useState('')
+  const [nwLoading, setNwLoading] = useState(false)
+
   // Invite placeholder modal
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
@@ -157,9 +164,25 @@ export default function OrgDashboard({
     onSelectWedding(wId)
   }
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!canCreate) return
-    await onCreateWedding()
+    setNewWeddingOpen(true)
+  }
+
+  const handleSubmitNewWedding = async (e) => {
+    e.preventDefault()
+    if (!nwPartner1.trim() || !nwPartner2.trim()) return
+    setNwLoading(true)
+    await onCreateWedding({
+      partner1: nwPartner1.trim(),
+      partner2: nwPartner2.trim(),
+      weddingDate: nwDate || null,
+    })
+    setNwLoading(false)
+    setNewWeddingOpen(false)
+    setNwPartner1('')
+    setNwPartner2('')
+    setNwDate('')
   }
 
   const handleCoverClick = (e, wId) => {
@@ -741,6 +764,56 @@ export default function OrgDashboard({
                 {importing ? 'Importing...' : `Import ${(templateTasks[importTemplateId] || []).length} Tasks`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── New Wedding Modal ─────────────────────────────────────────────── */}
+      {newWeddingOpen && (
+        <div className="modal-backdrop" onClick={() => setNewWeddingOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">New Wedding</div>
+              <button className="modal-close" onClick={() => setNewWeddingOpen(false)}>×</button>
+            </div>
+            <form className="org-new-wedding-form" onSubmit={handleSubmitNewWedding}>
+              <label className="org-import-label">Partner 1</label>
+              <input
+                className="org-import-select"
+                type="text"
+                value={nwPartner1}
+                onChange={e => setNwPartner1(e.target.value)}
+                placeholder="First partner's name"
+                autoFocus
+                required
+              />
+              <label className="org-import-label" style={{ marginTop: 14 }}>Partner 2</label>
+              <input
+                className="org-import-select"
+                type="text"
+                value={nwPartner2}
+                onChange={e => setNwPartner2(e.target.value)}
+                placeholder="Second partner's name"
+                required
+              />
+              <label className="org-import-label" style={{ marginTop: 14 }}>
+                Wedding Date <span style={{ fontWeight: 400, letterSpacing: 0 }}>(optional)</span>
+              </label>
+              <input
+                className="org-import-select"
+                type="date"
+                value={nwDate}
+                onChange={e => setNwDate(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ width: '100%', marginTop: 20 }}
+                disabled={nwLoading || !nwPartner1.trim() || !nwPartner2.trim()}
+              >
+                {nwLoading ? 'Creating...' : 'CREATE WEDDING'}
+              </button>
+            </form>
           </div>
         </div>
       )}

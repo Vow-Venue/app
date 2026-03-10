@@ -558,16 +558,27 @@ export default function App() {
   }
 
   // ── Create a new wedding ────────────────────────────────────────────────────
-  const handleCreateWedding = async () => {
+  const handleCreateWedding = async (fields = {}) => {
     if (!session) return
     const userId = session.user.id
     const ownedCount = myWeddings.filter(w => w.myRole === 'owner').length
     const isPro = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro')
     if (!isPro && ownedCount >= 2) return
 
-    const { data: created } = await supabase
-      .from('weddings').insert({ user_id: userId }).select('*').single()
-    if (!created) return
+    const { data: created, error } = await supabase
+      .from('weddings').insert({
+        user_id: userId,
+        partner1: fields.partner1 || null,
+        partner2: fields.partner2 || null,
+        wedding_date: fields.weddingDate || null,
+        setup_complete: !!(fields.partner1 && fields.partner2),
+      }).select('*').single()
+
+    if (error || !created) {
+      console.error('Failed to create wedding:', error?.message)
+      alert('Failed to create wedding. Please try again.')
+      return
+    }
 
     await supabase.from('wedding_members')
       .insert({ wedding_id: created.id, user_id: userId, role: 'owner' })
