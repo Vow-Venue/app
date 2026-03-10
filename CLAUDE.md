@@ -57,6 +57,8 @@ React 18 + Vite + Supabase + Custom CSS + Stripe + Resend, deployed on Vercel. G
 8. BEO PDF generator
 9. Google OAuth (after domain purchase)
 10. AI assistant / document reader
+11. Cancel plan: implement Stripe cancel_at_period_end = true so cancellation takes effect at end of billing period (monthly or annual)
+12. 2-wedding access limit: applies to weddings a user creates, not weddings they're invited to
 
 ---
 
@@ -154,6 +156,10 @@ const { data } = await supabase.from('table').insert({...}).select().single()
 const { data, error } = await supabase.from('table').insert({...}).select().single()
 if (error) { console.error('Insert failed:', error.message); return }
 ```
+
+## Communication Style
+
+When explaining plans, changes, or results, write in plain English first. 80% of output should be human-readable explanation of what is being done and why. Minimize raw code blocks in explanations — only show code when it's essential to understand the change. Never dump long JavaScript syntax as part of a summary.
 
 ## Bash Rules
 

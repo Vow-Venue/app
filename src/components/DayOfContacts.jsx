@@ -53,9 +53,9 @@ export default function DayOfTimeline({
   days, events, wedding, vendors, collaborators, guests = [],
   onAddDay, onUpdateDay, onDeleteDay,
   onAddEvent, onUpdateEvent, onDeleteEvent, onReorderEvents,
+  onUploadDayFile, onRemoveDayFile,
   canEdit = true,
 }) {
-  const [activeDay, setActiveDay] = useState(null)
   const [addDayOpen, setAddDayOpen] = useState(false)
   const [dayForm, setDayForm] = useState({ label: '', date: '', description: '' })
   const [addEventOpen, setAddEventOpen] = useState(false)
@@ -63,15 +63,10 @@ export default function DayOfTimeline({
   const [eventForm, setEventForm] = useState({ time: '12:00', title: '', location: '', address: '', assignees: [], notes: '' })
   const [editingDayId, setEditingDayId] = useState(null)
   const [editDayForm, setEditDayForm] = useState({ label: '', date: '', description: '' })
+  const [eventDayId, setEventDayId] = useState(null) // which day is adding/editing an event
   const dragItem = useRef(null)
   const dragOver = useRef(null)
-
-  // Auto-select first day
-  const activeDayId = activeDay || (days.length > 0 ? days[0].id : null)
-  const currentDay = days.find(d => d.id === activeDayId)
-  const dayEvents = events
-    .filter(e => e.day_id === activeDayId)
-    .sort((a, b) => a.sort_order - b.sort_order)
+  const fileInputRefs = useRef({})
 
   // Combined assignee pool from vendors, collaborators, and guests
   const assigneePool = [
@@ -88,7 +83,6 @@ export default function DayOfTimeline({
         const match = assigneePool.find(p => p.id === a.id && p.type === a.type)
         return match || a
       }
-      // Backward compat: plain vendor ID string
       if (typeof a === 'string') {
         const match = vendors.find(v => v.id === a)
         if (match) return { type: 'vendor', id: match.id, name: match.name, label: match.role || 'Vendor' }
@@ -101,8 +95,7 @@ export default function DayOfTimeline({
   const handleAddDay = async (e) => {
     e.preventDefault()
     if (!dayForm.label.trim()) return
-    const created = await onAddDay({ label: dayForm.label.trim(), date: dayForm.date || null, description: dayForm.description.trim() || null })
-    if (created) setActiveDay(created.id)
+    await onAddDay({ label: dayForm.label.trim(), date: dayForm.date || null, description: dayForm.description.trim() || null })
     setDayForm({ label: '', date: '', description: '' })
     setAddDayOpen(false)
   }
@@ -116,21 +109,20 @@ export default function DayOfTimeline({
   const handleDeleteDay = async (id) => {
     if (!confirm('Delete this day and all its events?')) return
     await onDeleteDay(id)
-    if (activeDayId === id) setActiveDay(null)
   }
 
   // ── Event CRUD ──
-  const openAddEvent = () => {
+  const openAddEvent = (dayId) => {
     setEditingEvent(null)
+    setEventDayId(dayId)
     setEventForm({ time: '12:00', title: '', location: '', address: '', assignees: [], notes: '' })
     setAddEventOpen(true)
   }
 
   const openEditEvent = (ev) => {
     setEditingEvent(ev)
-    // Normalize assignees from DB (could be old vendor IDs or new {type, id} objects)
+    setEventDayId(ev.day_id)
     const normalized = resolveAssignees(ev.assignees || [])
-    // Also include vendor_id if set and not already in assignees (backward compat)
     if (ev.vendor_id && !normalized.some(a => a.id === ev.vendor_id)) {
       const v = vendors.find(v => v.id === ev.vendor_id)
       if (v) normalized.unshift({ type: 'vendor', id: v.id, name: v.name, label: v.role || 'Vendor' })
@@ -157,7 +149,7 @@ export default function DayOfTimeline({
     if (editingEvent) {
       await onUpdateEvent(editingEvent.id, payload)
     } else {
-      await onAddEvent({ day_id: activeDayId, ...payload })
+      await onAddEvent({ day_id: eventDayId, ...payload })
     }
     setAddEventOpen(false)
     setEditingEvent(null)
@@ -182,24 +174,37 @@ export default function DayOfTimeline({
     }))
   }
 
-  // ── Drag reorder ──
+  // ── Drag reorder (scoped per day) ──
   const handleDragStart = useCallback((idx) => { dragItem.current = idx }, [])
   const handleDragEnter = useCallback((idx) => { dragOver.current = idx }, [])
-  const handleDragEnd = useCallback(() => {
+  const makeDragEnd = useCallback((dayId, dayEvts) => () => {
     if (dragItem.current === null || dragOver.current === null || dragItem.current === dragOver.current) {
       dragItem.current = null
       dragOver.current = null
       return
     }
-    const items = [...dayEvents]
+    const items = [...dayEvts]
     const dragged = items.splice(dragItem.current, 1)[0]
     items.splice(dragOver.current, 0, dragged)
-    onReorderEvents(activeDayId, items.map(e => e.id))
+    onReorderEvents(dayId, items.map(e => e.id))
     dragItem.current = null
     dragOver.current = null
-  }, [dayEvents, activeDayId, onReorderEvents])
+  }, [onReorderEvents])
 
   const handlePrint = () => window.print()
+
+  const scrollToDay = (dayId) => {
+    const el = document.getElementById(`day-${dayId}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  // File upload
+  const handleFileChange = async (dayId, e) => {
+    const file = e.target.files?.[0]
+    if (!file || !onUploadDayFile) return
+    await onUploadDayFile(dayId, file)
+    if (fileInputRefs.current[dayId]) fileInputRefs.current[dayId].value = ''
+  }
 
   // IDs already assigned in the current form
   const assignedIds = new Set(eventForm.assignees.map(a => a.id))
@@ -210,13 +215,13 @@ export default function DayOfTimeline({
       <div className="section-title">Day-of Timeline</div>
       <div className="section-subtitle">PLAN EVERY MOMENT OF YOUR CELEBRATION</div>
 
-      {/* ── Day Tabs ── */}
+      {/* ── Day Anchor Pills ── */}
       <div className="chip-row no-print" style={{ marginBottom: 20, alignItems: 'center' }}>
         {days.map(d => (
           <button
             key={d.id}
-            className={`chip ${d.id === activeDayId ? 'active' : ''}`}
-            onClick={() => setActiveDay(d.id)}
+            className="chip"
+            onClick={() => scrollToDay(d.id)}
           >
             {d.label}
             {d.date && <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 6 }}>{fmtDateShort(d.date)}</span>}
@@ -261,10 +266,12 @@ export default function DayOfTimeline({
               </div>
               <div className="form-group">
                 <label>DESCRIPTION</label>
-                <input
-                  type="text" value={dayForm.description}
+                <textarea
+                  value={dayForm.description}
                   onChange={e => setDayForm(p => ({ ...p, description: e.target.value }))}
-                  placeholder="e.g. Friday evening events"
+                  placeholder="e.g. Friday evening events, welcome dinner and rehearsal at the venue"
+                  rows={6}
+                  style={{ minHeight: 120 }}
                 />
               </div>
               <div className="modal-actions">
@@ -292,157 +299,197 @@ export default function DayOfTimeline({
         </div>
       )}
 
-      {/* ── Day content ── */}
-      {currentDay && (
-        <div>
-          {/* Day header */}
-          {editingDayId === currentDay.id ? (
-            <div style={{ marginBottom: 24 }}>
-              <div className="tl-edit-row" style={{ marginBottom: 8 }}>
-                <input
-                  type="text" value={editDayForm.label}
-                  onChange={e => setEditDayForm(p => ({ ...p, label: e.target.value }))}
-                  style={{ flex: 1, fontSize: 14 }}
-                  placeholder="Day label"
-                  autoFocus
-                />
-                <input
-                  type="date" value={editDayForm.date}
-                  onChange={e => setEditDayForm(p => ({ ...p, date: e.target.value }))}
-                  style={{ width: 160 }}
-                />
-              </div>
-              <div className="tl-edit-row">
-                <input
-                  type="text" value={editDayForm.description || ''}
-                  onChange={e => setEditDayForm(p => ({ ...p, description: e.target.value }))}
-                  style={{ flex: 1, fontSize: 13 }}
-                  placeholder="Short description (e.g. Friday evening events)"
-                />
-                <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={handleSaveDayEdit}>SAVE</button>
-                <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setEditingDayId(null)}>CANCEL</button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 24 }}>
-              <div style={{ flex: 1 }}>
-                {currentDay.date && (
-                  <div className="tl-date">{fmtDateFull(currentDay.date)}</div>
-                )}
-                <div className="tl-section-bar">{currentDay.label}</div>
-                {currentDay.description && (
-                  <div className="tl-section-desc">{currentDay.description}</div>
-                )}
-              </div>
-              {canEdit && (
-                <div className="tl-day-actions no-print">
-                  <button
-                    className="btn btn-ghost" style={{ fontSize: 11 }}
-                    onClick={() => { setEditingDayId(currentDay.id); setEditDayForm({ label: currentDay.label, date: currentDay.date || '', description: currentDay.description || '' }) }}
-                  >
-                    EDIT DAY
-                  </button>
-                  <button
-                    className="btn-danger" style={{ fontSize: 11, padding: '4px 10px' }}
-                    onClick={() => handleDeleteDay(currentDay.id)}
-                  >
-                    DELETE DAY
-                  </button>
+      {/* ── All Days stacked vertically ── */}
+      {days.map(day => {
+        const dayEvents = events
+          .filter(e => e.day_id === day.id)
+          .sort((a, b) => a.sort_order - b.sort_order)
+        const dragEnd = makeDragEnd(day.id, dayEvents)
+
+        return (
+          <div key={day.id} id={`day-${day.id}`} style={{ marginBottom: 48, scrollMarginTop: 24 }}>
+            {/* Day header */}
+            {editingDayId === day.id ? (
+              <div style={{ marginBottom: 24 }}>
+                <div className="tl-edit-row" style={{ marginBottom: 8 }}>
+                  <input
+                    type="text" value={editDayForm.label}
+                    onChange={e => setEditDayForm(p => ({ ...p, label: e.target.value }))}
+                    style={{ flex: 1, fontSize: 14 }}
+                    placeholder="Day label"
+                    autoFocus
+                  />
+                  <input
+                    type="date" value={editDayForm.date}
+                    onChange={e => setEditDayForm(p => ({ ...p, date: e.target.value }))}
+                    style={{ width: 160 }}
+                  />
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Events list */}
-          {dayEvents.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', color: 'var(--muted)', fontStyle: 'italic', padding: 32 }}>
-              No events yet. Add your first event to this day.
-            </div>
-          ) : (
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              {dayEvents.map((ev, idx) => {
-                const resolved = resolveAssignees(ev.assignees)
-                // Backward compat: include vendor_id if not in assignees
-                if (ev.vendor_id && !resolved.some(a => a.id === ev.vendor_id)) {
-                  const v = vendors.find(v => v.id === ev.vendor_id)
-                  if (v) resolved.unshift({ type: 'vendor', id: v.id, name: v.name, label: v.role || 'Vendor' })
-                }
-                return (
-                  <div
-                    key={ev.id}
-                    className={`tl-event-row ${canEdit ? '' : 'readonly'}`}
-                    draggable={canEdit}
-                    onDragStart={() => handleDragStart(idx)}
-                    onDragEnter={() => handleDragEnter(idx)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={e => e.preventDefault()}
-                  >
-                    <div className="tl-event-time">{fmtTime12(ev.time)}</div>
-
-                    <div className="tl-event-dot">
-                      <div className="tl-dot-circle" />
-                      {idx < dayEvents.length - 1 && <div className="tl-dot-line" />}
-                    </div>
-
-                    <div className="tl-event-body">
-                      <div className="tl-event-title">{ev.title}</div>
-                      {(ev.location || ev.address) && (
-                        <div className="tl-event-address">
-                          {ev.location && <>📍 {ev.location}</>}
-                          {ev.location && ev.address && ' — '}
-                          {ev.address}
-                        </div>
-                      )}
-                      {ev.notes && <div className="tl-event-desc">{ev.notes}</div>}
-                      {resolved.length > 0 && (
-                        <div className="tl-event-pills">
-                          {resolved.map((a, i) => (
-                            <span key={i} className="tl-pill" data-type={a.type}>
-                              {a.name}{a.label ? ` (${a.label})` : ''}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {resolved.length === 0 && ev.assigned_to && (
-                        <div className="tl-event-pills">
-                          <span className="tl-pill">{ev.assigned_to}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="tl-event-actions no-print">
-                      {googleCalUrl(ev, currentDay, wedding) && (
-                        <a
-                          href={googleCalUrl(ev, currentDay, wedding)}
-                          target="_blank" rel="noopener noreferrer"
-                          className="btn btn-ghost"
-                          style={{ fontSize: 10, padding: '4px 8px', textDecoration: 'none' }}
-                          title="Add to Google Calendar"
+                <div className="form-group" style={{ marginBottom: 8 }}>
+                  <textarea
+                    value={editDayForm.description || ''}
+                    onChange={e => setEditDayForm(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Short description (e.g. Friday evening events)"
+                    rows={6}
+                    style={{ minHeight: 120, fontSize: 13 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={handleSaveDayEdit}>SAVE</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setEditingDayId(null)}>CANCEL</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 24 }}>
+                <div style={{ flex: 1 }}>
+                  {day.date && (
+                    <div className="tl-date">{fmtDateFull(day.date)}</div>
+                  )}
+                  <div className="tl-section-bar">{day.label}</div>
+                  {day.description && (
+                    <div className="tl-section-desc">{day.description}</div>
+                  )}
+                  {/* File attachment display */}
+                  {day.file_url && (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <a
+                        href={day.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: 13, color: 'var(--gold)', textDecoration: 'underline' }}
+                      >
+                        {day.file_name || 'Attached file'}
+                      </a>
+                      {canEdit && onRemoveDayFile && (
+                        <button
+                          className="btn-danger"
+                          style={{ fontSize: 11, padding: '2px 6px' }}
+                          onClick={() => onRemoveDayFile(day.id)}
                         >
-                          📅
-                        </a>
-                      )}
-                      {canEdit && (
-                        <>
-                          <button className="btn-icon" style={{ fontSize: 11 }} onClick={() => openEditEvent(ev)}>Edit</button>
-                          <button className="btn-danger" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => handleDeleteEvent(ev.id)}>×</button>
-                        </>
+                          ×
+                        </button>
                       )}
                     </div>
+                  )}
+                </div>
+                {canEdit && (
+                  <div className="tl-day-actions no-print">
+                    <button
+                      className="btn btn-ghost" style={{ fontSize: 11 }}
+                      onClick={() => { setEditingDayId(day.id); setEditDayForm({ label: day.label, date: day.date || '', description: day.description || '' }) }}
+                    >
+                      EDIT DAY
+                    </button>
+                    <label className="btn btn-ghost" style={{ fontSize: 11, cursor: 'pointer', margin: 0 }}>
+                      ATTACH FILE
+                      <input
+                        type="file"
+                        ref={el => fileInputRefs.current[day.id] = el}
+                        onChange={e => handleFileChange(day.id, e)}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                    <button
+                      className="btn-delete-day"
+                      onClick={() => handleDeleteDay(day.id)}
+                    >
+                      DELETE DAY
+                    </button>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                )}
+              </div>
+            )}
 
-          {/* Add event button */}
-          {canEdit && (
-            <div className="no-print" style={{ marginTop: 16 }}>
-              <button className="btn btn-primary" onClick={openAddEvent}>+ ADD EVENT</button>
-            </div>
-          )}
-        </div>
-      )}
+            {/* Events list */}
+            {dayEvents.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', color: 'var(--muted)', fontStyle: 'italic', padding: 32 }}>
+                No events yet. Add your first event to this day.
+              </div>
+            ) : (
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                {dayEvents.map((ev, idx) => {
+                  const resolved = resolveAssignees(ev.assignees)
+                  if (ev.vendor_id && !resolved.some(a => a.id === ev.vendor_id)) {
+                    const v = vendors.find(v => v.id === ev.vendor_id)
+                    if (v) resolved.unshift({ type: 'vendor', id: v.id, name: v.name, label: v.role || 'Vendor' })
+                  }
+                  return (
+                    <div
+                      key={ev.id}
+                      className={`tl-event-row ${canEdit ? '' : 'readonly'}`}
+                      draggable={canEdit}
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragEnter={() => handleDragEnter(idx)}
+                      onDragEnd={dragEnd}
+                      onDragOver={e => e.preventDefault()}
+                    >
+                      <div className="tl-event-time">{fmtTime12(ev.time)}</div>
+
+                      <div className="tl-event-dot">
+                        <div className="tl-dot-circle" />
+                        {idx < dayEvents.length - 1 && <div className="tl-dot-line" />}
+                      </div>
+
+                      <div className="tl-event-body">
+                        <div className="tl-event-title">{ev.title}</div>
+                        {(ev.location || ev.address) && (
+                          <div className="tl-event-address">
+                            {ev.location && <>📍 {ev.location}</>}
+                            {ev.location && ev.address && ' — '}
+                            {ev.address}
+                          </div>
+                        )}
+                        {ev.notes && <div className="tl-event-desc">{ev.notes}</div>}
+                        {resolved.length > 0 && (
+                          <div className="tl-event-pills">
+                            {resolved.map((a, i) => (
+                              <span key={i} className="tl-pill" data-type={a.type}>
+                                {a.name}{a.label ? ` (${a.label})` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {resolved.length === 0 && ev.assigned_to && (
+                          <div className="tl-event-pills">
+                            <span className="tl-pill">{ev.assigned_to}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="tl-event-actions no-print">
+                        {googleCalUrl(ev, day, wedding) && (
+                          <a
+                            href={googleCalUrl(ev, day, wedding)}
+                            target="_blank" rel="noopener noreferrer"
+                            className="btn btn-ghost"
+                            style={{ fontSize: 10, padding: '4px 8px', textDecoration: 'none' }}
+                            title="Add to Google Calendar"
+                          >
+                            📅
+                          </a>
+                        )}
+                        {canEdit && (
+                          <>
+                            <button className="btn-icon" style={{ fontSize: 11 }} onClick={() => openEditEvent(ev)}>Edit</button>
+                            <button className="btn-danger" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => handleDeleteEvent(ev.id)}>×</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Add event button */}
+            {canEdit && (
+              <div className="no-print" style={{ marginTop: 16 }}>
+                <button className="btn btn-primary" onClick={() => openAddEvent(day.id)}>+ ADD EVENT</button>
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {/* ── Add/Edit Event Modal ── */}
       {addEventOpen && (

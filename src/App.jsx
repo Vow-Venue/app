@@ -1118,6 +1118,25 @@ export default function App() {
     setTimelineEvents(prev => prev.filter(e => e.day_id !== id))
   }
 
+  const handleUploadDayFile = async (dayId, file) => {
+    if (!session || !weddingId) return
+    const ext = file.name.split('.').pop()
+    const path = `${weddingId}/${dayId}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage.from('timeline-files').upload(path, file)
+    if (upErr) { console.error('File upload failed:', upErr.message); return }
+    const { data: { publicUrl } } = supabase.storage.from('timeline-files').getPublicUrl(path)
+    const { data, error } = await supabase.from('timeline_days').update({ file_url: publicUrl, file_name: file.name }).eq('id', dayId).select().single()
+    if (error) { console.error('Update day file failed:', error.message); return }
+    if (data) setTimelineDays(prev => prev.map(d => d.id === dayId ? data : d))
+  }
+
+  const handleRemoveDayFile = async (dayId) => {
+    if (!session) return
+    const { data, error } = await supabase.from('timeline_days').update({ file_url: null, file_name: null }).eq('id', dayId).select().single()
+    if (error) { console.error('Remove day file failed:', error.message); return }
+    if (data) setTimelineDays(prev => prev.map(d => d.id === dayId ? data : d))
+  }
+
   const handleAddTimelineEvent = async (event) => {
     if (!session || !weddingId) return
     const dayEvents = timelineEvents.filter(e => e.day_id === event.day_id)
@@ -1704,6 +1723,8 @@ export default function App() {
             onUpdateEvent={handleUpdateTimelineEvent}
             onDeleteEvent={handleDeleteTimelineEvent}
             onReorderEvents={handleReorderTimelineEvents}
+            onUploadDayFile={handleUploadDayFile}
+            onRemoveDayFile={handleRemoveDayFile}
             canEdit={permissions.canEdit}
           />
         )

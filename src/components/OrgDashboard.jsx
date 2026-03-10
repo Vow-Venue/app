@@ -3,7 +3,7 @@ import {
   LayoutGrid, List, Phone, Mail, Camera,
   Pencil, Check, X, Plus, Trash2, Globe, Users, Download, FileText,
   Calendar, DollarSign, ClipboardList, UserPlus,
-  Home, Heart, Settings, TrendingUp, Contact, Menu, ChevronRight,
+  Home, Heart, Settings, TrendingUp, Contact, Menu,
 } from 'lucide-react'
 
 const fmtDate = (dateStr) => {
@@ -30,10 +30,14 @@ const VENDOR_ROLES = {
 }
 
 const DEFAULT_COVERS = [
-  'linear-gradient(135deg, #3d2c2c 0%, #5a3e3e 50%, #8a6e5e 100%)',
-  'linear-gradient(135deg, #2c3d3d 0%, #3e5a5a 50%, #5e8a7e 100%)',
-  'linear-gradient(135deg, #3d2c3d 0%, #5a3e5a 50%, #8a6e8a 100%)',
-  'linear-gradient(135deg, #2c2c3d 0%, #3e3e5a 50%, #6e6e8a 100%)',
+  'linear-gradient(135deg, #8a7e6e 0%, #b5a992 50%, #d4c9b5 100%)',  // warm taupe
+  'linear-gradient(135deg, #9e7e7a 0%, #c4a5a0 50%, #dfc7c3 100%)',  // dusty rose
+  'linear-gradient(135deg, #6e8a72 0%, #96b39a 50%, #bdd4bf 100%)',  // sage green
+  'linear-gradient(135deg, #6a7e8e 0%, #92a8b8 50%, #b8ccd8 100%)',  // slate blue
+  'linear-gradient(135deg, #b5a07a 0%, #d4c6a5 50%, #e8dcc4 100%)',  // champagne
+  'linear-gradient(135deg, #7a3b3f 0%, #9e5a5e 50%, #c08488 100%)',  // burgundy
+  'linear-gradient(135deg, #3e5a45 0%, #5e7a64 50%, #88a48d 100%)',  // forest
+  'linear-gradient(135deg, #8a6e80 0%, #b396a8 50%, #d4bcc8 100%)',  // mauve
 ]
 
 const FREE_WEDDING_LIMIT = 2
@@ -791,22 +795,6 @@ export default function OrgDashboard({
             <Heart size={16} />
             <span>Weddings</span>
           </button>
-          {activePage === 'weddings' && (
-            <div className="org-sidebar-subitems">
-              <button
-                className={`org-sidebar-subitem${weddingFilter === 'active' ? ' active' : ''}`}
-                onClick={() => setWeddingFilter('active')}
-              >
-                <ChevronRight size={12} /> Active
-              </button>
-              <button
-                className={`org-sidebar-subitem${weddingFilter === 'archived' ? ' active' : ''}`}
-                onClick={() => setWeddingFilter('archived')}
-              >
-                <ChevronRight size={12} /> Archived
-              </button>
-            </div>
-          )}
 
           <button
             className={`org-sidebar-item${activePage === 'team' ? ' active' : ''}`}
@@ -1086,26 +1074,34 @@ export default function OrgDashboard({
               <button className="modal-close" onClick={() => setInviteModalOpen(false)}>×</button>
             </div>
             <div style={{ padding: '16px 24px 24px' }}>
-              <div style={{ marginBottom: 16 }}>
-                <div className="org-section-label" style={{ marginBottom: 8 }}>PER-WEDDING CO-PLANNER</div>
-                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
-                  To invite a co-planner to a specific wedding, open that wedding and go to the
-                  <strong> Team</strong> tab. You can invite them with an email link.
-                </p>
-                <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-                  Available on Free + Pro plans.
-                </p>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, lineHeight: 1.6 }}>
+                Invite a co-planner to collaborate on weddings. They'll receive an email invite to join your studio.
+              </p>
+              <div className="form-group" style={{ marginBottom: 14 }}>
+                <label>FULL NAME *</label>
+                <input type="text" placeholder="e.g. Sarah Chen" autoFocus />
               </div>
-              <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '16px 0' }} />
-              <div>
-                <div className="org-section-label" style={{ marginBottom: 8 }}>
-                  ORG-LEVEL PLANNER SEATS
-                  <span className="org-coming-soon" style={{ marginLeft: 8 }}>COMING SOON</span>
+              <div className="form-group" style={{ marginBottom: 20 }}>
+                <label>EMAIL *</label>
+                <input type="email" placeholder="sarah@example.com" />
+              </div>
+              <div style={{
+                background: 'rgba(184,151,90,0.08)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                padding: '12px 14px',
+                marginBottom: 20,
+              }}>
+                <div style={{ fontSize: 11, letterSpacing: 2, color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>
+                  COMING SOON
                 </div>
-                <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-                  Org-level planner seats will let you invite planners to your entire organization
-                  with access to all weddings. Pro plan only.
-                </p>
+                <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
+                  Org-level planner invites are under development. For now, invite co-planners from the Team tab inside each wedding.
+                </div>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setInviteModalOpen(false)}>CANCEL</button>
+                <button type="button" className="btn btn-primary" disabled style={{ opacity: 0.5 }}>SEND INVITE</button>
               </div>
             </div>
           </div>
