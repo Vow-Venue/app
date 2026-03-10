@@ -14,6 +14,7 @@ import Billing from './components/Billing'
 import Collaborators from './components/Collaborators'
 import DayOfContacts from './components/DayOfContacts'
 import Notes from './components/Notes'
+import Guidance from './components/Guidance'
 import AuthModal from './components/AuthModal'
 import WeddingSetup from './components/WeddingSetup'
 import RSVPPage from './components/RSVPPage'
@@ -78,6 +79,14 @@ const mapNote = r => ({
   createdBy: r.created_by,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
+})
+
+const mapGuidanceBlock = r => ({
+  id: r.id,
+  type: r.type,
+  content: r.content ?? {},
+  sortOrder: r.sort_order,
+  createdAt: r.created_at,
 })
 
 // ─── Support Ticket Modal ────────────────────────────────────────────────────
@@ -190,6 +199,7 @@ export default function App() {
   const [invoices, setInvoices]             = useState([])
   const [collaborators, setCollaborators]   = useState([])
   const [notes, setNotes]                   = useState([])
+  const [guidanceBlocks, setGuidanceBlocks] = useState([])
   const [timelineDays, setTimelineDays]     = useState([])
   const [timelineEvents, setTimelineEvents] = useState([])
   const [roomElements, setRoomElements]     = useState([])
@@ -486,7 +496,7 @@ export default function App() {
       setWedding(weddingRow)
       setWeddingId(weddingRow.id)
 
-      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes, notesRes, tdRes, teRes, reRes] = await Promise.all([
+      const [gRes, tRes, tkRes, vRes, chRes, invRes, collRes, notesRes, gbRes, tdRes, teRes, reRes] = await Promise.all([
         supabase.from('guests').select('*').eq('wedding_id', wId),
         supabase.from('seating_tables').select('*').eq('wedding_id', wId),
         supabase.from('tasks').select('*').eq('wedding_id', wId).order('created_at'),
@@ -495,6 +505,7 @@ export default function App() {
         supabase.from('invoices').select('*').eq('wedding_id', wId),
         supabase.from('collaborators').select('*').eq('wedding_id', wId),
         supabase.from('notes').select('*').eq('wedding_id', wId).order('updated_at', { ascending: false }),
+        supabase.from('guidance_blocks').select('*').eq('wedding_id', wId).order('sort_order'),
         supabase.from('timeline_days').select('*').eq('wedding_id', wId).order('sort_order'),
         supabase.from('timeline_events').select('*').eq('wedding_id', wId).order('sort_order'),
         supabase.from('room_elements').select('*').eq('wedding_id', wId),
@@ -507,6 +518,7 @@ export default function App() {
       setInvoices((invRes.data ?? []).map(mapInvoice))
       setCollaborators(collRes.data ?? [])
       setNotes((notesRes.data ?? []).map(mapNote))
+      setGuidanceBlocks((gbRes.data ?? []).map(mapGuidanceBlock))
       setTimelineDays(tdRes.data ?? [])
       setTimelineEvents(teRes.data ?? [])
       setRoomElements(reRes.data ?? [])
@@ -1096,6 +1108,76 @@ export default function App() {
     if (session) await supabase.from('notes').delete().eq('id', id)
   }
 
+  // ── Guidance block handlers ────────────────────────────────────────────────
+  const handleAddGuidanceBlock = async (type, content) => {
+    if (!requireEdit() || !session || !weddingId) return
+    const maxSort = guidanceBlocks.reduce((m, b) => Math.max(m, b.sortOrder), -1)
+    const { data, error } = await supabase.from('guidance_blocks').insert({
+      wedding_id: weddingId, type, content, sort_order: maxSort + 1,
+    }).select().single()
+    if (error) { console.error('Add guidance block failed:', error.message); return }
+    if (data) setGuidanceBlocks(prev => [...prev, mapGuidanceBlock(data)])
+  }
+
+  const handleUpdateGuidanceBlock = async (id, updates) => {
+    if (!requireEdit()) return
+    setGuidanceBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b))
+    if (session) {
+      const dbUpdates = {}
+      if (updates.content !== undefined) dbUpdates.content = updates.content
+      if (updates.sortOrder !== undefined) dbUpdates.sort_order = updates.sortOrder
+      await supabase.from('guidance_blocks').update(dbUpdates).eq('id', id)
+    }
+  }
+
+  const handleDeleteGuidanceBlock = async (id) => {
+    if (!requireEdit()) return
+    const block = guidanceBlocks.find(b => b.id === id)
+    setGuidanceBlocks(prev => prev.filter(b => b.id !== id))
+    if (session) {
+      // Clean up storage file if file/image block
+      if (block && (block.type === 'file' || block.type === 'image')) {
+        const url = block.content?.file_url || block.content?.image_url
+        if (url) {
+          const path = url.split('/guidance-files/')[1]?.split('?')[0]
+          if (path) await supabase.storage.from('guidance-files').remove([decodeURIComponent(path)])
+        }
+      }
+      await supabase.from('guidance_blocks').delete().eq('id', id)
+    }
+  }
+
+  const handleReorderGuidanceBlock = async (id, direction) => {
+    if (!requireEdit()) return
+    const sorted = [...guidanceBlocks].sort((a, b) => a.sortOrder - b.sortOrder)
+    const idx = sorted.findIndex(b => b.id === id)
+    const swapIdx = idx + direction
+    if (swapIdx < 0 || swapIdx >= sorted.length) return
+    const a = sorted[idx], b = sorted[swapIdx]
+    const aOrder = a.sortOrder, bOrder = b.sortOrder
+    setGuidanceBlocks(prev => prev.map(bl => {
+      if (bl.id === a.id) return { ...bl, sortOrder: bOrder }
+      if (bl.id === b.id) return { ...bl, sortOrder: aOrder }
+      return bl
+    }))
+    if (session) {
+      await Promise.all([
+        supabase.from('guidance_blocks').update({ sort_order: bOrder }).eq('id', a.id),
+        supabase.from('guidance_blocks').update({ sort_order: aOrder }).eq('id', b.id),
+      ])
+    }
+  }
+
+  const handleUploadGuidanceFile = async (file) => {
+    if (!session || !weddingId) return null
+    const ext = file.name.split('.').pop()
+    const path = `${weddingId}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage.from('guidance-files').upload(path, file)
+    if (upErr) { console.error('Guidance file upload failed:', upErr.message); return null }
+    const { data: { publicUrl } } = supabase.storage.from('guidance-files').getPublicUrl(path)
+    return `${publicUrl}?t=${Date.now()}`
+  }
+
   // ── Timeline handlers ──────────────────────────────────────────────────────
   const handleAddTimelineDay = async (day) => {
     if (!session || !weddingId) return
@@ -1570,8 +1652,10 @@ export default function App() {
       h.add('seating')
       h.add('tasks')
       h.add('notes')
+      h.add('guidance')
       h.add('dayofcontacts')
     }
+    if (!permissions.canViewGuidance) h.add('guidance')
     return h
   }, [myRole])
 
@@ -1742,6 +1826,18 @@ export default function App() {
             onDeleteNote={handleDeleteNote}
             canSeePrivate={permissions.canSeePrivateNotes}
             canEdit={permissions.canEditNotes}
+          />
+        )
+      case 'guidance':
+        return (
+          <Guidance
+            blocks={guidanceBlocks}
+            onAddBlock={handleAddGuidanceBlock}
+            onUpdateBlock={handleUpdateGuidanceBlock}
+            onDeleteBlock={handleDeleteGuidanceBlock}
+            onReorderBlock={handleReorderGuidanceBlock}
+            onUploadFile={handleUploadGuidanceFile}
+            canEdit={permissions.canEditGuidance}
           />
         )
       default:

@@ -41,5 +41,7 @@ export default function usePermissions(myRole) {
     canViewCollaborators: canEdit,
     canViewDayOf: !isVendor,
     canViewNotes: !isVendor,
+    canEditGuidance: canEdit,
+    canViewGuidance: !isVendor,
   }
 }

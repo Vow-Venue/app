@@ -9,6 +9,7 @@ const TABS = [
   { id: 'collaborators',  label: 'TEAM' },
   { id: 'dayofcontacts',  label: 'DAY-OF' },
   { id: 'notes',          label: 'NOTES' },
+  { id: 'guidance',       label: 'GUIDANCE' },
 ]
 
 export default function NavTabs({ activeTab, onTabChange, hiddenTabs = new Set() }) {
