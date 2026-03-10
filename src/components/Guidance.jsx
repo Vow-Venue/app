@@ -1,27 +1,46 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronUp, ChevronDown, Trash2, FileText, Image, Type, Heading, Download } from 'lucide-react'
 
 const BLOCK_TYPES = [
-  { type: 'header', label: 'HEADER', icon: Heading },
-  { type: 'text',   label: 'TEXT',   icon: Type },
-  { type: 'file',   label: 'FILE',   icon: FileText },
-  { type: 'image',  label: 'IMAGE',  icon: Image },
+  { type: 'header', label: 'Header', icon: Heading },
+  { type: 'text',   label: 'Text',   icon: Type },
+  { type: 'file',   label: 'File',   icon: FileText },
+  { type: 'image',  label: 'Image',  icon: Image },
+]
+
+const STARTER_TEMPLATES = [
+  {
+    type: 'header', icon: Heading, title: 'Welcome Message',
+    content: { title: 'Welcome Message' },
+    desc: 'Greet your couple and set the tone for the planning journey.',
+  },
+  {
+    type: 'text', icon: Type, title: 'Planning Process',
+    content: { body: '' },
+    desc: 'Outline your planning process, communication style, and key milestones.',
+  },
+  {
+    type: 'text', icon: Type, title: 'What to Expect',
+    content: { body: '' },
+    desc: 'Set expectations for timelines, meetings, and deliverables.',
+  },
 ]
 
 export default function Guidance({
   blocks, onAddBlock, onUpdateBlock, onDeleteBlock, onReorderBlock, onUploadFile, canEdit = false,
 }) {
   const [uploading, setUploading] = useState(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(null)
   const fileRef = useRef(null)
   const imageRef = useRef(null)
 
   const sorted = [...blocks].sort((a, b) => a.sortOrder - b.sortOrder)
 
-  const handleAdd = async (type) => {
+  const handleAdd = async (type, content) => {
     if (type === 'header') {
-      onAddBlock('header', { title: 'New Section' })
+      onAddBlock('header', content || { title: 'New Section' })
     } else if (type === 'text') {
-      onAddBlock('text', { body: '' })
+      onAddBlock('text', content || { body: '' })
     } else if (type === 'file') {
       fileRef.current?.click()
     } else if (type === 'image') {
@@ -49,6 +68,15 @@ export default function Guidance({
     e.target.value = ''
   }
 
+  const handleDelete = (id) => {
+    if (confirmingDelete === id) {
+      onDeleteBlock(id)
+      setConfirmingDelete(null)
+    } else {
+      setConfirmingDelete(id)
+    }
+  }
+
   return (
     <div>
       <div className="section-title">Guidance</div>
@@ -58,20 +86,19 @@ export default function Guidance({
 
       <div className="guidance-container">
         {/* Add block toolbar — planner only */}
-        {canEdit && (
+        {canEdit && sorted.length > 0 && (
           <div className="guidance-toolbar">
             {BLOCK_TYPES.map(bt => {
               const Icon = bt.icon
               return (
                 <button
                   key={bt.type}
-                  className="btn btn-ghost"
-                  style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}
+                  className="guidance-add-btn"
                   onClick={() => handleAdd(bt.type)}
                   disabled={uploading !== null}
                 >
-                  <Icon size={14} />
-                  {uploading === bt.type ? 'UPLOADING...' : `+ ${bt.label}`}
+                  <Icon size={13} />
+                  {uploading === bt.type ? 'Uploading...' : bt.label}
                 </button>
               )
             })}
@@ -80,13 +107,53 @@ export default function Guidance({
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty state with starter templates (planner) or simple message (read-only) */}
         {sorted.length === 0 && (
-          <div className="guidance-empty">
-            {canEdit
-              ? 'Build your couple\u2019s welcome packet \u2014 add text, files, and images they can reference throughout planning.'
-              : 'Your planner hasn\u2019t added any guidance yet.'}
-          </div>
+          canEdit ? (
+            <div className="guidance-starters">
+              <div className="guidance-starters-intro">
+                Start building your couple's welcome packet. Click a section below to add it, or use the buttons to add your own.
+              </div>
+              <div className="guidance-starters-grid">
+                {STARTER_TEMPLATES.map((tmpl, i) => {
+                  const Icon = tmpl.icon
+                  return (
+                    <button
+                      key={i}
+                      className="guidance-starter-card"
+                      onClick={() => handleAdd(tmpl.type, tmpl.content)}
+                    >
+                      <Icon size={18} style={{ color: 'var(--gold)' }} />
+                      <div className="guidance-starter-title">{tmpl.title}</div>
+                      <div className="guidance-starter-desc">{tmpl.desc}</div>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="guidance-toolbar" style={{ justifyContent: 'center', marginTop: 24 }}>
+                {BLOCK_TYPES.map(bt => {
+                  const Icon = bt.icon
+                  return (
+                    <button
+                      key={bt.type}
+                      className="guidance-add-btn"
+                      onClick={() => handleAdd(bt.type)}
+                      disabled={uploading !== null}
+                    >
+                      <Icon size={13} />
+                      {uploading === bt.type ? 'Uploading...' : bt.label}
+                    </button>
+                  )
+                })}
+                <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" style={{ display: 'none' }} onChange={handleFileUpload} />
+                <input ref={imageRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+              </div>
+            </div>
+          ) : (
+            <div className="guidance-empty">
+              Your planner hasn't added any guidance yet.
+            </div>
+          )
         )}
 
         {/* Block list */}
@@ -119,12 +186,25 @@ export default function Guidance({
                 canEdit={canEdit}
                 onUpdate={(updates) => onUpdateBlock(block.id, { content: { ...block.content, ...updates } })}
               />
+
+              {/* Inline delete confirmation */}
+              {canEdit && confirmingDelete === block.id && (
+                <div className="guidance-confirm-delete">
+                  <span>Delete this block?</span>
+                  <button className="guidance-confirm-yes" onClick={() => { onDeleteBlock(block.id); setConfirmingDelete(null) }}>
+                    Yes, delete
+                  </button>
+                  <button className="guidance-confirm-cancel" onClick={() => setConfirmingDelete(null)}>
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
 
             {canEdit && (
               <button
                 className="guidance-delete-btn"
-                onClick={() => { if (confirm('Delete this block?')) onDeleteBlock(block.id) }}
+                onClick={() => handleDelete(block.id)}
                 title="Delete block"
               >
                 <Trash2 size={13} />
@@ -177,19 +257,44 @@ function HeaderBlock({ content, canEdit, onUpdate }) {
   )
 }
 
+function AutoTextarea({ value, onChange, onBlur, className, placeholder }) {
+  const ref = useRef(null)
+
+  const resize = useCallback(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [])
+
+  useEffect(() => { resize() }, [value, resize])
+
+  return (
+    <textarea
+      ref={ref}
+      className={className}
+      value={value}
+      onChange={e => { onChange(e); resize() }}
+      onBlur={onBlur}
+      placeholder={placeholder}
+      rows={1}
+      autoFocus
+    />
+  )
+}
+
 function TextBlock({ content, canEdit, onUpdate }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(content.body || '')
 
   if (canEdit && editing) {
     return (
-      <textarea
+      <AutoTextarea
         className="guidance-text-input"
         value={draft}
         onChange={e => setDraft(e.target.value)}
         onBlur={() => { onUpdate({ body: draft }); setEditing(false) }}
-        rows={6}
-        autoFocus
+        placeholder="Start writing..."
       />
     )
   }
@@ -201,7 +306,7 @@ function TextBlock({ content, canEdit, onUpdate }) {
         onClick={() => canEdit && setEditing(true)}
         style={{ cursor: canEdit ? 'text' : 'default' }}
       >
-        {canEdit ? 'Click to add text...' : ''}
+        {canEdit ? 'Click to start writing...' : ''}
       </div>
     )
   }
@@ -226,11 +331,10 @@ function FileBlock({ content }) {
         href={content.file_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="btn btn-ghost"
-        style={{ fontSize: 10, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}
+        className="guidance-download-link"
         onClick={e => e.stopPropagation()}
       >
-        <Download size={12} /> DOWNLOAD
+        <Download size={12} /> Download
       </a>
     </div>
   )
