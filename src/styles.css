@@ -1719,6 +1719,31 @@ body {
   .org-recent-card { min-width: 140px; }
 }
 
+/* ─── Breadcrumb Bar ────────────────────────────── */
+
+.breadcrumb-bar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 40px;
+}
+
+.breadcrumb-back {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-family: 'Jost', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  letter-spacing: 0.5px;
+  transition: color 0.15s;
+}
+
+.breadcrumb-back:hover {
+  color: var(--deep);
+}
+
 /* ─── Tabs ──────────────────────────────────────── */
 
 .tabs {

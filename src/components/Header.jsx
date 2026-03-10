@@ -54,23 +54,11 @@ export default function Header({
       ? (profile?.display_name ? `${profile.display_name.toUpperCase()}'S STUDIO` : 'MY STUDIO')
       : 'VOW & VENUE'
 
-  const showBackButton = session && activeWeddingId
-  const showSwitcher = showBackButton && myWeddings.length > 1
+  const showSwitcher = session && activeWeddingId && myWeddings.length > 1
 
   return (
     <header className="header">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {showBackButton && (
-          <button
-            className="header-back-btn"
-            onClick={onBackToDashboard}
-            title="Back to All Weddings"
-          >
-            &larr; <span className="header-back-text">All Weddings</span>
-          </button>
-        )}
-        <div className="logo"><span>✦</span> Vow &amp; Venue</div>
-      </div>
+      <div className="logo"><span>✦</span> Vow &amp; Venue</div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         {/* Wedding switcher or static badge */}

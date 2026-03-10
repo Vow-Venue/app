@@ -1855,6 +1855,13 @@ export default function App() {
           deleteAccountOpen={deleteAccountOpen}
           setDeleteAccountOpen={setDeleteAccountOpen}
         />
+        {activeWeddingId && (
+          <div className="breadcrumb-bar">
+            <button className="breadcrumb-back" onClick={handleBackToDashboard}>
+              &larr; All Weddings
+            </button>
+          </div>
+        )}
         <NavTabs activeTab={activeTab} onTabChange={setActiveTab} hiddenTabs={hiddenTabs} />
 
         {showProBanner && (
