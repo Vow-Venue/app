@@ -30,17 +30,15 @@ const avatarColor = (name) => {
 export default function Collaborators({
   collaborators, vendors = [], onAddCollaborator, onDeleteCollaborator,
   isAuthenticated, canInvite = true, canEdit = true,
-  isPro = false, onUpgrade,
+  isPro = false,
   rsvpSlug = null,
 }) {
   const [formOpen, setFormOpen]         = useState(false)
-  const [upgradeOpen, setUpgradeOpen]   = useState(false)
   const [form, setForm]                 = useState(BLANK_COLLAB)
   const [inviteUrl, setInviteUrl]       = useState(null)
   const [emailSent, setEmailSent]       = useState(false)
   const [emailError, setEmailError]     = useState(null)
   const [copied, setCopied]             = useState(false)
-  const [upgrading, setUpgrading]       = useState(false)
   const [submitError, setSubmitError]   = useState(null)
   const [submitting, setSubmitting]     = useState(false)
 
@@ -50,24 +48,9 @@ export default function Collaborators({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const FREE_PLAN_LIMIT = 2
-
   const handleAddClick = () => {
-    if (!isPro && collaborators.length >= FREE_PLAN_LIMIT) {
-      setUpgradeOpen(true)
-    } else {
-      setForm(BLANK_COLLAB)
-      setFormOpen(true)
-    }
-  }
-
-  const handleUpgradeClick = async () => {
-    setUpgrading(true)
-    try {
-      await onUpgrade?.()
-    } finally {
-      setUpgrading(false)
-    }
+    setForm(BLANK_COLLAB)
+    setFormOpen(true)
   }
 
   const handleChange = (e) =>
@@ -119,9 +102,7 @@ export default function Collaborators({
         </div>
       </div>
       <div className="section-subtitle">
-        {isPro
-          ? `${collaborators.length} COLLABORATOR${collaborators.length !== 1 ? 'S' : ''} · PRO PLAN`
-          : `${collaborators.length}/${FREE_PLAN_LIMIT} COLLABORATORS · FREE PLAN`}
+        {`${collaborators.length} COLLABORATOR${collaborators.length !== 1 ? 'S' : ''}`}
       </div>
 
       <div className="card" style={{ marginBottom: 24 }}>
@@ -190,20 +171,6 @@ export default function Collaborators({
               {copied ? 'COPIED ✓' : 'COPY'}
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Paywall card — only shown on free plan */}
-      {!isPro && (
-        <div className="paywall-card">
-          <h3>Invite Your Whole Wedding Village</h3>
-          <p>
-            Upgrade to Pro to add unlimited collaborators — your wedding planner,<br />
-            photographer, both families, and anyone else who needs access.
-          </p>
-          <button className="btn-gold" onClick={handleUpgradeClick} disabled={upgrading}>
-            {upgrading ? 'REDIRECTING...' : 'UPGRADE TO PRO · $39/MO'}
-          </button>
         </div>
       )}
 
@@ -329,38 +296,6 @@ export default function Collaborators({
             </button>
           </div>
         </form>
-      </Modal>
-
-      {/* Upgrade Modal */}
-      <Modal isOpen={upgradeOpen} onClose={() => setUpgradeOpen(false)} title="Free Plan Limit Reached">
-        <div style={{ textAlign: 'center', padding: '8px 0' }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
-          <div style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontSize: 22,
-            fontStyle: 'italic',
-            color: 'var(--deep)',
-            marginBottom: 12,
-          }}>
-            You've reached your Free Plan limit
-          </div>
-          <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.7, marginBottom: 24 }}>
-            Your free plan includes up to 2 collaborators.<br />
-            Upgrade to Pro to invite your whole team — unlimited access for everyone.
-          </div>
-          <button className="btn-gold" style={{ marginBottom: 12 }} onClick={handleUpgradeClick} disabled={upgrading}>
-            {upgrading ? 'REDIRECTING TO STRIPE...' : 'UPGRADE TO PRO · $39/MO'}
-          </button>
-          <div>
-            <button
-              className="btn btn-ghost"
-              onClick={() => setUpgradeOpen(false)}
-              style={{ fontSize: 11 }}
-            >
-              MAYBE LATER
-            </button>
-          </div>
-        </div>
       </Modal>
 
       {/* ── Team Directory ────────────────────────────────────────────────────── */}

@@ -96,6 +96,9 @@ export default function OrgDashboard({
   // Invite placeholder modal
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
+  // Upgrade modal
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+
   // Vendor copy dropdown
   const [copyVendorIdx, setCopyVendorIdx] = useState(null)
 
@@ -167,7 +170,10 @@ export default function OrgDashboard({
   }
 
   const handleCreate = () => {
-    if (!canCreate) return
+    if (!canCreate) {
+      setUpgradeModalOpen(true)
+      return
+    }
     setNewWeddingOpen(true)
   }
 
@@ -346,32 +352,18 @@ export default function OrgDashboard({
         })}
 
         {viewMode === 'grid' && (
-          canCreate ? (
-            <button className="wedding-card wedding-card-new" onClick={handleCreate}>
-              <div className="wedding-card-new-arch">
-                <div className="wedding-card-new-icon">+</div>
-              </div>
-              <div className="wedding-card-body">
-                <div className="wedding-card-new-label">NEW WEDDING</div>
-              </div>
-            </button>
-          ) : (
-            <button className="wedding-card wedding-card-new wedding-card-upgrade" onClick={onUpgrade}>
-              <div className="wedding-card-new-arch">
-                <div className="wedding-card-new-icon">&#10022;</div>
-              </div>
-              <div className="wedding-card-body">
-                <div className="wedding-card-new-label">UPGRADE TO PRO</div>
-                <div className="wedding-card-upgrade-text">
-                  Free plan allows {FREE_WEDDING_LIMIT} weddings. Upgrade for unlimited.
-                </div>
-              </div>
-            </button>
-          )
+          <button className="wedding-card wedding-card-new" onClick={handleCreate}>
+            <div className="wedding-card-new-arch">
+              <div className="wedding-card-new-icon">+</div>
+            </div>
+            <div className="wedding-card-body">
+              <div className="wedding-card-new-label">NEW WEDDING</div>
+            </div>
+          </button>
         )}
       </div>
 
-      {viewMode === 'list' && canCreate && (
+      {viewMode === 'list' && (
         <button className="org-list-new-btn" onClick={handleCreate}>
           + NEW WEDDING
         </button>
@@ -445,7 +437,7 @@ export default function OrgDashboard({
 
             {/* Quick Actions */}
             <div className="org-quick-actions">
-              <button className="org-quick-btn" onClick={handleCreate} disabled={!canCreate}>
+              <button className="org-quick-btn" onClick={handleCreate}>
                 <Plus size={16} /> New Wedding
               </button>
               <button className="org-quick-btn" onClick={() => setInviteModalOpen(true)}>
@@ -1007,6 +999,32 @@ export default function OrgDashboard({
                 {nwLoading ? 'Creating...' : 'CREATE WEDDING'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Upgrade Modal ────────────────────────────────────────────────── */}
+      {upgradeModalOpen && (
+        <div className="modal-backdrop" onClick={() => setUpgradeModalOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Upgrade to Pro</div>
+              <button className="modal-close" onClick={() => setUpgradeModalOpen(false)}>×</button>
+            </div>
+            <div style={{ padding: '16px 24px 24px', textAlign: 'center' }}>
+              <p style={{ fontSize: 15, color: 'var(--deep)', marginBottom: 8 }}>
+                You've reached the 2-wedding limit on the Free plan.
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>
+                Upgrade to Pro for unlimited weddings, priority support, and more.
+              </p>
+              <button className="btn btn-primary" style={{ width: '100%', marginBottom: 10 }} onClick={() => { setUpgradeModalOpen(false); onUpgrade() }}>
+                UPGRADE TO PRO · $39/MO
+              </button>
+              <button className="btn-ghost" style={{ width: '100%' }} onClick={() => setUpgradeModalOpen(false)}>
+                Maybe Later
+              </button>
+            </div>
           </div>
         </div>
       )}

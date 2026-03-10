@@ -1422,7 +1422,9 @@ export default function App() {
 
   // ── Stripe upgrade ───────────────────────────────────────────────────────────
   const handleUpgrade = async () => {
-    if (!session || !weddingId) { setAuthOpen(true); return }
+    if (!session) { setAuthOpen(true); return }
+    const upgradeWeddingId = weddingId || myWeddings.find(w => w.myRole === 'owner')?.id
+    if (!upgradeWeddingId) return
     try {
       const origin = import.meta.env.VITE_APP_URL || window.location.origin
       // Get fresh token (session in state may be stale/expired)
@@ -1437,7 +1439,7 @@ export default function App() {
           'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          weddingId,
+          weddingId: upgradeWeddingId,
           successUrl: `${origin}/app?stripe_success=1`,
           cancelUrl: `${origin}/app`,
         }),
