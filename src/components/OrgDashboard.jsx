@@ -58,7 +58,7 @@ export default function OrgDashboard({
   onSelectWedding, onCreateWedding, onUpgrade, onUploadCover,
   onUpdateStudioName, onCreateTemplate, onUpdateTemplate, onDeleteTemplate,
   onAddTemplateTask, onUpdateTemplateTask, onDeleteTemplateTask,
-  onImportTemplate, onSeedStarterTemplates, onCopyVendor,
+  onImportTemplate, onSeedStarterTemplates, onCopyVendor, onArchiveWedding,
 }) {
   const [viewMode, setViewMode] = useState('grid')
   const [sortBy, setSortBy] = useState('date')
@@ -68,6 +68,9 @@ export default function OrgDashboard({
   const [activePage, setActivePage] = useState('home')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [weddingFilter, setWeddingFilter] = useState('active')
+
+  // Archive menu
+  const [menuOpenId, setMenuOpenId] = useState(null)
 
   // Studio name editing
   const [editingStudioName, setEditingStudioName] = useState(false)
@@ -134,7 +137,10 @@ export default function OrgDashboard({
   }, [recentOrder, weddings])
 
   const sortedWeddings = useMemo(() => {
-    const sorted = [...weddings]
+    const filtered = weddings.filter(w =>
+      weddingFilter === 'archived' ? w.archived === true : !w.archived
+    )
+    const sorted = [...filtered]
     switch (sortBy) {
       case 'date':
         return sorted.sort((a, b) => {
@@ -160,7 +166,7 @@ export default function OrgDashboard({
       default:
         return sorted
     }
-  }, [weddings, sortBy, recentOrder])
+  }, [weddings, sortBy, recentOrder, weddingFilter])
 
   const handleSelect = (wId) => {
     const updated = [wId, ...recentOrder.filter(id => id !== wId)].slice(0, 20)
@@ -276,29 +282,51 @@ export default function OrgDashboard({
 
           if (viewMode === 'list') {
             return (
-              <button key={w.id} className="org-list-row" onClick={() => handleSelect(w.id)}>
-                <div className="org-list-thumb" style={bgStyle} />
-                <div className="org-list-info">
-                  <div className="org-list-couple">
-                    {w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled Wedding'}
+              <div key={w.id} className={`org-list-row${w.archived ? ' archived' : ''}`} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <button className="org-list-row-inner" onClick={() => handleSelect(w.id)} style={{ display: 'flex', alignItems: 'center', flex: 1, background: 'none', border: 'none', padding: '12px 16px', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                  <div className="org-list-thumb" style={bgStyle} />
+                  <div className="org-list-info">
+                    <div className="org-list-couple">
+                      {w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled Wedding'}
+                    </div>
+                    <div className="org-list-date">
+                      {w.wedding_date ? fmtDate(w.wedding_date) : 'NO DATE SET'}
+                    </div>
                   </div>
-                  <div className="org-list-date">
-                    {w.wedding_date ? fmtDate(w.wedding_date) : 'NO DATE SET'}
+                  <div className="org-list-stat">{days !== null ? `${days}d` : '—'}</div>
+                  <div className="org-list-stat">{w.guestCount || 0} guests</div>
+                  <div className="org-list-stat">
+                    <span className="org-list-pct">{taskPct}%</span>
                   </div>
-                </div>
-                <div className="org-list-stat">{days !== null ? `${days}d` : '—'}</div>
-                <div className="org-list-stat">{w.guestCount || 0} guests</div>
-                <div className="org-list-stat">
-                  <span className="org-list-pct">{taskPct}%</span>
-                </div>
-              </button>
+                </button>
+                {w.myRole === 'owner' && onArchiveWedding && (
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      className="wedding-card-menu-btn"
+                      onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === w.id ? null : w.id) }}
+                    >
+                      ···
+                    </button>
+                    {menuOpenId === w.id && (
+                      <>
+                        <div className="wedding-card-menu-backdrop" onClick={() => setMenuOpenId(null)} />
+                        <div className="wedding-card-menu">
+                          <button onClick={() => { onArchiveWedding(w.id, !w.archived); setMenuOpenId(null) }}>
+                            {w.archived ? 'Unarchive Wedding' : 'Archive Wedding'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             )
           }
 
           return (
             <div
               key={w.id}
-              className="wedding-card"
+              className={`wedding-card${w.archived ? ' archived' : ''}`}
               role="button"
               tabIndex={0}
               onClick={() => handleSelect(w.id)}
@@ -326,6 +354,26 @@ export default function OrgDashboard({
                 )}
               </div>
               <div className="wedding-card-body">
+                {w.myRole === 'owner' && onArchiveWedding && (
+                  <div style={{ position: 'relative', float: 'right' }}>
+                    <button
+                      className="wedding-card-menu-btn"
+                      onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === w.id ? null : w.id) }}
+                    >
+                      ···
+                    </button>
+                    {menuOpenId === w.id && (
+                      <>
+                        <div className="wedding-card-menu-backdrop" onClick={() => setMenuOpenId(null)} />
+                        <div className="wedding-card-menu">
+                          <button onClick={(e) => { e.stopPropagation(); onArchiveWedding(w.id, !w.archived); setMenuOpenId(null) }}>
+                            {w.archived ? 'Unarchive Wedding' : 'Archive Wedding'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div className="wedding-card-couple">
                   {w.partner1 && w.partner2 ? `${w.partner1} & ${w.partner2}` : 'Untitled Wedding'}
                 </div>
@@ -351,7 +399,7 @@ export default function OrgDashboard({
           )
         })}
 
-        {viewMode === 'grid' && (
+        {viewMode === 'grid' && weddingFilter !== 'archived' && (
           <button className="wedding-card wedding-card-new" onClick={handleCreate}>
             <div className="wedding-card-new-arch">
               <div className="wedding-card-new-icon">+</div>
@@ -363,7 +411,7 @@ export default function OrgDashboard({
         )}
       </div>
 
-      {viewMode === 'list' && (
+      {viewMode === 'list' && weddingFilter !== 'archived' && (
         <button className="org-list-new-btn" onClick={handleCreate}>
           + NEW WEDDING
         </button>
@@ -518,13 +566,13 @@ export default function OrgDashboard({
                 className={`org-filter-tab${weddingFilter === 'active' ? ' active' : ''}`}
                 onClick={() => setWeddingFilter('active')}
               >
-                Active ({sortedWeddings.length})
+                Active ({weddings.filter(w => !w.archived).length})
               </button>
               <button
                 className={`org-filter-tab${weddingFilter === 'archived' ? ' active' : ''}`}
                 onClick={() => setWeddingFilter('archived')}
               >
-                Archived (0)
+                Archived ({weddings.filter(w => w.archived === true).length})
               </button>
             </div>
 

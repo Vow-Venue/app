@@ -557,6 +557,13 @@ export default function App() {
     if (session) loadMyWeddings(session.user.id)
   }
 
+  // ── Archive / unarchive a wedding ──────────────────────────────────────────
+  const handleArchiveWedding = async (wId, archived) => {
+    if (!session) return
+    await supabase.from('weddings').update({ archived }).eq('id', wId)
+    setMyWeddings(prev => prev.map(w => w.id === wId ? { ...w, archived } : w))
+  }
+
   // ── Create a new wedding ────────────────────────────────────────────────────
   const handleCreateWedding = async (fields = {}) => {
     if (!session) return
@@ -1770,6 +1777,7 @@ export default function App() {
               onImportTemplate={handleImportTemplateToWedding}
               onSeedStarterTemplates={handleSeedStarterTemplates}
               onCopyVendor={handleCopyVendorToWedding}
+              onArchiveWedding={handleArchiveWedding}
             />
           </main>
           <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
