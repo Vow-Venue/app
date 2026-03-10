@@ -5,6 +5,15 @@ const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
 
 const BLANK_COLLAB = { name: '', email: '', role: '', access: 'view' }
 
+const ROLE_OPTIONS = [
+  { value: '',         label: 'Select a role…' },
+  { value: 'couple',   label: 'Couple (Partner)' },
+  { value: 'family',   label: 'Family Member' },
+  { value: 'vendor',   label: 'Vendor' },
+  { value: 'planner',  label: 'Co-Planner' },
+  { value: 'other',    label: 'Other' },
+]
+
 const VENDOR_ROLES = {
   photographer: 'Photographer',
   florist:      'Florist',
@@ -30,7 +39,7 @@ const avatarColor = (name) => {
 export default function Collaborators({
   collaborators, vendors = [], onAddCollaborator, onDeleteCollaborator,
   isAuthenticated, canInvite = true, canEdit = true,
-  isPro = false,
+  isPro = false, onUpgrade,
   rsvpSlug = null,
 }) {
   const [formOpen, setFormOpen]         = useState(false)
@@ -228,10 +237,10 @@ export default function Collaborators({
       )}
 
       {/* Add Collaborator Modal */}
-      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); setSubmitError(null) }} title="Add Collaborator">
+      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); setSubmitError(null) }} title="Invite Team Member">
         <form onSubmit={handleSubmit}>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, lineHeight: 1.6 }}>
-            Add them to your team, then share the link below so they can sign in.
+            Invite your couple, family, and vendors for free. Co-planner seats require the Pro plan.
           </p>
           <div className="form-grid-2">
             <div className="form-group" style={{ margin: 0 }}>
@@ -246,7 +255,11 @@ export default function Collaborators({
           <div className="form-grid-2" style={{ marginTop: 16 }}>
             <div className="form-group" style={{ margin: 0 }}>
               <label>ROLE</label>
-              <input name="role" type="text" value={form.role} onChange={handleChange} placeholder="e.g. Maid of Honor" />
+              <select name="role" value={form.role} onChange={handleChange}>
+                {ROLE_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value} disabled={opt.value === ''}>{opt.label}</option>
+                ))}
+              </select>
             </div>
             <div className="form-group" style={{ margin: 0 }}>
               <label>ACCESS LEVEL</label>
@@ -257,8 +270,30 @@ export default function Collaborators({
             </div>
           </div>
 
-          {/* Invite link — only show if authenticated (invite tokens require DB) */}
-          {isAuthenticated && (
+          {/* Planner upgrade gate — only when planner role selected on free plan */}
+          {form.role === 'planner' && !isPro && (
+            <div style={{
+              marginTop: 20,
+              background: 'rgba(184,151,90,0.10)',
+              border: '1px solid var(--gold)',
+              borderRadius: 10,
+              padding: '16px 18px',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--deep)', marginBottom: 6 }}>
+                Co-Planner seats require Pro
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 14 }}>
+                Both you and your co-planner need the Pro plan ($39/mo per seat) to collaborate with full planner access.
+              </div>
+              <button type="button" className="btn btn-primary" style={{ width: '100%' }} onClick={() => { setFormOpen(false); onUpgrade() }}>
+                UPGRADE TO PRO
+              </button>
+            </div>
+          )}
+
+          {/* Invite info — show for non-planner roles or when on Pro */}
+          {form.role !== 'planner' && isAuthenticated && (
             <div style={{
               marginTop: 20,
               background: 'rgba(184,151,90,0.08)',
@@ -271,6 +306,22 @@ export default function Collaborators({
               </div>
               <div style={{ fontSize: 12, color: 'var(--deep)', lineHeight: 1.6 }}>
                 After clicking "Add to Team", an invite link will be generated. Copy it and send it to them via text or email. When they click it and sign in, they'll be added to your wedding automatically.
+              </div>
+            </div>
+          )}
+          {form.role === 'planner' && isPro && isAuthenticated && (
+            <div style={{
+              marginTop: 20,
+              background: 'rgba(46,125,50,0.06)',
+              border: '1px solid rgba(46,125,50,0.3)',
+              borderRadius: 10,
+              padding: '12px 14px',
+            }}>
+              <div style={{ fontSize: 11, letterSpacing: 2, color: '#2e7d32', marginBottom: 6, fontWeight: 600 }}>
+                PRO CO-PLANNER INVITE
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--deep)', lineHeight: 1.6 }}>
+                Your co-planner will get full edit access. An invite link will be generated after you click "Add to Team".
               </div>
             </div>
           )}
@@ -291,7 +342,7 @@ export default function Collaborators({
           )}
           <div className="modal-actions" style={{ marginTop: 20 }}>
             <button type="button" className="btn btn-ghost" onClick={() => { setFormOpen(false); setSubmitError(null) }}>CANCEL</button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
+            <button type="submit" className="btn btn-primary" disabled={submitting || (form.role === 'planner' && !isPro)}>
               {submitting ? 'ADDING...' : 'ADD TO TEAM'}
             </button>
           </div>
