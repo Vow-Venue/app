@@ -284,30 +284,13 @@ export default function App() {
     try {
       // ── Step 1: Redeem invite token if present in URL ───────────────────────
       if (pendingInviteToken) {
-        const { data: invite } = await supabase
-          .from('invite_tokens')
-          .select('*')
-          .eq('token', pendingInviteToken)
-          .eq('used', false)
-          .maybeSingle()
-
-        if (invite) {
-          const expiresAt = new Date(new Date(invite.created_at).getTime() + 48 * 60 * 60 * 1000)
-          if (new Date() > expiresAt) {
-            console.warn('Invite token has expired')
-            window.history.replaceState({}, '', window.location.pathname)
-          } else {
-            await supabase.from('invite_tokens').update({ used: true }).eq('id', invite.id)
-            await supabase.from('collaborators')
-              .upsert({ wedding_id: invite.wedding_id, user_id: userId, name: invite.name, email: invite.email, role: invite.role, access: invite.access }, { onConflict: 'wedding_id,email' })
-            // Also create wedding_members row for access control (safe — ignores if table missing)
-            try {
-              await supabase.from('wedding_members')
-                .upsert({ wedding_id: invite.wedding_id, user_id: userId, role: mapMemberRole(invite.role) }, { onConflict: 'wedding_id,user_id' })
-            } catch { /* table may not exist yet */ }
-            window.history.replaceState({}, '', window.location.pathname)
-          }
+        const { data: result, error: rpcError } = await supabase.rpc('redeem_invite', { token_value: pendingInviteToken })
+        if (rpcError) {
+          console.error('Invite redemption failed:', rpcError.message)
+        } else if (result?.error) {
+          console.warn('Invite token issue:', result.error)
         }
+        window.history.replaceState({}, '', window.location.pathname)
       }
 
       // ── Step 2: Fetch all weddings this user is a member of ─────────────────
