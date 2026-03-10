@@ -784,18 +784,6 @@ export default function OrgDashboard({
             <span>Shared Resources</span>
           </button>
 
-          <button
-            className={`org-sidebar-item${activePage === 'settings' ? ' active' : ''}`}
-            onClick={() => navigateTo('settings')}
-          >
-            <Settings size={16} />
-            <span>Settings</span>
-          </button>
-        </div>
-
-        <div className="org-sidebar-divider" />
-
-        <div className="org-sidebar-coming-soon">
           <div className="org-sidebar-item disabled">
             <TrendingUp size={16} />
             <span>Sales</span>
@@ -811,6 +799,16 @@ export default function OrgDashboard({
             <span>Contacts</span>
             <span className="org-sidebar-soon-badge">SOON</span>
           </div>
+
+          <div className="org-sidebar-divider" />
+
+          <button
+            className={`org-sidebar-item${activePage === 'settings' ? ' active' : ''}`}
+            onClick={() => navigateTo('settings')}
+          >
+            <Settings size={16} />
+            <span>Settings</span>
+          </button>
         </div>
       </nav>
 
