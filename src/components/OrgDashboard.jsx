@@ -14,8 +14,8 @@ const fmtDate = (dateStr) => {
 }
 
 const fmtCurrency = (n) => {
-  if (!n) return '$0'
-  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  if (!n) return '$0.00'
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 const ROLE_LABELS = {
@@ -488,9 +488,6 @@ export default function OrgDashboard({
               <button className="org-quick-btn" onClick={handleCreate}>
                 <Plus size={16} /> New Wedding
               </button>
-              <button className="org-quick-btn" onClick={() => setInviteModalOpen(true)}>
-                <UserPlus size={16} /> Invite Planner
-              </button>
               <button className="org-quick-btn" onClick={() => setImportModalOpen(true)} disabled={taskTemplates.length === 0}>
                 <Download size={16} /> Import Template
               </button>
@@ -527,17 +524,12 @@ export default function OrgDashboard({
                 <div className="org-stat-label">Active Weddings</div>
               </div>
               <div className="org-stat-card">
-                <Users size={18} className="org-stat-icon" />
-                <div className="org-stat-value">{totalGuests}</div>
-                <div className="org-stat-label">Total Guests</div>
-              </div>
-              <div className="org-stat-card">
                 <ClipboardList size={18} className="org-stat-icon" />
                 <div className="org-stat-value">{avgCompletion}%</div>
                 <div className="org-stat-label">Avg Completion</div>
               </div>
               <div className="org-stat-card">
-                <DollarSign size={18} className="org-stat-icon" />
+                <TrendingUp size={18} className="org-stat-icon" />
                 <div className="org-stat-value">{fmtCurrency(revenue)}</div>
                 <div className="org-stat-label">Revenue Tracked</div>
               </div>
