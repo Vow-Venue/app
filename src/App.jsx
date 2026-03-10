@@ -1741,7 +1741,7 @@ export default function App() {
             deleteAccountOpen={deleteAccountOpen}
             setDeleteAccountOpen={setDeleteAccountOpen}
           />
-          <main className="main" style={{ maxWidth: 1200 }}>
+          <main className="main" style={{ maxWidth: 'none', padding: 0 }}>
             <OrgDashboard
               weddings={myWeddings}
               userPlan={userPlan}
