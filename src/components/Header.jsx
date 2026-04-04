@@ -54,7 +54,7 @@ export default function Header({
     ? `${wedding.partner1.toUpperCase()} & ${wedding.partner2.toUpperCase()} · ${fmtDate(wedding.wedding_date)}`
     : session && !activeWeddingId
       ? (profile?.display_name ? `${profile.display_name.toUpperCase()}'S STUDIO` : 'MY STUDIO')
-      : 'VOW & VENUE'
+      : 'AMORÍ'
 
   const showSwitcher = session && activeWeddingId && myWeddings.length > 1
 

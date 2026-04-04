@@ -502,7 +502,7 @@ export default function AdminDashboard() {
       <div style={S.gate}>
         <div style={S.gateBox}>
           <div style={S.gateTitle}>Admin Dashboard</div>
-          <div style={S.gateSubtitle}>VOW & VENUE INTERNAL</div>
+          <div style={S.gateSubtitle}>AMORÍ INTERNAL</div>
           <form onSubmit={handleLogin}>
             <input
               type="password"

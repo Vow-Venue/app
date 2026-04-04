@@ -1,11 +1,11 @@
 # IMPORTANT: Read this entire file before doing ANYTHING.
 
-# Vow & Venue — Product Context
+# Amorí — Product Context
 
 ALWAYS read this file at the start of every session before doing anything.
 
 ## What We're Building
-Vow & Venue is a SaaS wedding planning platform for professional wedding planners and firms. vowvenue.vercel.app
+Amorí is a SaaS wedding planning platform for professional wedding planners and firms. vowvenue.vercel.app
 
 ## Tech Stack
 React 18 + Vite + Supabase + Custom CSS + Stripe + Resend, deployed on Vercel. GitHub: Vow-Venue/app
@@ -81,7 +81,7 @@ No test runner is configured.
 
 Requires a `.env` file with:
 ```
-VITE_APP_URL=https://vowvenue.vercel.app
+VITE_APP_URL=https://vowvenue.vercel.app  # domain still uses old name until migrated
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 ```
