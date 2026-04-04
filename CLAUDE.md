@@ -5,7 +5,7 @@
 ALWAYS read this file at the start of every session before doing anything.
 
 ## What We're Building
-Amorí is a SaaS wedding planning platform for professional wedding planners and firms. vowvenue.vercel.app
+Amorí is a SaaS wedding planning platform for professional wedding planners and firms. amorisuite.com
 
 ## Tech Stack
 React 18 + Vite + Supabase + Custom CSS + Stripe + Resend, deployed on Vercel. GitHub: Vow-Venue/app
@@ -81,7 +81,7 @@ No test runner is configured.
 
 Requires a `.env` file with:
 ```
-VITE_APP_URL=https://vowvenue.vercel.app  # domain still uses old name until migrated
+VITE_APP_URL=https://amorisuite.com
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 ```
