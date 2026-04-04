@@ -6,7 +6,7 @@ export default function MarketingFooter({ onSignIn }) {
       <div className="marketing-footer-inner">
         <div className="marketing-footer-brand">
           <span className="marketing-nav-logo" style={{ fontSize: 22 }}>
-            <span className="logo-star">✦</span> Vow &amp; Venue
+            <span className="logo-star">✦</span> Amorí
           </span>
           <p className="marketing-footer-tagline">
             Wedding planning software for professionals.
@@ -27,7 +27,7 @@ export default function MarketingFooter({ onSignIn }) {
       </div>
 
       <div className="marketing-footer-bottom">
-        <span>&copy; {new Date().getFullYear()} Vow &amp; Venue. All rights reserved.</span>
+        <span>&copy; {new Date().getFullYear()} Amorí. All rights reserved.</span>
       </div>
     </footer>
   )

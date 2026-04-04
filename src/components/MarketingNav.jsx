@@ -4,7 +4,7 @@ export default function MarketingNav({ onSignIn, onStartFree }) {
   return (
     <nav className="marketing-nav">
       <Link to="/" className="marketing-nav-logo">
-        <span className="logo-star">✦</span> Vow &amp; Venue
+        <span className="logo-star">✦</span> Amorí
       </Link>
 
       <div className="marketing-nav-links">

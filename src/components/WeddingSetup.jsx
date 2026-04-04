@@ -41,7 +41,7 @@ export default function WeddingSetup({ onComplete }) {
           fontStyle: 'italic',
           letterSpacing: 2,
         }}>
-          <span style={{ color: 'var(--blush)', fontStyle: 'normal', fontWeight: 600 }}>✦</span> Vow &amp; Venue
+          <span style={{ color: 'var(--blush)', fontStyle: 'normal', fontWeight: 600 }}>✦</span> Amorí
         </div>
       </div>
 

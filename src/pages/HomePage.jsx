@@ -6,7 +6,7 @@ const FAQ_ITEMS = [
   { q: 'Is it really free?', a: 'Yes. The free plan includes all features with up to 2 weddings. No credit card required, no trial period, no hidden fees.' },
   { q: 'Do I need a credit card to sign up?', a: 'No. Just enter your email and you\'re in. We\'ll never ask for payment information unless you choose to upgrade to Pro.' },
   { q: 'Can my team access the same wedding?', a: 'Absolutely. Invite planners, family members, and vendors as collaborators with role-based access. Everyone works from the same workspace.' },
-  { q: 'How is this better than spreadsheets?', a: 'Spreadsheets weren\'t built for wedding planning. Vow & Venue gives you guest RSVP tracking, interactive seating charts, vendor payment management, team messaging, and collaborator invites -- all in one purpose-built tool.' },
+  { q: 'How is this better than spreadsheets?', a: 'Spreadsheets weren\'t built for wedding planning. Amorí gives you guest RSVP tracking, interactive seating charts, vendor payment management, team messaging, and collaborator invites -- all in one purpose-built tool.' },
   { q: 'Can I manage multiple weddings?', a: 'Yes. Free accounts can manage up to 2 weddings. Pro accounts get unlimited weddings -- perfect for professional planners handling multiple clients.' },
 ]
 
@@ -154,7 +154,7 @@ export default function HomePage() {
           {[
             { quote: 'Finally, a tool that understands how wedding planners actually work. I switched from spreadsheets and never looked back.', name: 'Sarah M.', role: 'Wedding Planner, Austin TX' },
             { quote: 'The seating chart alone saved me hours. Being able to invite my clients as collaborators is a game-changer.', name: 'Rachel K.', role: 'Event Coordinator, Nashville TN' },
-            { quote: 'I manage 15 weddings a year. Vow & Venue keeps everything organized and my team on the same page.', name: 'David L.', role: 'Wedding Planner, Los Angeles CA' },
+            { quote: 'I manage 15 weddings a year. Amorí keeps everything organized and my team on the same page.', name: 'David L.', role: 'Wedding Planner, Los Angeles CA' },
           ].map((t) => (
             <div key={t.name} className="testimonial-card">
               <div className="testimonial-stars">★★★★★</div>

@@ -19,7 +19,7 @@ const gcalUrl = (title, dateStr) => {
     action: 'TEMPLATE',
     text: title,
     dates: `${d}/${d}`,
-    details: 'Wedding planning task — Vow & Venue',
+    details: 'Wedding planning task — Amorí',
   })
   return `https://calendar.google.com/calendar/render?${params}`
 }

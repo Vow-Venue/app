@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
           <tr>
             <td style="background:linear-gradient(135deg,#3d2c2c,#5a3e3e);padding:32px 40px;text-align:center;">
               <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;color:#e8dcc8;font-style:italic;letter-spacing:1px;">
-                Vow &amp; Venue
+                Amorí
               </div>
             </td>
           </tr>
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
           <tr>
             <td style="background:#faf8f5;padding:20px 40px;text-align:center;border-top:1px solid #ede8e0;">
               <p style="font-size:11px;color:#a89e94;margin:0;">
-                Vow &amp; Venue · Wedding Planning Made Beautiful
+                Amorí · Wedding Planning Made Beautiful
               </p>
             </td>
           </tr>
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Vow & Venue <onboarding@resend.dev>",
+        from: "Amorí <onboarding@resend.dev>",
         to: [to],
         subject: `${inviterName || "Someone"} invited you to collaborate on ${title}`,
         html,

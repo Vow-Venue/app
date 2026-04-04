@@ -241,7 +241,7 @@ export default function RSVPPage() {
               </p>
             )}
           </div>
-          <div style={S.footer}>✦ Powered by Vow & Venue</div>
+          <div style={S.footer}>✦ Powered by Amorí</div>
         </div>
       </div>
     )
@@ -368,7 +368,7 @@ export default function RSVPPage() {
           </form>
         </div>
 
-        <div style={S.footer}>✦ Powered by Vow & Venue</div>
+        <div style={S.footer}>✦ Powered by Amorí</div>
       </div>
     </div>
   )

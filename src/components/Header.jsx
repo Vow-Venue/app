@@ -60,7 +60,7 @@ export default function Header({
 
   return (
     <header className="header">
-      <div className="logo"><span>✦</span> Vow &amp; Venue</div>
+      <div className="logo"><span>✦</span> Amorí</div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         {/* Wedding switcher or static badge */}

@@ -2172,7 +2172,7 @@ export default function App() {
             color: 'var(--deep)',
             opacity: 0.7,
           }}>
-            ✦ Vow &amp; Venue
+            ✦ Amorí
           </div>
         </div>
       )

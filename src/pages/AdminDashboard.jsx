@@ -238,7 +238,7 @@ function TicketsPage({ tickets, onToggleStatus, onTogglePriority, onDelete }) {
       )}
 
       <div style={{ textAlign: 'center', color: '#bbb', fontSize: 11, marginTop: 40, paddingBottom: 20 }}>
-        Vow & Venue Admin — Internal Use Only
+        Amorí Admin — Internal Use Only
       </div>
     </>
   )
@@ -428,7 +428,7 @@ function DashboardPage({ stats, signups, storage, health }) {
 
       {/* Footer */}
       <div style={{ textAlign: 'center', color: '#bbb', fontSize: 11, marginTop: 40, paddingBottom: 20 }}>
-        Vow & Venue Admin — Internal Use Only
+        Amorí Admin — Internal Use Only
       </div>
     </>
   )

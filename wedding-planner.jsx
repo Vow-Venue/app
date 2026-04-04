@@ -531,7 +531,7 @@ export default function WeddingPlanner() {
       <style>{style}</style>
       <div className="app">
         <header className="header">
-          <div className="logo"><span>✦</span> Vow & Venue</div>
+          <div className="logo"><span>✦</span> Amorí</div>
           <div className="wedding-badge">OLIVIA & ETHAN · JUNE 14, 2025</div>
         </header>
 

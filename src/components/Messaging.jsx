@@ -205,7 +205,7 @@ export default function Messaging({
         {/* ── Sidebar ── */}
         <div className="chat-sidebar">
           <div className="chat-sidebar-header">
-            <div className="chat-workspace-name">Vow &amp; Venue</div>
+            <div className="chat-workspace-name">Amorí</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
               Signed in as <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{me.name}</strong>
             </div>

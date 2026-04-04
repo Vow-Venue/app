@@ -107,7 +107,7 @@ export default function FeaturesPage() {
           Everything you need to plan every wedding
         </h1>
         <p className="marketing-hero-subtitle">
-          From first consultation to last dance, Vow &amp; Venue handles it all.
+          From first consultation to last dance, Amorí handles it all.
         </p>
       </section>
 

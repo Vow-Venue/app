@@ -86,7 +86,7 @@ export default function PricingPage() {
       {/* ── Comparison Table ──────────────────────────────── */}
       <section className="comparison-section">
         <div className="marketing-section-label">COMPARISON</div>
-        <h2 className="marketing-section-title">Why Vow &amp; Venue?</h2>
+        <h2 className="marketing-section-title">Why Amorí?</h2>
         <p className="marketing-section-subtitle">
           See how purpose-built wedding planning software compares to the alternatives.
         </p>
@@ -94,7 +94,7 @@ export default function PricingPage() {
           <thead>
             <tr>
               <th style={{ textAlign: 'left' }}>Feature</th>
-              <th>Vow &amp; Venue</th>
+              <th>Amorí</th>
               <th>Spreadsheets</th>
               <th>Generic PM Tools</th>
             </tr>
