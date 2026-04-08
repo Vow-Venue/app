@@ -113,6 +113,23 @@ Deno.serve(async (req) => {
 
     const result = await res.json()
 
+    // Log successful send for system health tracking
+    if (res.ok) {
+      const sbUrl = Deno.env.get("SUPABASE_URL") ?? ""
+      const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      if (sbUrl && sbKey) {
+        await fetch(`${sbUrl}/rest/v1/system_events`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: sbKey,
+            Authorization: `Bearer ${sbKey}`,
+          },
+          body: JSON.stringify({ event_type: "resend_email", detail: to }),
+        })
+      }
+    }
+
     if (!res.ok) {
       console.error("Resend error:", result)
       return new Response(

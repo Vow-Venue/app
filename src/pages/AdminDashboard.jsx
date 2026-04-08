@@ -28,17 +28,17 @@ const S = {
   topNav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #eee', marginBottom: 32 },
   topNavLeft: { display: 'flex', alignItems: 'center', gap: 24 },
   topNavBrand: { fontSize: 16, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", letterSpacing: 1, marginRight: 8 },
-  topNavLink: (active) => ({ fontSize: 12, fontWeight: active ? 700 : 400, letterSpacing: 1.5, textTransform: 'uppercase', color: active ? '#1a1a2e' : '#999', cursor: 'pointer', background: 'none', border: 'none', padding: '4px 0', borderBottom: active ? '2px solid #b8975a' : '2px solid transparent', fontFamily: 'inherit' }),
+  topNavLink: (active) => ({ fontSize: 14, fontWeight: active ? 700 : 500, letterSpacing: 1.5, textTransform: 'uppercase', color: active ? '#1a1a2e' : '#777', cursor: 'pointer', background: 'none', border: 'none', padding: '6px 0', borderBottom: active ? '2px solid #b8975a' : '2px solid transparent', fontFamily: "'Jost', sans-serif" }),
   refreshBtn: { background: '#fff', border: '1px solid #ddd', color: '#666', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
   // Content
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
   title: { fontSize: 28, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", letterSpacing: 1 },
   subtitle: { fontSize: 11, color: '#999', letterSpacing: 1.5, textTransform: 'uppercase' },
-  sectionTitle: { fontSize: 11, color: '#999', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14, marginTop: 32 },
+  sectionTitle: { fontSize: 13, color: '#777', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14, marginTop: 32, fontWeight: 600 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 },
   card: { background: '#fff', borderRadius: 10, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', border: '1px solid #eee' },
-  cardLabel: { fontSize: 10, color: '#999', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 },
-  cardValue: { fontSize: 26, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif" },
+  cardLabel: { fontSize: 11, color: '#888', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6, fontWeight: 500 },
+  cardValue: { fontSize: 32, fontWeight: 700, color: '#1a1a2e', fontFamily: "'Jost', sans-serif" },
   cardSub: { fontSize: 11, color: '#aaa', marginTop: 4 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
   th: { textAlign: 'left', padding: '10px 14px', borderBottom: '1px solid #eee', color: '#999', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', cursor: 'pointer', userSelect: 'none' },
@@ -62,7 +62,7 @@ const S = {
   healthValue: { color: '#999', fontSize: 12 },
   placeholder: { background: '#fff', borderRadius: 10, padding: 24, border: '1px dashed #ddd', textAlign: 'center', color: '#bbb', fontSize: 13, fontStyle: 'italic' },
   tabBar: { display: 'flex', gap: 8, marginBottom: 12 },
-  tabBtn: (active) => ({ padding: '6px 14px', borderRadius: 6, border: '1px solid #ddd', background: active ? '#1a1a2e' : '#fff', color: active ? '#fff' : '#666', fontSize: 11, fontWeight: 600, letterSpacing: 1, cursor: 'pointer', fontFamily: 'inherit' }),
+  tabBtn: (active) => ({ padding: '8px 16px', borderRadius: 6, border: '1px solid #ddd', background: active ? '#1a1a2e' : '#fff', color: active ? '#fff' : '#555', fontSize: 13, fontWeight: 600, letterSpacing: 1, cursor: 'pointer', fontFamily: "'Jost', sans-serif" }),
   // Password gate
   gate: { minHeight: '100vh', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   gateBox: { background: '#fff', borderRadius: 12, padding: '40px 36px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: 340, width: '100%' },
@@ -377,14 +377,14 @@ function DashboardPage({ stats, signups, storage, health }) {
           <span style={S.healthValue}>{health?.last_login ? timeAgo(health.last_login) : 'no data'}</span>
         </div>
         <div style={S.healthRow}>
-          <span style={S.dot(false)} />
+          <span style={S.dot(!!health?.last_stripe_webhook)} />
           <span style={S.healthLabel}>Stripe Webhook</span>
-          <span style={S.healthValue}>not yet tracked</span>
+          <span style={S.healthValue}>{health?.last_stripe_webhook ? timeAgo(health.last_stripe_webhook) : 'no events yet'}</span>
         </div>
         <div style={S.healthRow}>
-          <span style={S.dot(false)} />
+          <span style={S.dot(!!health?.last_resend_email)} />
           <span style={S.healthLabel}>Resend Last Email</span>
-          <span style={S.healthValue}>not yet tracked</span>
+          <span style={S.healthValue}>{health?.last_resend_email ? timeAgo(health.last_resend_email) : 'no events yet'}</span>
         </div>
         <div style={{ ...S.healthRow, borderBottom: 'none' }}>
           <span style={S.dot(!!health?.last_ticket)} />

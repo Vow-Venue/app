@@ -107,6 +107,12 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: msg }), { status: 500 })
   }
 
+  // Log event for system health tracking
+  await supabase.from('system_events').insert({
+    event_type: 'stripe_webhook',
+    detail: event.type,
+  })
+
   return new Response(JSON.stringify({ received: true }), {
     headers: { 'Content-Type': 'application/json' },
   })
