@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-const ADMIN_PASSWORD = 'flower'
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL
 const SUPABASE_COST = 25 // $25/mo Pro tier estimate
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -63,15 +63,98 @@ const S = {
   placeholder: { background: '#fff', borderRadius: 10, padding: 24, border: '1px dashed #ddd', textAlign: 'center', color: '#bbb', fontSize: 13, fontStyle: 'italic' },
   tabBar: { display: 'flex', gap: 8, marginBottom: 12 },
   tabBtn: (active) => ({ padding: '8px 16px', borderRadius: 6, border: '1px solid #ddd', background: active ? '#1a1a2e' : '#fff', color: active ? '#fff' : '#555', fontSize: 13, fontWeight: 600, letterSpacing: 1, cursor: 'pointer', fontFamily: "'Jost', sans-serif" }),
-  // Password gate
+  // Auth gate
   gate: { minHeight: '100vh', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  gateBox: { background: '#fff', borderRadius: 12, padding: '40px 36px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: 340, width: '100%' },
+  gateBox: { background: '#fff', borderRadius: 12, padding: '40px 36px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: 380, width: '100%' },
   gateTitle: { fontSize: 20, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", marginBottom: 6 },
   gateSubtitle: { fontSize: 11, color: '#999', marginBottom: 24, letterSpacing: 1 },
-  gateInput: { width: '100%', padding: '10px 14px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 6, color: '#333', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
   gateBtn: { width: '100%', marginTop: 14, padding: '10px 0', background: '#b8975a', border: 'none', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, letterSpacing: 1.5, cursor: 'pointer', fontFamily: 'inherit' },
   gateError: { color: '#c62828', fontSize: 12, marginTop: 10 },
+  gateInput: { width: '100%', padding: '10px 14px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 6, color: '#333', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
   loading: { textAlign: 'center', color: '#999', padding: 60, fontSize: 14 },
+  // User detail modal
+  userDetailRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f5f5f5', fontSize: 13 },
+  userDetailLabel: { color: '#999', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
+  userDetailValue: { color: '#333', fontWeight: 500 },
+  userWeddingCard: { background: '#f8f9fa', borderRadius: 8, padding: '12px 16px', marginBottom: 8, border: '1px solid #eee' },
+  userWeddingName: { fontSize: 14, fontWeight: 600, color: '#1a1a2e', marginBottom: 4 },
+  userWeddingSub: { fontSize: 11, color: '#999' },
+}
+
+// ── User Detail Modal ───────────────────────────────────────────────────────
+function UserDetailModal({ user, onClose }) {
+  const [weddings, setWeddings] = useState([])
+  const [loadingDetail, setLoadingDetail] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+    const load = async () => {
+      setLoadingDetail(true)
+      const { data } = await supabase.rpc('get_user_detail', { target_user_id: user.id })
+      if (data) setWeddings(data)
+      setLoadingDetail(false)
+    }
+    load()
+  }, [user])
+
+  if (!user) return null
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={S.detailBox} onClick={e => e.stopPropagation()}>
+        <div style={S.detailHeader}>
+          <div style={S.detailSubject}>{user.email}</div>
+          <button style={S.detailClose} onClick={onClose}>×</button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 20 }}>
+          <div style={S.userDetailRow}>
+            <span style={S.userDetailLabel}>Plan</span>
+            <span style={S.badge(user.plan)}>{user.plan.toUpperCase()}</span>
+          </div>
+          <div style={S.userDetailRow}>
+            <span style={S.userDetailLabel}>Joined</span>
+            <span style={S.userDetailValue}>{fmtDate(user.created_at)}</span>
+          </div>
+          <div style={S.userDetailRow}>
+            <span style={S.userDetailLabel}>Last Active</span>
+            <span style={S.userDetailValue}>{fmtDateTime(user.last_sign_in_at)}</span>
+          </div>
+          <div style={S.userDetailRow}>
+            <span style={S.userDetailLabel}>Weddings</span>
+            <span style={S.userDetailValue}>{user.wedding_count}</span>
+          </div>
+        </div>
+
+        <div style={{ ...S.sectionTitle, marginTop: 0 }}>Weddings</div>
+        {loadingDetail ? (
+          <div style={{ color: '#999', fontSize: 13, padding: '12px 0' }}>Loading...</div>
+        ) : weddings.length === 0 ? (
+          <div style={{ color: '#bbb', fontSize: 13, fontStyle: 'italic' }}>No weddings created</div>
+        ) : (
+          weddings.map(w => (
+            <div key={w.id} style={S.userWeddingCard}>
+              <div style={S.userWeddingName}>
+                {w.partner1 || 'Partner 1'} & {w.partner2 || 'Partner 2'}
+              </div>
+              <div style={S.userWeddingSub}>
+                {fmtDate(w.wedding_date)} · {w.guest_count} guests · {w.task_count} tasks · {w.vendor_count} vendors
+              </div>
+            </div>
+          ))
+        )}
+
+        <div style={{ ...S.detailActions, marginTop: 20 }}>
+          <a
+            href={`mailto:${user.email}`}
+            style={{ ...S.detailBtn('#1a1a2e', '#fff'), textDecoration: 'none' }}
+          >
+            EMAIL USER
+          </a>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ── Support Tickets sub-page ────────────────────────────────────────────────
@@ -90,7 +173,6 @@ function TicketsPage({ tickets, onToggleStatus, onTogglePriority, onDelete }) {
       aVal = aVal ? new Date(aVal).getTime() : 0
       bVal = bVal ? new Date(bVal).getTime() : 0
     }
-    // Urgent tickets sort first
     if (sortKey === 'priority') {
       aVal = aVal === 'urgent' ? 0 : 1
       bVal = bVal === 'urgent' ? 0 : 1
@@ -119,7 +201,6 @@ function TicketsPage({ tickets, onToggleStatus, onTogglePriority, onDelete }) {
     setConfirmDelete(false)
   }
 
-  // Keep selected ticket in sync with parent state
   const activeTicket = selected ? tickets.find(t => t.id === selected.id) || selected : null
 
   return (
@@ -187,7 +268,6 @@ function TicketsPage({ tickets, onToggleStatus, onTogglePriority, onDelete }) {
         </div>
       )}
 
-      {/* ── Ticket detail modal ─────────────────────────────────────── */}
       {activeTicket && (
         <div style={S.overlay} onClick={() => { setSelected(null); setConfirmDelete(false) }}>
           <div style={S.detailBox} onClick={e => e.stopPropagation()}>
@@ -248,8 +328,12 @@ function TicketsPage({ tickets, onToggleStatus, onTogglePriority, onDelete }) {
 function DashboardPage({ stats, signups, storage, health }) {
   const [sortKey, setSortKey] = useState('created_at')
   const [sortDir, setSortDir] = useState('desc')
+  const [selectedUser, setSelectedUser] = useState(null)
 
   const profit = stats.mrr - SUPABASE_COST
+  const conversionRate = stats.total_users > 0 ? ((stats.pro_seats / stats.total_users) * 100).toFixed(1) : '0.0'
+  const revenuePerUser = stats.total_users > 0 ? (stats.mrr / stats.total_users) : 0
+  const revenuePerPro = stats.pro_seats > 0 ? (stats.mrr / stats.pro_seats) : 0
 
   const sorted = [...signups].sort((a, b) => {
     let aVal = a[sortKey], bVal = b[sortKey]
@@ -288,6 +372,11 @@ function DashboardPage({ stats, signups, storage, health }) {
           <div style={S.cardValue}>{stats.free_users}</div>
         </div>
         <div style={S.card}>
+          <div style={S.cardLabel}>Conversion Rate</div>
+          <div style={{ ...S.cardValue, color: '#b8975a' }}>{conversionRate}%</div>
+          <div style={S.cardSub}>free → pro</div>
+        </div>
+        <div style={S.card}>
           <div style={S.cardLabel}>Churn Rate</div>
           <div style={S.cardValue}>0%</div>
           <div style={S.cardSub}>tracks cancellations once org billing is live</div>
@@ -310,6 +399,26 @@ function DashboardPage({ stats, signups, storage, health }) {
           <div style={S.cardLabel}>Est. Profit</div>
           <div style={{ ...S.cardValue, color: profit >= 0 ? '#2e7d32' : '#c62828' }}>{fmt(profit)}</div>
           <div style={S.cardSub}>MRR − costs</div>
+        </div>
+      </div>
+
+      {/* ── Revenue Metrics ────────────────────────────────────────── */}
+      <div style={S.sectionTitle}>Revenue Metrics</div>
+      <div style={S.grid}>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Revenue / User</div>
+          <div style={{ ...S.cardValue, color: '#2e7d32' }}>{fmt(revenuePerUser)}</div>
+          <div style={S.cardSub}>MRR ÷ all users</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Revenue / Pro Seat</div>
+          <div style={{ ...S.cardValue, color: '#2e7d32' }}>{fmt(revenuePerPro)}</div>
+          <div style={S.cardSub}>MRR ÷ paying users</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cardLabel}>Est. Annual LTV</div>
+          <div style={{ ...S.cardValue, color: '#2e7d32' }}>{fmt(revenuePerPro * 12)}</div>
+          <div style={S.cardSub}>per pro seat × 12 months</div>
         </div>
         <div style={S.card}>
           <div style={S.cardLabel}>Inactive Users</div>
@@ -414,7 +523,7 @@ function DashboardPage({ stats, signups, storage, health }) {
           </thead>
           <tbody>
             {sorted.map(u => (
-              <tr key={u.id}>
+              <tr key={u.id} onClick={() => setSelectedUser(u)} style={{ cursor: 'pointer' }}>
                 <td style={S.td}>{u.email}</td>
                 <td style={S.td}>{fmtDate(u.created_at)}</td>
                 <td style={S.td}>{fmtDateTime(u.last_sign_in_at)}</td>
@@ -426,6 +535,9 @@ function DashboardPage({ stats, signups, storage, health }) {
         </table>
       </div>
 
+      {/* User detail modal */}
+      <UserDetailModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+
       {/* Footer */}
       <div style={{ textAlign: 'center', color: '#bbb', fontSize: 11, marginTop: 40, paddingBottom: 20 }}>
         Amorí Admin — Internal Use Only
@@ -436,9 +548,7 @@ function DashboardPage({ stats, signups, storage, health }) {
 
 // ── Main export ─────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem('adminAuthed') === 'true')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [authState, setAuthState] = useState('checking') // checking | denied | authed
   const [page, setPage] = useState('dashboard')
   const [stats, setStats] = useState(null)
   const [signups, setSignups] = useState([])
@@ -447,16 +557,27 @@ export default function AdminDashboard() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(false)
 
-  const handleLogin = (e) => {
-    e.preventDefault()
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem('adminAuthed', 'true')
-      setAuthed(true)
-      setError('')
-    } else {
-      setError('Wrong password')
+  // Check Supabase auth session — only allow admin email
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user?.email === ADMIN_EMAIL) {
+        setAuthState('authed')
+      } else {
+        setAuthState('denied')
+      }
     }
-  }
+    checkAdmin()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user?.email === ADMIN_EMAIL) {
+        setAuthState('authed')
+      } else {
+        setAuthState('denied')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   const loadData = async () => {
     setLoading(true)
@@ -476,8 +597,16 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
-    if (authed) loadData()
-  }, [authed])
+    if (authState === 'authed') loadData()
+  }, [authState])
+
+  const handleSignIn = async (email) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/admin` }
+    })
+    return error
+  }
 
   const handleToggleTicketStatus = async (ticket) => {
     const newStatus = ticket.status === 'open' ? 'resolved' : 'open'
@@ -496,28 +625,14 @@ export default function AdminDashboard() {
     setTickets(prev => prev.filter(t => t.id !== ticketId))
   }
 
-  // ── Password gate ────────────────────────────────────────────────────────
-  if (!authed) {
-    return (
-      <div style={S.gate}>
-        <div style={S.gateBox}>
-          <div style={S.gateTitle}>Admin Dashboard</div>
-          <div style={S.gateSubtitle}>AMORÍ INTERNAL</div>
-          <form onSubmit={handleLogin}>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Password"
-              style={S.gateInput}
-              autoFocus
-            />
-            <button type="submit" style={S.gateBtn}>ENTER</button>
-          </form>
-          {error && <div style={S.gateError}>{error}</div>}
-        </div>
-      </div>
-    )
+  // ── Checking auth state ──────────────────────────────────────────────────
+  if (authState === 'checking') {
+    return <div style={S.page}><div style={S.loading}>Verifying access...</div></div>
+  }
+
+  // ── Access denied / login gate ───────────────────────────────────────────
+  if (authState === 'denied') {
+    return <AdminGate onSignIn={handleSignIn} />
   }
 
   if (loading || !stats) {
@@ -528,7 +643,6 @@ export default function AdminDashboard() {
 
   return (
     <div style={S.page}>
-      {/* ── Top nav bar ──────────────────────────────────────────────── */}
       <div style={S.container}>
         <div style={S.topNav}>
           <div style={S.topNavLeft}>
@@ -542,13 +656,61 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── Page content ─────────────────────────────────────────────── */}
       <div style={S.container}>
         {page === 'dashboard' ? (
           <DashboardPage stats={stats} signups={signups} storage={storage} health={health} />
         ) : (
           <TicketsPage tickets={tickets} onToggleStatus={handleToggleTicketStatus} onTogglePriority={handleTogglePriority} onDelete={handleDeleteTicket} />
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── Admin login gate ────────────────────────────────────────────────────────
+function AdminGate({ onSignIn }) {
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState('')
+  const [sent, setSent] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (email !== ADMIN_EMAIL) {
+      setError('Access restricted to admin accounts only.')
+      return
+    }
+    const err = await onSignIn(email)
+    if (err) {
+      setError(err.message)
+    } else {
+      setSent(true)
+    }
+  }
+
+  return (
+    <div style={S.gate}>
+      <div style={S.gateBox}>
+        <div style={S.gateTitle}>Admin Dashboard</div>
+        <div style={S.gateSubtitle}>AMORÍ INTERNAL</div>
+
+        {sent ? (
+          <div style={{ fontSize: 14, color: '#2e7d32', lineHeight: 1.6, marginTop: 12 }}>
+            Magic link sent to <strong>{email}</strong>. Check your email and click the link to access the dashboard.
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <input
+              type="email"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setError('') }}
+              placeholder="Admin email address"
+              style={S.gateInput}
+              autoFocus
+            />
+            <button type="submit" style={S.gateBtn}>SIGN IN</button>
+          </form>
+        )}
+        {error && <div style={S.gateError}>{error}</div>}
       </div>
     </div>
   )
