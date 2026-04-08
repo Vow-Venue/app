@@ -1941,15 +1941,12 @@ export default function App() {
     const h = new Set()
     if (!permissions.canViewBilling) h.add('billing')
     if (!permissions.canViewCollaborators) h.add('collaborators')
-    if (permissions.isVendor) {
-      h.add('guests')
-      h.add('seating')
-      h.add('tasks')
-      h.add('notes')
-      h.add('guidance')
-      h.add('design')
-      h.add('dayofcontacts')
-    }
+    if (!permissions.canViewGuests) h.add('guests')
+    if (!permissions.canViewSeating) h.add('seating')
+    if (!permissions.canViewTasks) h.add('tasks')
+    if (!permissions.canViewVendors) h.add('vendors')
+    if (!permissions.canViewDayOf) h.add('dayofcontacts')
+    if (!permissions.canViewNotes) h.add('notes')
     if (!permissions.canViewGuidance) h.add('guidance')
     if (!permissions.canViewDesign) h.add('design')
     return h
@@ -1979,6 +1976,7 @@ export default function App() {
             onUpgrade={permissions.isOwner ? handleUpgrade : undefined}
             isOwner={permissions.isOwner}
             canEdit={permissions.canEdit}
+            canViewBilling={permissions.canViewBilling}
           />
         )
       case 'guests':

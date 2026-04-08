@@ -59,7 +59,7 @@ const CountdownUnit = ({ value, label }) => (
   </div>
 )
 
-export default function Overview({ guests, tasks, vendors, invoices, onNavigate, weddingDate }) {
+export default function Overview({ guests, tasks, vendors, invoices, onNavigate, weddingDate, canViewBilling = true }) {
   const target = weddingDate ? new Date(weddingDate + 'T00:00:00') : null
   const [timeLeft, setTimeLeft] = useState(() => calcTimeLeft(target))
 
@@ -232,35 +232,37 @@ export default function Overview({ guests, tasks, vendors, invoices, onNavigate,
           </button>
         </div>
 
-        {/* Invoice Summary */}
-        <div className="card">
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, marginBottom: 16, fontStyle: 'italic' }}>
-            Recent Invoices
-          </div>
-
-          {invoices.slice(0, 3).map(inv => (
-            <div key={inv.id} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '10px 0',
-              borderBottom: '1px solid rgba(184,151,90,0.1)',
-            }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{inv.vendorName}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1 }}>{inv.invoiceNumber}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 14, fontFamily: "'Cormorant Garamond', serif" }}>{fmt(inv.amount)}</div>
-                <span className={`badge status-${inv.status}`}>{inv.status.toUpperCase()}</span>
-              </div>
+        {/* Invoice Summary — editors only */}
+        {canViewBilling && (
+          <div className="card">
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, marginBottom: 16, fontStyle: 'italic' }}>
+              Recent Invoices
             </div>
-          ))}
 
-          <button className="btn btn-ghost" style={{ marginTop: 16 }} onClick={() => onNavigate('billing')}>
-            VIEW ALL INVOICES
-          </button>
-        </div>
+            {invoices.slice(0, 3).map(inv => (
+              <div key={inv.id} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 0',
+                borderBottom: '1px solid rgba(184,151,90,0.1)',
+              }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{inv.vendorName}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1 }}>{inv.invoiceNumber}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 14, fontFamily: "'Cormorant Garamond', serif" }}>{fmt(inv.amount)}</div>
+                  <span className={`badge status-${inv.status}`}>{inv.status.toUpperCase()}</span>
+                </div>
+              </div>
+            ))}
+
+            <button className="btn btn-ghost" style={{ marginTop: 16 }} onClick={() => onNavigate('billing')}>
+              VIEW ALL INVOICES
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
