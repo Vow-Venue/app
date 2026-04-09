@@ -56,6 +56,126 @@ const offsetLabel = (days) => {
   return `${abs}d before`
 }
 
+function SettingsPage({ userPlan, onCancelPlan, onUpgrade }) {
+  const [cancelStatus, setCancelStatus] = useState(null) // null | 'pending' | {cancel_at_period_end, current_period_end} | 'error'
+  const [loading, setLoading] = useState(false)
+
+  const handleCancel = async () => {
+    if (!window.confirm('Are you sure you want to cancel your Pro plan? You will keep access until the end of your billing period.')) return
+    setLoading(true)
+    const result = await onCancelPlan(false)
+    setLoading(false)
+    if (result?.error) {
+      alert(result.error)
+      setCancelStatus('error')
+    } else {
+      setCancelStatus(result)
+    }
+  }
+
+  const handleReactivate = async () => {
+    setLoading(true)
+    const result = await onCancelPlan(true)
+    setLoading(false)
+    if (result?.error) {
+      alert(result.error)
+    } else {
+      setCancelStatus(result)
+    }
+  }
+
+  const isPro = userPlan === 'pro'
+  const isCanceling = cancelStatus?.cancel_at_period_end === true
+  const periodEnd = cancelStatus?.current_period_end
+    ? new Date(cancelStatus.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null
+
+  return (
+    <>
+      <div className="org-dashboard-header">
+        <div>
+          <h1 className="section-title" style={{ marginBottom: 4 }}>Settings</h1>
+          <p className="section-subtitle">Studio configuration and subscription</p>
+        </div>
+      </div>
+
+      {/* Plan Management */}
+      <div className="card" style={{ marginTop: 16, maxWidth: 520 }}>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontStyle: 'italic', marginBottom: 16 }}>
+          Subscription
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+          <span style={{
+            fontSize: 10, letterSpacing: 1.5, fontWeight: 600, textTransform: 'uppercase',
+            padding: '3px 10px', borderRadius: 20,
+            background: isPro ? 'rgba(184,151,90,0.15)' : '#f0ece6',
+            color: isPro ? 'var(--gold)' : 'var(--muted)',
+          }}>
+            {isPro ? 'PRO' : 'FREE'}
+          </span>
+          {isPro && <span style={{ fontSize: 14, color: 'var(--deep)' }}>$39 / month per planner seat</span>}
+        </div>
+
+        {!isPro && (
+          <div>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
+              Free plan includes up to 2 weddings. Upgrade to Pro for unlimited weddings and all features.
+            </p>
+            <button className="btn btn-primary" onClick={onUpgrade}>
+              Upgrade to Pro
+            </button>
+          </div>
+        )}
+
+        {isPro && !isCanceling && (
+          <div>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
+              Your Pro plan renews automatically each billing period.
+            </p>
+            <button
+              className="btn btn-ghost"
+              onClick={handleCancel}
+              disabled={loading}
+              style={{ color: 'var(--muted)', fontSize: 12 }}
+            >
+              {loading ? 'Processing...' : 'Cancel Plan'}
+            </button>
+          </div>
+        )}
+
+        {isPro && isCanceling && (
+          <div>
+            <p style={{ fontSize: 13, color: 'var(--rose)', marginBottom: 4 }}>
+              Your plan is set to cancel{periodEnd ? ` on ${periodEnd}` : ' at the end of your billing period'}.
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+              You will keep Pro access until then. Changed your mind?
+            </p>
+            <button
+              className="btn btn-primary"
+              onClick={handleReactivate}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Reactivate Pro'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Studio Name */}
+      <div className="card" style={{ marginTop: 16, maxWidth: 520 }}>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontStyle: 'italic', marginBottom: 12 }}>
+          Studio
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+          You can edit your studio name by clicking it on the Studio Home page.
+        </p>
+      </div>
+    </>
+  )
+}
+
 export default function OrgDashboard({
   weddings, userPlan, taskStats, sharedVendors, profile,
   teamMembers, revenue, taskTemplates, templateTasks,
@@ -63,6 +183,7 @@ export default function OrgDashboard({
   onUpdateStudioName, onCreateTemplate, onUpdateTemplate, onDeleteTemplate,
   onAddTemplateTask, onUpdateTemplateTask, onDeleteTemplateTask,
   onImportTemplate, onSeedStarterTemplates, onCopyVendor, onArchiveWedding,
+  onCancelPlan,
 }) {
   const [viewMode, setViewMode] = useState('grid')
   const [sortBy, setSortBy] = useState('date')
@@ -793,19 +914,11 @@ export default function OrgDashboard({
 
       case 'settings':
         return (
-          <>
-            <div className="org-dashboard-header">
-              <div>
-                <h1 className="section-title" style={{ marginBottom: 4 }}>Settings</h1>
-                <p className="section-subtitle">Studio configuration</p>
-              </div>
-            </div>
-            <div style={{ padding: '24px 0' }}>
-              <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-                Studio settings are coming soon. You can edit your studio name by clicking it on the Studio Home page.
-              </p>
-            </div>
-          </>
+          <SettingsPage
+            userPlan={userPlan}
+            onCancelPlan={onCancelPlan}
+            onUpgrade={onUpgrade}
+          />
         )
 
       default:

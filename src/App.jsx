@@ -1865,6 +1865,30 @@ export default function App() {
     }
   }
 
+  // ── Stripe cancel / reactivate ─────────────────────────────────────────────
+  const handleCancelPlan = async (reactivate = false) => {
+    if (!session) return { error: 'Not signed in' }
+    try {
+      const { data: { session: fresh } } = await supabase.auth.getSession()
+      if (!fresh) { setAuthOpen(true); return { error: 'Session expired' } }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const res = await fetch(`${supabaseUrl}/functions/v1/cancel-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${fresh.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ reactivate }),
+      })
+      const body = await res.json()
+      if (!res.ok) return { error: body.error || 'Failed' }
+      return body
+    } catch {
+      return { error: 'Could not reach server' }
+    }
+  }
+
   // Mark pro after successful Stripe payment return (upgrade all owned weddings)
   useEffect(() => {
     if (!stripeSuccess || !session) return
@@ -2233,6 +2257,7 @@ export default function App() {
               onSeedStarterTemplates={handleSeedStarterTemplates}
               onCopyVendor={handleCopyVendorToWedding}
               onArchiveWedding={handleArchiveWedding}
+              onCancelPlan={handleCancelPlan}
             />
           </main>
           <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
