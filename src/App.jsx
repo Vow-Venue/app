@@ -17,6 +17,7 @@ import Notes from './components/Notes'
 import Guidance from './components/Guidance'
 import DesignStudio from './components/DesignStudio'
 import AuthModal from './components/AuthModal'
+import ProIntakeModal from './components/ProIntakeModal'
 import WeddingSetup from './components/WeddingSetup'
 import RSVPPage from './components/RSVPPage'
 import OrgDashboard from './components/OrgDashboard'
@@ -212,6 +213,7 @@ export default function App() {
   const [activeWeddingId, setActiveWeddingId]   = useState(null)
   const [dashboardLoading, setDashboardLoading] = useState(false)
   const [showProBanner, setShowProBanner]       = useState(false)
+  const [proIntakeOpen, setProIntakeOpen]       = useState(false)
   const [dashboardTaskStats, setDashboardTaskStats] = useState({})
   const [sharedVendors, setSharedVendors]           = useState([])
   const [teamMembers, setTeamMembers]               = useState([])
@@ -1903,6 +1905,8 @@ export default function App() {
       setMyWeddings(prev => prev.map(w => w.myRole === 'owner' ? { ...w, plan: 'pro' } : w))
       setShowProBanner(true)
       setTimeout(() => setShowProBanner(false), 8000)
+      // Show Pro intake modal if profile is incomplete
+      if (!profile?.studio_name || !profile?.phone) setProIntakeOpen(true)
       navigate('/app', { replace: true })
     })
   }, [stripeSuccess, session, myWeddings.length])
@@ -1911,12 +1915,14 @@ export default function App() {
   const handleSignOut = () => supabase.auth.signOut()
 
   // ── Profile handlers ────────────────────────────────────────────────────────
-  const handleUpdateProfile = async (displayName) => {
+  const handleUpdateProfile = async (fields) => {
     if (!session?.user) return
     const userId = session.user.id
-    const { data, error } = await supabase.from('profiles').upsert({
-      id: userId, display_name: displayName, updated_at: new Date().toISOString(),
-    }).select().single()
+    // Support legacy call with just a string (display name)
+    const updates = typeof fields === 'string'
+      ? { id: userId, display_name: fields, updated_at: new Date().toISOString() }
+      : { id: userId, ...fields, updated_at: new Date().toISOString() }
+    const { data, error } = await supabase.from('profiles').upsert(updates).select().single()
     if (error) { console.error('Profile update failed:', error.message); return }
     if (data) setProfile(data)
   }
@@ -2262,6 +2268,13 @@ export default function App() {
           </main>
           <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
           <SupportTicketModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} onSubmit={handleSubmitTicket} />
+          {proIntakeOpen && (
+            <ProIntakeModal
+              profile={profile}
+              onSave={handleUpdateProfile}
+              onClose={() => setProIntakeOpen(false)}
+            />
+          )}
         </div>
       )
     }
