@@ -5358,6 +5358,7 @@ label {
 .design-board-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-auto-rows: 272px;
   gap: 20px;
 }
 
@@ -5369,6 +5370,7 @@ label {
   transition: box-shadow 0.2s, transform 0.15s;
   overflow: hidden;
   position: relative;
+  height: 272px;
 }
 
 .design-board-card:hover {
@@ -5676,7 +5678,8 @@ label {
 }
 
 @media (max-width: 480px) {
-  .design-board-grid { grid-template-columns: 1fr; }
+  .design-board-grid { grid-template-columns: 1fr; grid-auto-rows: 232px; }
+  .design-board-card { height: 232px; }
   .design-photo-grid { grid-template-columns: repeat(2, 1fr); }
   .design-board-cover { height: 180px; }
 }
