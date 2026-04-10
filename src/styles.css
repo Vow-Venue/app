@@ -225,6 +225,19 @@ body {
   letter-spacing: 1px;
   animation: bannerSlide 0.4s ease-out;
 }
+.readonly-banner {
+  background: linear-gradient(135deg, #f0ece6 0%, #e8d9bf 100%);
+  color: var(--deep);
+  padding: 12px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  border-bottom: 1px solid var(--border);
+}
+
 @keyframes bannerSlide {
   from { transform: translateY(-100%); opacity: 0; }
   to   { transform: translateY(0);     opacity: 1; }

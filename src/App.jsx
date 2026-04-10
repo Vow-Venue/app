@@ -1967,6 +1967,29 @@ export default function App() {
   const myRole = activeWedObj?.myRole || 'viewer'
   const permissions = usePermissions(myRole)
 
+  // ── Free-tier read-only enforcement ─────────────────────────────────────────
+  // When a Pro planner downgrades to Free, weddings beyond the 2-wedding limit
+  // become read-only (no data deleted). The 2 most recent owned weddings stay
+  // editable. Resubscribing to Pro restores full access instantly.
+  const isWeddingReadOnly = useMemo(() => {
+    if (!activeWeddingId) return false
+    const isPro = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro')
+    if (isPro) return false
+    if (activeWedObj?.myRole !== 'owner') return false
+    const ownedWeddings = myWeddings
+      .filter(w => w.myRole === 'owner')
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    const editableIds = new Set(ownedWeddings.slice(0, 2).map(w => w.id))
+    return !editableIds.has(activeWeddingId)
+  }, [activeWeddingId, myWeddings]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Override all edit permissions when wedding is read-only (free plan limit)
+  const effectivePermissions = isWeddingReadOnly
+    ? Object.fromEntries(Object.entries(permissions).map(([k, v]) =>
+        [k, k.startsWith('canEdit') || k === 'canEdit' || k === 'canInvite' || k === 'canCreateChannel' || k === 'canDeleteWedding' ? false : v]
+      ))
+    : permissions
+
   const hiddenTabs = useMemo(() => {
     const h = new Set()
     if (!permissions.canViewBilling) h.add('billing')
@@ -1983,6 +2006,10 @@ export default function App() {
   }, [myRole])
 
   const requireEdit = () => {
+    if (isWeddingReadOnly) {
+      console.warn('Permission denied: wedding is read-only (free plan limit)')
+      return false
+    }
     if (!permissions.canEdit) {
       console.warn('Permission denied: requires owner or planner role')
       return false
@@ -2005,7 +2032,7 @@ export default function App() {
             isPro={wedding?.plan === 'pro'}
             onUpgrade={permissions.isOwner ? handleUpgrade : undefined}
             isOwner={permissions.isOwner}
-            canEdit={permissions.canEdit}
+            canEdit={effectivePermissions.canEdit}
             canViewBilling={permissions.canViewBilling}
           />
         )
@@ -2018,7 +2045,7 @@ export default function App() {
             onUpdateGuest={handleUpdateGuest}
             onDeleteGuest={handleDeleteGuest}
             onImportGuests={handleImportGuests}
-            canEdit={permissions.canEditGuests}
+            canEdit={effectivePermissions.canEditGuests}
             rsvpSlug={wedding?.rsvp_slug ?? null}
           />
         )
@@ -2036,7 +2063,7 @@ export default function App() {
               onUpdateTable={handleUpdateTable}
               onAddTable={handleAddTable}
               onDeleteTable={handleDeleteTable}
-              canEdit={permissions.canEditGuests}
+              canEdit={effectivePermissions.canEditGuests}
               roomElements={roomElements}
               onAddRoomElement={handleAddRoomElement}
               onUpdateRoomElement={handleUpdateRoomElement}
@@ -2052,7 +2079,7 @@ export default function App() {
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onImportTasks={handleImportTasks}
-            canEdit={permissions.canEditTasks}
+            canEdit={effectivePermissions.canEditTasks}
           />
         )
       case 'vendors':
@@ -2065,7 +2092,7 @@ export default function App() {
             onImportVendors={handleImportVendors}
             budget={wedding?.budget ?? 0}
             onSetBudget={handleSetBudget}
-            canEdit={permissions.canEditVendors}
+            canEdit={effectivePermissions.canEditVendors}
             vendorFilterEmail={permissions.isVendor ? session?.user?.email : null}
           />
         )
@@ -2102,7 +2129,7 @@ export default function App() {
             onImportInvoices={handleImportInvoices}
             budget={wedding?.budget ?? 0}
             onSetBudget={handleSetBudget}
-            canEdit={permissions.canEditBilling}
+            canEdit={effectivePermissions.canEditBilling}
           />
         )
       case 'collaborators':
@@ -2113,8 +2140,8 @@ export default function App() {
             onAddCollaborator={handleAddCollaborator}
             onDeleteCollaborator={handleDeleteCollaborator}
             isAuthenticated={!!session}
-            canInvite={permissions.canInvite}
-            canEdit={permissions.canEdit}
+            canInvite={effectivePermissions.canInvite}
+            canEdit={effectivePermissions.canEdit}
             isPro={wedding?.plan === 'pro'}
             onUpgrade={handleUpgrade}
             rsvpSlug={wedding?.rsvp_slug ?? null}
@@ -2138,7 +2165,7 @@ export default function App() {
             onReorderEvents={handleReorderTimelineEvents}
             onUploadDayFile={handleUploadDayFile}
             onRemoveDayFile={handleRemoveDayFile}
-            canEdit={permissions.canEdit}
+            canEdit={effectivePermissions.canEdit}
           />
         )
       case 'notes':
@@ -2149,7 +2176,7 @@ export default function App() {
             onUpdateNote={handleUpdateNote}
             onDeleteNote={handleDeleteNote}
             canSeePrivate={permissions.canSeePrivateNotes}
-            canEdit={permissions.canEditNotes}
+            canEdit={effectivePermissions.canEditNotes}
           />
         )
       case 'guidance':
@@ -2161,7 +2188,7 @@ export default function App() {
             onDeleteBlock={handleDeleteGuidanceBlock}
             onReorderBlock={handleReorderGuidanceBlock}
             onUploadFile={handleUploadGuidanceFile}
-            canEdit={permissions.canEditGuidance}
+            canEdit={effectivePermissions.canEditGuidance}
           />
         )
       case 'design':
@@ -2175,7 +2202,7 @@ export default function App() {
             onDeleteBoard={handleDeleteDesignBoard}
             onUploadPhoto={handleUploadDesignPhoto}
             onDeletePhoto={handleDeleteDesignPhoto}
-            canEdit={permissions.canEditDesign}
+            canEdit={effectivePermissions.canEditDesign}
           />
         )
       default:
@@ -2324,6 +2351,13 @@ export default function App() {
           <div className="pro-success-banner">
             <span>✦ WELCOME TO PRO — Unlimited weddings, unlimited collaborators, priority support</span>
             <button onClick={() => setShowProBanner(false)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>&times;</button>
+          </div>
+        )}
+
+        {isWeddingReadOnly && (
+          <div className="readonly-banner">
+            <span>This wedding is view-only — your Free plan includes 2 editable weddings. Upgrade to Pro to unlock editing on all weddings.</span>
+            <button className="btn btn-primary" style={{ fontSize: 11, padding: '5px 16px', whiteSpace: 'nowrap' }} onClick={handleUpgrade}>UPGRADE TO PRO</button>
           </div>
         )}
 
