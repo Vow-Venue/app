@@ -603,7 +603,7 @@ export default function AdminDashboard() {
   const handleSignIn = async (email) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/admin` }
+      options: { emailRedirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/admin` }
     })
     return error
   }
