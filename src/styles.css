@@ -410,7 +410,7 @@ body {
 
 .wedding-card-new-arch {
   width: 100%;
-  aspect-ratio: 4 / 5;
+  height: 120px;
   clip-path: ellipse(100% 100% at 50% 0%);
   background: rgba(184, 151, 90, 0.06);
   display: flex;
