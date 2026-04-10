@@ -69,7 +69,7 @@ export default function WeddingSetup({ onComplete }) {
               fontWeight: 500,
               marginBottom: 20,
             }}>
-              WELCOME TO VOW &amp; VENUE
+              WELCOME TO AMORÍ
             </div>
             <h1 style={{
               fontFamily: "'Cormorant Garamond', serif",
