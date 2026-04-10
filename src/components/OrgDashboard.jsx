@@ -30,15 +30,22 @@ const VENDOR_ROLES = {
 }
 
 const DEFAULT_COVERS = [
-  'linear-gradient(135deg, #8a7e6e 0%, #b5a992 50%, #d4c9b5 100%)',  // warm taupe
-  'linear-gradient(135deg, #9e7e7a 0%, #c4a5a0 50%, #dfc7c3 100%)',  // dusty rose
-  'linear-gradient(135deg, #6e8a72 0%, #96b39a 50%, #bdd4bf 100%)',  // sage green
-  'linear-gradient(135deg, #6a7e8e 0%, #92a8b8 50%, #b8ccd8 100%)',  // slate blue
-  'linear-gradient(135deg, #b5a07a 0%, #d4c6a5 50%, #e8dcc4 100%)',  // champagne
-  'linear-gradient(135deg, #7a3b3f 0%, #9e5a5e 50%, #c08488 100%)',  // burgundy
-  'linear-gradient(135deg, #3e5a45 0%, #5e7a64 50%, #88a48d 100%)',  // forest
-  'linear-gradient(135deg, #8a6e80 0%, #b396a8 50%, #d4bcc8 100%)',  // mauve
+  'linear-gradient(135deg, #f9e4e4 0%, #d4a5a5 100%)',  // blush rose
+  'linear-gradient(135deg, #d4e6d4 0%, #8fad8f 100%)',  // sage green
+  'linear-gradient(135deg, #e8e0f0 0%, #b09cc0 100%)',  // dusty lavender
+  'linear-gradient(135deg, #f5efe0 0%, #c9b07a 100%)',  // champagne
+  'linear-gradient(135deg, #fde8d8 0%, #e0a882 100%)',  // soft peach
+  'linear-gradient(135deg, #faf6ee 0%, #d4b483 100%)',  // ivory & gold
+  'linear-gradient(135deg, #dde8f0 0%, #7fa8c0 100%)',  // dusty blue
+  'linear-gradient(135deg, #f0dde8 0%, #c07fa8 100%)',  // mauve
 ]
+
+// Simple hash from wedding ID string to a stable index
+const coverIndexFromId = (id) => {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0
+  return Math.abs(h) % DEFAULT_COVERS.length
+}
 
 const FREE_WEDDING_LIMIT = 2
 
@@ -408,7 +415,7 @@ export default function OrgDashboard({
           const hasCover = !!w.cover_url
           const bgStyle = hasCover
             ? { backgroundImage: `url(${w.cover_url})` }
-            : { background: DEFAULT_COVERS[i % DEFAULT_COVERS.length] }
+            : { background: DEFAULT_COVERS[coverIndexFromId(w.id)] }
           const stats = taskStats[w.id] || { total: 0, done: 0 }
           const taskPct = stats.total > 0 ? Math.round(stats.done / stats.total * 100) : 0
           const days = daysUntil(w.wedding_date)
