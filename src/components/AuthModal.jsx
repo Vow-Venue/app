@@ -1,6 +1,21 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import Modal from './Modal'
+
+const passwordRules = [
+  { test: pw => pw.length >= 8, label: 'At least 8 characters' },
+  { test: pw => /[A-Z]/.test(pw), label: 'One uppercase letter' },
+  { test: pw => /[0-9]/.test(pw), label: 'One number' },
+  { test: pw => /[!@#$%^&*]/.test(pw), label: 'One special character (!@#$%^&*)' },
+]
+
+function getPasswordStrength(password) {
+  if (!password) return { score: 0, label: '', color: '' }
+  const passed = passwordRules.filter(r => r.test(password)).length
+  if (passed <= 1) return { score: passed, label: 'Weak', color: 'var(--rose)' }
+  if (passed <= 3) return { score: passed, label: 'Fair', color: 'var(--gold)' }
+  return { score: passed, label: 'Strong', color: '#5a9a6a' }
+}
 
 export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
   const [email, setEmail]             = useState('')
@@ -8,25 +23,26 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
   const [confirmPw, setConfirmPw]     = useState('')
   const [isSignUp, setIsSignUp]       = useState(mode === 'signup')
   const [loading, setLoading]         = useState(false)
-  const [error, setError]             = useState('')
+  const [error, setError]             = useState(null)
   const [confirmSent, setConfirmSent] = useState(false)
 
   const isDev = import.meta.env.VITE_DEV_MODE === 'true'
 
-  // Sync mode prop when modal reopens
+  const strength = useMemo(() => getPasswordStrength(password), [password])
+
   const handleClose = () => {
     setEmail('')
     setPassword('')
     setConfirmPw('')
     setIsSignUp(mode === 'signup')
-    setError('')
+    setError(null)
     setConfirmSent(false)
     onClose()
   }
 
   const toggleMode = () => {
     setIsSignUp(prev => !prev)
-    setError('')
+    setError(null)
     setPassword('')
     setConfirmPw('')
   }
@@ -34,7 +50,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
   // ── Google OAuth ───────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
     setLoading(true)
-    setError('')
+    setError(null)
     const baseUrl = import.meta.env.VITE_APP_URL || 'https://amorisuite.com'
     const currentParams = new URLSearchParams(window.location.search)
     const inviteToken = currentParams.get('invite')
@@ -51,40 +67,73 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setError(null)
 
     if (isSignUp) {
-      if (password.length < 6) {
-        setError('Password must be at least 6 characters')
-        setLoading(false)
-        return
+      // Validate password rules
+      for (const rule of passwordRules) {
+        if (!rule.test(password)) {
+          setError(`Password must include: ${rule.label.toLowerCase()}`)
+          setLoading(false)
+          return
+        }
       }
       if (password !== confirmPw) {
         setError('Passwords do not match')
         setLoading(false)
         return
       }
+
       const baseUrl = import.meta.env.VITE_APP_URL || 'https://amorisuite.com'
       const currentParams = new URLSearchParams(window.location.search)
       const inviteToken = currentParams.get('invite')
       const redirectUrl = inviteToken ? `${baseUrl}?invite=${inviteToken}` : `${baseUrl}/app`
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: redirectUrl },
       })
       setLoading(false)
+
       if (error) {
         setError(error.message)
-      } else {
-        setError('')
-        setEmail('')
-        setPassword('')
-        setConfirmPw('')
-        // Show confirmation message in place of form
-        setConfirmSent(true)
+        return
       }
+
+      // Detect duplicate email (Supabase returns fake success with empty identities)
+      if (data?.user && data.user.identities?.length === 0) {
+        setError(
+          <span>
+            An account with this email already exists.{' '}
+            <button
+              type="button"
+              onClick={toggleMode}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--gold)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: "'Jost', sans-serif",
+                fontSize: 'inherit',
+                textDecoration: 'underline',
+                textUnderlineOffset: 2,
+                padding: 0,
+              }}
+            >
+              Sign in instead
+            </button>
+          </span>
+        )
+        return
+      }
+
+      setError(null)
+      setEmail('')
+      setPassword('')
+      setConfirmPw('')
+      setConfirmSent(true)
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       setLoading(false)
@@ -98,7 +147,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
     const devPassword = import.meta.env.VITE_DEV_PASSWORD
     if (!devEmail || !devPassword) return
     setLoading(true)
-    setError('')
+    setError(null)
     const { error } = await supabase.auth.signInWithPassword({ email: devEmail, password: devPassword })
     setLoading(false)
     if (error) setError(error.message)
@@ -109,6 +158,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
       isOpen={isOpen}
       onClose={handleClose}
       title={isSignUp ? 'Create Your Account' : 'Sign In'}
+      className="auth-modal"
     >
       {confirmSent ? (
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
@@ -173,7 +223,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            margin: '20px 0',
+            margin: '14px 0',
           }}>
             <div style={{ flex: 1, height: 1, background: 'var(--sand, #e0d5c1)' }} />
             <span style={{ color: 'var(--muted)', fontSize: 12, fontFamily: "'Jost', sans-serif", letterSpacing: 1, textTransform: 'uppercase' }}>or</span>
@@ -194,17 +244,47 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
           </div>
 
           {/* Password */}
-          <div className="form-group">
+          <div className="form-group" style={{ marginBottom: isSignUp ? 4 : 12 }}>
             <label>PASSWORD</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              placeholder={isSignUp ? 'Create a password (6+ characters)' : 'Enter your password'}
-              minLength={6}
+              placeholder={isSignUp ? 'Create a password (8+ characters)' : 'Enter your password'}
+              minLength={8}
             />
           </div>
+
+          {/* Password strength indicator (sign-up only) */}
+          {isSignUp && password.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{
+                height: 3,
+                borderRadius: 2,
+                background: 'var(--sand, #e0d5c1)',
+                overflow: 'hidden',
+                marginBottom: 4,
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${(strength.score / 4) * 100}%`,
+                  background: strength.color,
+                  borderRadius: 2,
+                  transition: 'width 0.2s ease, background 0.2s ease',
+                }} />
+              </div>
+              <div style={{
+                fontSize: 11,
+                fontFamily: "'Jost', sans-serif",
+                color: strength.color,
+                fontWeight: 500,
+                letterSpacing: 0.5,
+              }}>
+                {strength.label}
+              </div>
+            </div>
+          )}
 
           {/* Confirm password (sign up only) */}
           {isSignUp && (
@@ -216,29 +296,44 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
                 onChange={e => setConfirmPw(e.target.value)}
                 required
                 placeholder="Confirm your password"
-                minLength={6}
+                minLength={8}
               />
             </div>
           )}
 
+          {/* Error message */}
           {error && (
-            <div style={{ color: 'var(--rose)', fontSize: 13, marginBottom: 12 }}>{error}</div>
+            <div style={{ color: 'var(--rose)', fontSize: 13, marginBottom: 8, lineHeight: 1.5 }}>{error}</div>
           )}
 
-          {/* Actions */}
-          <div className="modal-actions">
-            <button type="button" className="btn btn-ghost" onClick={handleClose}>CANCEL</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading
-                ? (isSignUp ? 'CREATING...' : 'SIGNING IN...')
-                : (isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN')
-              }
-            </button>
-          </div>
+          {/* Submit button — full width, no Cancel */}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              fontSize: 14,
+              fontWeight: 500,
+              letterSpacing: 0.5,
+              marginTop: 4,
+            }}
+          >
+            {loading
+              ? (isSignUp ? 'CREATING ACCOUNT...' : 'SIGNING IN...')
+              : (isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN')
+            }
+          </button>
 
-          {/* Toggle sign in / sign up */}
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
-            <span style={{ color: 'var(--muted)', fontSize: 13 }}>
+          {/* Toggle sign in / sign up — pinned at bottom */}
+          <div style={{
+            textAlign: 'center',
+            marginTop: 16,
+            paddingTop: 14,
+            borderTop: '1px solid var(--sand, #e0d5c1)',
+          }}>
+            <span style={{ color: 'var(--muted)', fontSize: 12 }}>
               {isSignUp ? 'Already have an account?' : "Don't have an account?"}
             </span>{' '}
             <button
@@ -248,7 +343,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
                 background: 'none',
                 border: 'none',
                 color: 'var(--gold)',
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
                 fontFamily: "'Jost', sans-serif",
@@ -268,7 +363,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
               onClick={handleDevLogin}
               disabled={loading}
               style={{
-                marginTop: 16,
+                marginTop: 12,
                 width: '100%',
                 padding: '10px',
                 background: 'rgba(184, 151, 90, 0.1)',

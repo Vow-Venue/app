@@ -2120,6 +2120,7 @@ body {
 
 input[type='text'],
 input[type='email'],
+input[type='password'],
 input[type='number'],
 input[type='date'],
 input[type='tel'],
@@ -2140,6 +2141,7 @@ textarea {
 
 input[type='text']:focus,
 input[type='email']:focus,
+input[type='password']:focus,
 input[type='number']:focus,
 input[type='date']:focus,
 input[type='tel']:focus,
@@ -3396,6 +3398,26 @@ label {
   gap: 10px;
   justify-content: flex-end;
   margin-top: 24px;
+}
+
+/* ─── Auth Modal ────────────────────────────────── */
+
+.auth-modal .modal-box {
+  max-width: 420px;
+  padding: 32px;
+}
+
+.auth-modal .form-group {
+  margin-bottom: 12px;
+}
+
+.auth-modal .form-group input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.auth-modal .modal-header {
+  margin-bottom: 20px;
 }
 
 /* ─── Seating overview ──────────────────────────── */
