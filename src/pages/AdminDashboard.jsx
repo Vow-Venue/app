@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase())
+const isAdmin = (email) => ADMIN_EMAILS.includes(email?.toLowerCase())
 const SUPABASE_COST = 25 // $25/mo Pro tier estimate
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -561,7 +562,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user?.email === ADMIN_EMAIL) {
+      if (isAdmin(session?.user?.email)) {
         setAuthState('authed')
       } else {
         setAuthState('denied')
@@ -570,7 +571,7 @@ export default function AdminDashboard() {
     checkAdmin()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user?.email === ADMIN_EMAIL) {
+      if (isAdmin(session?.user?.email)) {
         setAuthState('authed')
       } else {
         setAuthState('denied')
@@ -675,7 +676,7 @@ function AdminGate({ onSignIn }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (email !== ADMIN_EMAIL) {
+    if (!isAdmin(email)) {
       setError('Access restricted to admin accounts only.')
       return
     }
