@@ -186,7 +186,7 @@ function SettingsPage({ userPlan, onCancelPlan, onUpgrade }) {
 export default function OrgDashboard({
   weddings, userPlan, taskStats, sharedVendors, profile,
   teamMembers, revenue, taskTemplates, templateTasks,
-  onSelectWedding, onCreateWedding, onUpgrade, onUploadCover,
+  onSelectWedding, onCreateWedding, onUpgrade, onShowUpgradeLimit, onUploadCover,
   onUpdateStudioName, onCreateTemplate, onUpdateTemplate, onDeleteTemplate,
   onAddTemplateTask, onUpdateTemplateTask, onDeleteTemplateTask,
   onImportTemplate, onSeedStarterTemplates, onCopyVendor, onArchiveWedding,
@@ -232,7 +232,6 @@ export default function OrgDashboard({
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
   // Upgrade modal
-  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
 
   // Vendor copy dropdown
   const [copyVendorIdx, setCopyVendorIdx] = useState(null)
@@ -310,7 +309,7 @@ export default function OrgDashboard({
 
   const handleCreate = () => {
     if (!canCreate) {
-      setUpgradeModalOpen(true)
+      onShowUpgradeLimit()
       return
     }
     setNewWeddingOpen(true)
@@ -1211,32 +1210,6 @@ export default function OrgDashboard({
                 {nwLoading ? 'Creating...' : 'CREATE WEDDING'}
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── Upgrade Modal ────────────────────────────────────────────────── */}
-      {upgradeModalOpen && (
-        <div className="modal-backdrop" onClick={() => setUpgradeModalOpen(false)}>
-          <div className="modal-box" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Upgrade to Pro</div>
-              <button className="modal-close" onClick={() => setUpgradeModalOpen(false)}>×</button>
-            </div>
-            <div style={{ padding: '16px 24px 24px', textAlign: 'center' }}>
-              <p style={{ fontSize: 15, color: 'var(--deep)', marginBottom: 8 }}>
-                You've reached the 2-wedding limit on the Free plan.
-              </p>
-              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>
-                Upgrade to Pro for unlimited weddings, priority support, and more.
-              </p>
-              <button className="btn btn-primary" style={{ width: '100%', marginBottom: 10 }} onClick={() => { setUpgradeModalOpen(false); onUpgrade() }}>
-                UPGRADE TO PRO · $39/MO
-              </button>
-              <button className="btn-ghost" style={{ width: '100%' }} onClick={() => setUpgradeModalOpen(false)}>
-                Maybe Later
-              </button>
-            </div>
           </div>
         </div>
       )}

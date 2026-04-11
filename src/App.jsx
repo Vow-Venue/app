@@ -18,6 +18,7 @@ import Guidance from './components/Guidance'
 import DesignStudio from './components/DesignStudio'
 import AuthModal from './components/AuthModal'
 import ProIntakeModal from './components/ProIntakeModal'
+import UpgradeLimitModal from './components/UpgradeLimitModal'
 import WeddingSetup from './components/WeddingSetup'
 import RSVPPage from './components/RSVPPage'
 import OrgDashboard from './components/OrgDashboard'
@@ -214,6 +215,7 @@ export default function App() {
   const [dashboardLoading, setDashboardLoading] = useState(false)
   const [showProBanner, setShowProBanner]       = useState(false)
   const [proIntakeOpen, setProIntakeOpen]       = useState(false)
+  const [upgradeLimitOpen, setUpgradeLimitOpen] = useState(false)
   const [dashboardTaskStats, setDashboardTaskStats] = useState({})
   const [sharedVendors, setSharedVendors]           = useState([])
   const [teamMembers, setTeamMembers]               = useState([])
@@ -643,7 +645,7 @@ export default function App() {
     const ownedCount = myWeddings.filter(w => w.myRole === 'owner').length
     const isPro = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro')
     if (!isPro && ownedCount >= 2) {
-      alert('You\u2019ve reached the 2-wedding limit on the Free plan. Upgrade to Pro for unlimited weddings.')
+      setUpgradeLimitOpen(true)
       return { blocked: true }
     }
 
@@ -661,7 +663,7 @@ export default function App() {
     if (error || !created) {
       console.error('Failed to create wedding:', error?.message)
       if (error?.code === '42501' || error?.message?.includes('policy')) {
-        alert('You\u2019ve reached the 2-wedding limit on the Free plan. Upgrade to Pro for unlimited weddings.')
+        setUpgradeLimitOpen(true)
         return { blocked: true }
       }
       alert('Failed to create wedding. Please try again.')
@@ -2285,6 +2287,7 @@ export default function App() {
               onSelectWedding={selectWedding}
               onCreateWedding={handleCreateWedding}
               onUpgrade={handleUpgrade}
+              onShowUpgradeLimit={() => setUpgradeLimitOpen(true)}
               onUploadCover={handleUploadCover}
               onUpdateStudioName={handleUpdateStudioName}
               onCreateTemplate={handleCreateTemplate}
@@ -2309,6 +2312,11 @@ export default function App() {
               onClose={() => setProIntakeOpen(false)}
             />
           )}
+          <UpgradeLimitModal
+            isOpen={upgradeLimitOpen}
+            onClose={() => setUpgradeLimitOpen(false)}
+            onUpgrade={handleUpgrade}
+          />
         </div>
       )
     }
@@ -2376,6 +2384,11 @@ export default function App() {
 
         <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
         <SupportTicketModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} onSubmit={handleSubmitTicket} />
+        <UpgradeLimitModal
+          isOpen={upgradeLimitOpen}
+          onClose={() => setUpgradeLimitOpen(false)}
+          onUpgrade={handleUpgrade}
+        />
       </div>
     )
   }

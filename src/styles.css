@@ -3435,6 +3435,84 @@ label {
   margin-bottom: 20px;
 }
 
+/* ─── Upgrade Limit Modal ─────────────────────────── */
+.upgrade-limit-modal .modal-box {
+  background: var(--cream);
+  max-width: 440px;
+  text-align: center;
+}
+
+.upgrade-limit-subtext {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+.upgrade-limit-comparison {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.upgrade-limit-comparison .plan-col {
+  flex: 1;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1.5px solid var(--sand, #e0d5c1);
+  background: #fff;
+}
+
+.upgrade-limit-comparison .plan-col.plan-pro {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold);
+}
+
+.upgrade-limit-comparison .plan-col h4 {
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.upgrade-limit-comparison .plan-col.plan-pro h4 {
+  color: var(--gold);
+}
+
+.upgrade-limit-comparison .plan-col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: 'Jost', sans-serif;
+  font-size: 13px;
+  color: var(--deep);
+  line-height: 1.9;
+}
+
+.upgrade-limit-dismiss {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 12px;
+  font-family: 'Jost', sans-serif;
+  padding: 8px 16px;
+}
+
+.upgrade-limit-dismiss:hover {
+  color: var(--deep);
+}
+
+@media (max-width: 480px) {
+  .upgrade-limit-comparison {
+    flex-direction: column;
+  }
+}
+
 /* ─── Seating overview ──────────────────────────── */
 
 .seating-grid {
