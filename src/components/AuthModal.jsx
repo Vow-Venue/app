@@ -25,6 +25,8 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState(null)
   const [confirmSent, setConfirmSent] = useState(false)
+  const [showPw, setShowPw]           = useState(false)
+  const [showConfirmPw, setShowConfirmPw] = useState(false)
 
   const isDev = import.meta.env.VITE_DEV_MODE === 'true'
 
@@ -246,14 +248,49 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
           {/* Password */}
           <div className="form-group" style={{ marginBottom: isSignUp ? 4 : 12 }}>
             <label>PASSWORD</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              placeholder={isSignUp ? 'Create a password (8+ characters)' : 'Enter your password'}
-              minLength={8}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                placeholder={isSignUp ? 'Create a password (8+ characters)' : 'Enter your password'}
+                minLength={8}
+                style={{ paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(v => !v)}
+                tabIndex={-1}
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  color: 'var(--muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                aria-label={showPw ? 'Hide password' : 'Show password'}
+              >
+                {showPw ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Password strength indicator (sign-up only) */}
@@ -290,14 +327,49 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
           {isSignUp && (
             <div className="form-group">
               <label>CONFIRM PASSWORD</label>
-              <input
-                type="password"
-                value={confirmPw}
-                onChange={e => setConfirmPw(e.target.value)}
-                required
-                placeholder="Confirm your password"
-                minLength={8}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showConfirmPw ? 'text' : 'password'}
+                  value={confirmPw}
+                  onChange={e => setConfirmPw(e.target.value)}
+                  required
+                  placeholder="Confirm your password"
+                  minLength={8}
+                  style={{ paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPw(v => !v)}
+                  tabIndex={-1}
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 4,
+                    color: 'var(--muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPw ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
           )}
 
