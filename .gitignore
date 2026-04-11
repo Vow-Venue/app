@@ -22,6 +22,10 @@ dist-ssr/
 *.sw?
 .vscode/settings.json
 
+# Design playground (local only, not deployed)
+design/
+
 # Logs
 *.log
 npm-debug.log*
+.vercel
