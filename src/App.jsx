@@ -642,7 +642,10 @@ export default function App() {
     const userId = session.user.id
     const ownedCount = myWeddings.filter(w => w.myRole === 'owner').length
     const isPro = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro')
-    if (!isPro && ownedCount >= 2) return
+    if (!isPro && ownedCount >= 2) {
+      alert('You\u2019ve reached the 2-wedding limit on the Free plan. Upgrade to Pro for unlimited weddings.')
+      return { blocked: true }
+    }
 
     const insertRow = {
       user_id: userId,
@@ -657,6 +660,10 @@ export default function App() {
 
     if (error || !created) {
       console.error('Failed to create wedding:', error?.message)
+      if (error?.code === '42501' || error?.message?.includes('policy')) {
+        alert('You\u2019ve reached the 2-wedding limit on the Free plan. Upgrade to Pro for unlimited weddings.')
+        return { blocked: true }
+      }
       alert('Failed to create wedding. Please try again.')
       return
     }
