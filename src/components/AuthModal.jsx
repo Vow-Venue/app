@@ -3,25 +3,35 @@ import { supabase } from '../lib/supabase'
 import Modal from './Modal'
 
 export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
-  const [email, setEmail]     = useState('')
-  const [sent, setSent]       = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
+  const [email, setEmail]             = useState('')
+  const [password, setPassword]       = useState('')
+  const [confirmPw, setConfirmPw]     = useState('')
+  const [isSignUp, setIsSignUp]       = useState(mode === 'signup')
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState('')
+  const [confirmSent, setConfirmSent] = useState(false)
 
-  const isSignUp = mode === 'signup'
   const isDev = import.meta.env.VITE_DEV_MODE === 'true'
 
-  const handleDevLogin = async () => {
-    const devEmail = import.meta.env.VITE_DEV_EMAIL
-    const devPassword = import.meta.env.VITE_DEV_PASSWORD
-    if (!devEmail || !devPassword) return
-    setLoading(true)
+  // Sync mode prop when modal reopens
+  const handleClose = () => {
+    setEmail('')
+    setPassword('')
+    setConfirmPw('')
+    setIsSignUp(mode === 'signup')
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email: devEmail, password: devPassword })
-    setLoading(false)
-    if (error) setError(error.message)
+    setConfirmSent(false)
+    onClose()
   }
 
+  const toggleMode = () => {
+    setIsSignUp(prev => !prev)
+    setError('')
+    setPassword('')
+    setConfirmPw('')
+  }
+
+  // ── Google OAuth ───────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
     setLoading(true)
     setError('')
@@ -37,34 +47,61 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
     if (error) setError(error.message)
   }
 
+  // ── Email + Password ──────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    // Preserve invite token through the magic link redirect
-    const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin
-    const currentParams = new URLSearchParams(window.location.search)
-    const inviteToken = currentParams.get('invite')
-    const redirectUrl = inviteToken ? `${baseUrl}?invite=${inviteToken}` : baseUrl
+    if (isSignUp) {
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters')
+        setLoading(false)
+        return
+      }
+      if (password !== confirmPw) {
+        setError('Passwords do not match')
+        setLoading(false)
+        return
+      }
+      const baseUrl = import.meta.env.VITE_APP_URL || 'https://amorisuite.com'
+      const currentParams = new URLSearchParams(window.location.search)
+      const inviteToken = currentParams.get('invite')
+      const redirectUrl = inviteToken ? `${baseUrl}?invite=${inviteToken}` : `${baseUrl}/app`
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectUrl },
-    })
-    setLoading(false)
-    if (error) {
-      setError(error.message)
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: redirectUrl },
+      })
+      setLoading(false)
+      if (error) {
+        setError(error.message)
+      } else {
+        setError('')
+        setEmail('')
+        setPassword('')
+        setConfirmPw('')
+        // Show confirmation message in place of form
+        setConfirmSent(true)
+      }
     } else {
-      setSent(true)
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      setLoading(false)
+      if (error) setError(error.message)
     }
   }
 
-  const handleClose = () => {
-    setEmail('')
-    setSent(false)
+  // ── Dev login ─────────────────────────────────────────────────────────────
+  const handleDevLogin = async () => {
+    const devEmail = import.meta.env.VITE_DEV_EMAIL
+    const devPassword = import.meta.env.VITE_DEV_PASSWORD
+    if (!devEmail || !devPassword) return
+    setLoading(true)
     setError('')
-    onClose()
+    const { error } = await supabase.auth.signInWithPassword({ email: devEmail, password: devPassword })
+    setLoading(false)
+    if (error) setError(error.message)
   }
 
   return (
@@ -73,9 +110,9 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
       onClose={handleClose}
       title={isSignUp ? 'Create Your Account' : 'Sign In'}
     >
-      {sent ? (
+      {confirmSent ? (
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>📧</div>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>✉️</div>
           <div style={{
             fontFamily: "'Cormorant Garamond', serif",
             fontSize: 22,
@@ -83,12 +120,12 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
             marginBottom: 12,
             color: 'var(--deep)',
           }}>
-            Check your email
+            Verify your email
           </div>
           <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.7 }}>
-            We sent a magic link to{' '}
-            <strong style={{ color: 'var(--deep)' }}>{email}</strong>.<br />
-            Click the link to {isSignUp ? 'create your account' : 'sign in'} — no password needed.
+            We sent a confirmation link to{' '}
+            <strong style={{ color: 'var(--deep)' }}>{email || 'your email'}</strong>.<br />
+            Click the link to activate your account.
           </div>
           <button className="btn btn-ghost" style={{ marginTop: 24 }} onClick={handleClose}>
             CLOSE
@@ -96,6 +133,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
+          {/* Google OAuth */}
           <button
             type="button"
             onClick={handleGoogleLogin}
@@ -130,6 +168,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
             {loading ? 'CONNECTING...' : 'CONTINUE WITH GOOGLE'}
           </button>
 
+          {/* Divider */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -141,11 +180,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
             <div style={{ flex: 1, height: 1, background: 'var(--sand, #e0d5c1)' }} />
           </div>
 
-          <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
-            {isSignUp
-              ? 'Enter your email to get started — we\'ll send a magic link to set up your account. No password needed.'
-              : 'Enter your email and we\'ll send you a magic link to sign in. First time? Your account will be ready instantly.'}
-          </p>
+          {/* Email */}
           <div className="form-group">
             <label>EMAIL ADDRESS</label>
             <input
@@ -157,15 +192,76 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
               autoFocus
             />
           </div>
+
+          {/* Password */}
+          <div className="form-group">
+            <label>PASSWORD</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              placeholder={isSignUp ? 'Create a password (6+ characters)' : 'Enter your password'}
+              minLength={6}
+            />
+          </div>
+
+          {/* Confirm password (sign up only) */}
+          {isSignUp && (
+            <div className="form-group">
+              <label>CONFIRM PASSWORD</label>
+              <input
+                type="password"
+                value={confirmPw}
+                onChange={e => setConfirmPw(e.target.value)}
+                required
+                placeholder="Confirm your password"
+                minLength={6}
+              />
+            </div>
+          )}
+
           {error && (
             <div style={{ color: 'var(--rose)', fontSize: 13, marginBottom: 12 }}>{error}</div>
           )}
+
+          {/* Actions */}
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={handleClose}>CANCEL</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'SENDING...' : (isSignUp ? 'CREATE ACCOUNT →' : 'SEND MAGIC LINK →')}
+              {loading
+                ? (isSignUp ? 'CREATING...' : 'SIGNING IN...')
+                : (isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN')
+              }
             </button>
           </div>
+
+          {/* Toggle sign in / sign up */}
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <span style={{ color: 'var(--muted)', fontSize: 13 }}>
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+            </span>{' '}
+            <button
+              type="button"
+              onClick={toggleMode}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--gold)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: "'Jost', sans-serif",
+                textDecoration: 'underline',
+                textUnderlineOffset: 2,
+                padding: 0,
+              }}
+            >
+              {isSignUp ? 'Sign In' : 'Create Account'}
+            </button>
+          </div>
+
+          {/* Dev login — local only */}
           {isDev && (
             <button
               type="button"
