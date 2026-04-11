@@ -4455,12 +4455,14 @@ label {
   font-weight: 300;
   color: var(--deep);
   line-height: 1;
+  margin-bottom: 8px;
 }
 
 .pricing-period {
   font-family: 'Jost', sans-serif;
   font-size: 14px;
   color: var(--muted);
+  margin-top: 4px;
   margin-bottom: 24px;
 }
 
