@@ -2345,25 +2345,27 @@ export default function App() {
             </button>
           </div>
         )}
-        <NavTabs activeTab={activeTab} onTabChange={setActiveTab} hiddenTabs={hiddenTabs} />
+        <div className="app-body">
+          <NavTabs activeTab={activeTab} onTabChange={setActiveTab} hiddenTabs={hiddenTabs} />
 
-        {showProBanner && (
-          <div className="pro-success-banner">
-            <span>✦ WELCOME TO PRO — Unlimited weddings, unlimited collaborators, priority support</span>
-            <button onClick={() => setShowProBanner(false)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>&times;</button>
-          </div>
-        )}
+          <main className="main">
+            {showProBanner && (
+              <div className="pro-success-banner">
+                <span>✦ WELCOME TO PRO — Unlimited weddings, unlimited collaborators, priority support</span>
+                <button onClick={() => setShowProBanner(false)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>&times;</button>
+              </div>
+            )}
 
-        {isWeddingReadOnly && (
-          <div className="readonly-banner">
-            <span>This wedding is view-only — your Free plan includes 2 editable weddings. Upgrade to Pro to unlock editing on all weddings.</span>
-            <button className="btn btn-primary" style={{ fontSize: 11, padding: '5px 16px', whiteSpace: 'nowrap' }} onClick={handleUpgrade}>UPGRADE TO PRO</button>
-          </div>
-        )}
+            {isWeddingReadOnly && (
+              <div className="readonly-banner">
+                <span>This wedding is view-only — your Free plan includes 2 editable weddings. Upgrade to Pro to unlock editing on all weddings.</span>
+                <button className="btn btn-primary" style={{ fontSize: 11, padding: '5px 16px', whiteSpace: 'nowrap' }} onClick={handleUpgrade}>UPGRADE TO PRO</button>
+              </div>
+            )}
 
-        <main className="main">
-          {renderTab()}
-        </main>
+            {renderTab()}
+          </main>
+        </div>
 
         <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
         <SupportTicketModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} onSubmit={handleSubmitTicket} />
