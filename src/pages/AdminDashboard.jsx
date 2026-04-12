@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase())
 const isAdmin = (email) => ADMIN_EMAILS.includes(email?.toLowerCase())
-const SUPABASE_COST = 25 // $25/mo Pro tier estimate
+const MONTHLY_COSTS = 7 // Google Workspace $7/mo — Supabase is free tier for now
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
@@ -330,7 +330,7 @@ function DashboardPage({ stats, signups, storage, health }) {
   const [sortDir, setSortDir] = useState('desc')
   const [selectedUser, setSelectedUser] = useState(null)
 
-  const profit = stats.mrr - SUPABASE_COST
+  const profit = stats.mrr - MONTHLY_COSTS
   const conversionRate = stats.total_users > 0 ? ((stats.pro_seats / stats.total_users) * 100).toFixed(1) : '0.0'
   const revenuePerUser = stats.total_users > 0 ? (stats.mrr / stats.total_users) : 0
   const revenuePerPro = stats.pro_seats > 0 ? (stats.mrr / stats.pro_seats) : 0
@@ -392,8 +392,14 @@ function DashboardPage({ stats, signups, storage, health }) {
         </div>
         <div style={S.card}>
           <div style={S.cardLabel}>Est. Monthly Costs</div>
-          <div style={{ ...S.cardValue, color: '#c62828' }}>{fmt(SUPABASE_COST)}</div>
-          <div style={S.cardSub}>Supabase Pro</div>
+          <div style={{ ...S.cardValue, color: '#c62828' }}>{fmt(MONTHLY_COSTS)}</div>
+          <div style={{ ...S.cardSub, textAlign: 'left', lineHeight: 1.6 }}>
+            Google Workspace · $7/mo<br/>
+            Supabase · Free tier
+          </div>
+          <div style={{ marginTop: 8, padding: '6px 10px', background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 6, fontSize: 11, color: '#8d6e00', lineHeight: 1.5 }}>
+            Upgrade Supabase to Pro ($25/mo) before beta launch
+          </div>
         </div>
         <div style={S.card}>
           <div style={S.cardLabel}>Est. Profit</div>
