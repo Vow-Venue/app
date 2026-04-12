@@ -69,9 +69,8 @@ const S = {
   gateBox: { background: '#fff', borderRadius: 12, padding: '40px 36px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: 380, width: '100%' },
   gateTitle: { fontSize: 20, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", marginBottom: 6 },
   gateSubtitle: { fontSize: 11, color: '#999', marginBottom: 24, letterSpacing: 1 },
-  gateBtn: { width: '100%', marginTop: 14, padding: '10px 0', background: '#b8975a', border: 'none', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, letterSpacing: 1.5, cursor: 'pointer', fontFamily: 'inherit' },
-  gateError: { color: '#c62828', fontSize: 12, marginTop: 10 },
-  gateInput: { width: '100%', padding: '10px 14px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 6, color: '#333', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
+  googleBtn: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px', background: '#fffaf3', border: '1px solid #b8975a', borderRadius: 8, color: '#3c2415', fontSize: 12, fontWeight: 600, letterSpacing: 1.5, cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s' },
+  gateError: { color: '#c62828', fontSize: 12, marginTop: 14, lineHeight: 1.5 },
   loading: { textAlign: 'center', color: '#999', padding: 60, fontSize: 14 },
   // User detail modal
   userDetailRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f5f5f5', fontSize: 13 },
@@ -558,22 +557,32 @@ export default function AdminDashboard() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(false)
 
-  // Check Supabase auth session — only allow admin email
+  const [authError, setAuthError] = useState('')
+
+  // Check Supabase auth session — only allow admin emails, sign out anyone else
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (isAdmin(session?.user?.email)) {
+      if (!session) {
+        setAuthState('denied')
+      } else if (isAdmin(session.user.email)) {
         setAuthState('authed')
       } else {
+        await supabase.auth.signOut()
+        setAuthError(`${session.user.email} is not an authorized admin account.`)
         setAuthState('denied')
       }
     }
     checkAdmin()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isAdmin(session?.user?.email)) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session) {
+        setAuthState('denied')
+      } else if (isAdmin(session.user.email)) {
         setAuthState('authed')
       } else {
+        await supabase.auth.signOut()
+        setAuthError(`${session.user.email} is not an authorized admin account.`)
         setAuthState('denied')
       }
     })
@@ -601,12 +610,12 @@ export default function AdminDashboard() {
     if (authState === 'authed') loadData()
   }, [authState])
 
-  const handleSignIn = async (email) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/admin` }
+  const handleGoogleSignIn = async () => {
+    const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${baseUrl}/admin-x7k2p` },
     })
-    return error
   }
 
   const handleToggleTicketStatus = async (ticket) => {
@@ -633,7 +642,7 @@ export default function AdminDashboard() {
 
   // ── Access denied / login gate ───────────────────────────────────────────
   if (authState === 'denied') {
-    return <AdminGate onSignIn={handleSignIn} />
+    return <AdminGate onGoogleSignIn={handleGoogleSignIn} error={authError} />
   }
 
   if (loading || !stats) {
@@ -669,48 +678,22 @@ export default function AdminDashboard() {
 }
 
 // ── Admin login gate ────────────────────────────────────────────────────────
-function AdminGate({ onSignIn }) {
-  const [email, setEmail] = useState('')
-  const [error, setError] = useState('')
-  const [sent, setSent] = useState(false)
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!isAdmin(email)) {
-      setError('Access restricted to admin accounts only.')
-      return
-    }
-    const err = await onSignIn(email)
-    if (err) {
-      setError(err.message)
-    } else {
-      setSent(true)
-    }
-  }
-
+function AdminGate({ onGoogleSignIn, error }) {
   return (
     <div style={S.gate}>
       <div style={S.gateBox}>
         <div style={S.gateTitle}>Admin Dashboard</div>
         <div style={S.gateSubtitle}>AMORÍ INTERNAL</div>
 
-        {sent ? (
-          <div style={{ fontSize: 14, color: '#2e7d32', lineHeight: 1.6, marginTop: 12 }}>
-            Magic link sent to <strong>{email}</strong>. Check your email and click the link to access the dashboard.
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <input
-              type="email"
-              value={email}
-              onChange={e => { setEmail(e.target.value); setError('') }}
-              placeholder="Admin email address"
-              style={S.gateInput}
-              autoFocus
-            />
-            <button type="submit" style={S.gateBtn}>SIGN IN</button>
-          </form>
-        )}
+        <button onClick={onGoogleSignIn} style={S.googleBtn}>
+          <svg width="18" height="18" viewBox="0 0 48 48" style={{ marginRight: 10, flexShrink: 0 }}>
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          SIGN IN WITH GOOGLE
+        </button>
         {error && <div style={S.gateError}>{error}</div>}
       </div>
     </div>
