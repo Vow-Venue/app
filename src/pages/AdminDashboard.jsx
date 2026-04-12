@@ -31,6 +31,7 @@ const S = {
   topNavBrand: { fontSize: 16, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", letterSpacing: 1, marginRight: 8 },
   topNavLink: (active) => ({ fontSize: 14, fontWeight: active ? 700 : 500, letterSpacing: 1.5, textTransform: 'uppercase', color: active ? '#1a1a2e' : '#777', cursor: 'pointer', background: 'none', border: 'none', padding: '6px 0', borderBottom: active ? '2px solid #b8975a' : '2px solid transparent', fontFamily: "'Jost', sans-serif" }),
   refreshBtn: { background: '#fff', border: '1px solid #ddd', color: '#666', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
+  signOutBtn: { background: '#fff', border: '1px solid #e0c8c8', color: '#c62828', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, letterSpacing: 1, fontFamily: 'inherit' },
   // Content
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
   title: { fontSize: 28, fontWeight: 300, color: '#1a1a2e', fontFamily: "'Cormorant Garamond', serif", letterSpacing: 1 },
@@ -595,6 +596,11 @@ export default function AdminDashboard() {
     return () => subscription.unsubscribe()
   }, [])
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/admin-x7k2p'
+  }
+
   const loadData = async () => {
     setLoading(true)
     const [statsRes, signupsRes, storageRes, healthRes, ticketsRes] = await Promise.all([
@@ -668,7 +674,10 @@ export default function AdminDashboard() {
               Support Tickets{openCount > 0 ? ` (${openCount})` : ''}
             </button>
           </div>
-          <button style={S.refreshBtn} onClick={loadData}>REFRESH</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={S.refreshBtn} onClick={loadData}>REFRESH</button>
+            <button style={S.signOutBtn} onClick={handleSignOut}>SIGN OUT</button>
+          </div>
         </div>
       </div>
 
