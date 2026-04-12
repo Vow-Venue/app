@@ -20,6 +20,7 @@ import AuthModal from './components/AuthModal'
 import ProIntakeModal from './components/ProIntakeModal'
 import UpgradeLimitModal from './components/UpgradeLimitModal'
 import WeddingSetup from './components/WeddingSetup'
+import RoleSelection from './components/RoleSelection'
 import RSVPPage from './components/RSVPPage'
 import OrgDashboard from './components/OrgDashboard'
 import { TEMPLATES, PERIOD_OFFSETS } from './lib/taskTemplates'
@@ -649,9 +650,10 @@ export default function App() {
       return { blocked: true }
     }
 
+    const isPlanner = profile?.user_role === 'planner'
     const insertRow = {
       user_id: userId,
-      setup_complete: !!(fields.partner1 && fields.partner2),
+      setup_complete: isPlanner || !!(fields.partner1 && fields.partner2),
     }
     if (fields.partner1) insertRow.partner1 = fields.partner1
     if (fields.partner2) insertRow.partner2 = fields.partner2
@@ -720,6 +722,24 @@ export default function App() {
     console.log('[cover] DB updated, refreshing state')
     setMyWeddings(prev => prev.map(w => w.id === wId ? { ...w, cover_url: url } : w))
     if (wedding?.id === wId) setWedding(prev => ({ ...prev, cover_url: url }))
+  }
+
+  // ── Role selection (onboarding) ──────────────────────────────────────────────
+  const handleRoleSelect = async (role) => {
+    if (!session?.user) return
+    const userId = session.user.id
+    const { data, error } = await supabase.from('profiles').upsert({
+      id: userId, user_role: role, updated_at: new Date().toISOString(),
+    }).select().single()
+    if (error) { console.error('Role update failed:', error.message); return }
+    if (data) setProfile(data)
+
+    // Planners: mark their first wedding as setup_complete so they skip name/date
+    if (role === 'planner' && wedding && !wedding.setup_complete) {
+      await supabase.from('weddings').update({ setup_complete: true }).eq('id', weddingId)
+      setWedding(prev => prev ? { ...prev, setup_complete: true } : prev)
+      setMyWeddings(prev => prev.map(w => w.id === weddingId ? { ...w, setup_complete: true } : w))
+    }
   }
 
   // ── Studio name ─────────────────────────────────────────────────────────────
@@ -2245,6 +2265,11 @@ export default function App() {
 
     if (!session) return <Navigate to="/" replace />
 
+    // Role selection (first-time users)
+    if (profile && !profile.user_role) {
+      return <RoleSelection onSelect={handleRoleSelect} />
+    }
+
     // Org dashboard (no wedding selected)
     if (activeWeddingId === null) {
       const userPlan = myWeddings.some(w => w.myRole === 'owner' && w.plan === 'pro') ? 'pro' : 'free'
@@ -2321,8 +2346,8 @@ export default function App() {
       )
     }
 
-    // Onboarding
-    if (wedding && !wedding.setup_complete) {
+    // Onboarding — couples see name/date setup, planners skip it
+    if (wedding && !wedding.setup_complete && profile?.user_role !== 'planner') {
       return <WeddingSetup onComplete={handleWeddingSetup} />
     }
 
