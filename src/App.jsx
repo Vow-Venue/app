@@ -261,6 +261,12 @@ export default function App() {
       setSession(session)
       if (session) {
         setAuthOpen(false)
+        // Admin emails go straight to admin dashboard — skip all app onboarding
+        const adminEmails = (import.meta.env.VITE_ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase())
+        if (adminEmails.includes(session.user.email?.toLowerCase())) {
+          navigate('/admin-x7k2p', { replace: true })
+          return
+        }
         if (!window.location.pathname.startsWith('/admin-')) navigate('/app', { replace: true })
       } else {
         // Sign out — reset and return to home
@@ -290,6 +296,7 @@ export default function App() {
   // ── Load weddings + profile when session arrives ─────────────────────────────
   useEffect(() => {
     if (!session) return
+    if (window.location.pathname.startsWith('/admin-')) return
     loadMyWeddings(session.user.id)
     loadProfile(session.user.id)
     loadTaskTemplates(session.user.id)
