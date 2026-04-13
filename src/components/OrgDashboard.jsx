@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import {
-  LayoutGrid, List, Phone, Mail, Camera, Search,
+  LayoutGrid, List, Phone, Mail, Camera, Loader, Search,
   Pencil, Check, X, Plus, Trash2, Globe, Users, Download, FileText,
   Calendar, DollarSign, ClipboardList, UserPlus,
   Home, Heart, Settings, TrendingUp, Contact, Menu,
@@ -185,7 +185,7 @@ function SettingsPage({ userPlan, onCancelPlan, onUpgrade }) {
 
 export default function OrgDashboard({
   weddings, userPlan, taskStats, sharedVendors, profile,
-  teamMembers, revenue, taskTemplates, templateTasks,
+  teamMembers, revenue, taskTemplates, templateTasks, coverUploading,
   onSelectWedding, onCreateWedding, onUpgrade, onShowUpgradeLimit, onUploadCover,
   onUpdateStudioName, onCreateTemplate, onUpdateTemplate, onDeleteTemplate,
   onAddTemplateTask, onUpdateTemplateTask, onDeleteTemplateTask,
@@ -479,14 +479,16 @@ export default function OrgDashboard({
                       className="wedding-card-upload-btn"
                       onClick={(e) => handleCoverClick(e, w.id)}
                       title="Upload cover photo"
+                      disabled={coverUploading === w.id}
                     >
-                      <Camera size={16} />
+                      {coverUploading === w.id ? <Loader size={16} className="spin" /> : <Camera size={16} />}
                     </button>
                     <input
                       ref={el => { fileInputRefs.current[w.id] = el }}
                       type="file"
                       accept="image/*"
                       style={{ display: 'none' }}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => handleCoverChange(e, w.id)}
                     />
                   </>

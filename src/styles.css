@@ -351,6 +351,13 @@ body {
 .wedding-card-upload-btn:hover {
   background: #fff;
 }
+.wedding-card-upload-btn .spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 /* Role badge floating inside arch */
 .wedding-card-role {
@@ -4693,11 +4700,25 @@ label {
   color: var(--gold);
 }
 
-.faq-chevron {
-  font-size: 20px;
+.faq-answer-wrap {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.faq-item.open .faq-answer-wrap {
+  max-height: 300px;
+}
+
+.faq-chevron-icon {
   color: var(--muted);
   flex-shrink: 0;
   margin-left: 16px;
+  transition: transform 0.3s ease;
+}
+
+.faq-item.open .faq-chevron-icon {
+  transform: rotate(180deg);
 }
 
 .faq-answer {

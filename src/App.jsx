@@ -246,6 +246,7 @@ export default function App() {
   const [notifications, setNotifications]   = useState([])
   const [designBoards, setDesignBoards]     = useState([])
   const [designPhotos, setDesignPhotos]     = useState([])
+  const [coverUploading, setCoverUploading] = useState(null)
 
   // ── Auth effect ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -703,32 +704,37 @@ export default function App() {
   // ── Cover photo upload ────────────────────────────────────────────────────
   const handleUploadCover = async (wId, file) => {
     if (!session || !file) return
-    console.log('[cover] upload starting for wedding:', wId, 'file:', file.name, 'size:', file.size)
-    const ext = file.name.split('.').pop()
-    const path = `${wId}/cover.${ext}`
+    setCoverUploading(wId)
+    try {
+      console.log('[cover] upload starting for wedding:', wId, 'file:', file.name, 'size:', file.size)
+      const ext = file.name.split('.').pop()
+      const path = `${wId}/cover.${ext}`
 
-    // Upload to Supabase Storage
-    const { error: upErr } = await supabase.storage
-      .from('wedding-covers')
-      .upload(path, file, { upsert: true })
-    if (upErr) { console.error('[cover] storage upload failed:', upErr.message); return }
-    console.log('[cover] storage upload complete')
+      // Upload to Supabase Storage
+      const { error: upErr } = await supabase.storage
+        .from('wedding-covers')
+        .upload(path, file, { upsert: true })
+      if (upErr) { console.error('[cover] storage upload failed:', upErr.message); return }
+      console.log('[cover] storage upload complete')
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('wedding-covers')
-      .getPublicUrl(path)
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('wedding-covers')
+        .getPublicUrl(path)
 
-    // Bust cache with timestamp
-    const url = `${publicUrl}?t=${Date.now()}`
-    console.log('[cover] public URL:', url)
+      // Bust cache with timestamp
+      const url = `${publicUrl}?t=${Date.now()}`
+      console.log('[cover] public URL:', url)
 
-    // Update wedding record
-    const { error: dbErr } = await supabase.from('weddings').update({ cover_url: url }).eq('id', wId)
-    if (dbErr) { console.error('[cover] DB update failed:', dbErr.message); return }
-    console.log('[cover] DB updated, refreshing state')
-    setMyWeddings(prev => prev.map(w => w.id === wId ? { ...w, cover_url: url } : w))
-    if (wedding?.id === wId) setWedding(prev => ({ ...prev, cover_url: url }))
+      // Update wedding record
+      const { error: dbErr } = await supabase.from('weddings').update({ cover_url: url }).eq('id', wId)
+      if (dbErr) { console.error('[cover] DB update failed:', dbErr.message); return }
+      console.log('[cover] DB updated, refreshing state')
+      setMyWeddings(prev => prev.map(w => w.id === wId ? { ...w, cover_url: url } : w))
+      if (wedding?.id === wId) setWedding(prev => ({ ...prev, cover_url: url }))
+    } finally {
+      setCoverUploading(null)
+    }
   }
 
   // ── Role selection (onboarding) ──────────────────────────────────────────────
@@ -2321,6 +2327,7 @@ export default function App() {
               onUpgrade={handleUpgrade}
               onShowUpgradeLimit={() => setUpgradeLimitOpen(true)}
               onUploadCover={handleUploadCover}
+              coverUploading={coverUploading}
               onUpdateStudioName={handleUpdateStudioName}
               onCreateTemplate={handleCreateTemplate}
               onUpdateTemplate={handleUpdateTemplate}
