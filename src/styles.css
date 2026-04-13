@@ -4338,46 +4338,49 @@ label {
   margin: 0 auto;
 }
 
-.how-it-works-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
+.how-it-works-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding-left: 30px;
+  border-left: 1px solid var(--gold-light);
 }
 
-.how-it-works-card {
-  text-align: center;
-  padding: 32px 24px;
-}
-
-.how-it-works-card h3 {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--deep);
-  margin: 0 0 10px;
-}
-
-.how-it-works-card p {
-  font-size: 14px;
-  color: var(--muted);
-  line-height: 1.7;
-  margin: 0;
+.how-it-works-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  position: relative;
 }
 
 .how-it-works-number {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(184, 151, 90, 0.12);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
-  font-family: 'Cormorant Garabold', serif;
-  font-size: 22px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 48px;
+  font-weight: 300;
   color: var(--gold);
+  line-height: 1;
+  min-width: 60px;
+  margin-left: -30px;
+  background: var(--cream);
+  padding: 4px 0;
+}
+
+.how-it-works-content h3 {
+  font-family: 'Jost', sans-serif;
+  font-size: 18px;
   font-weight: 600;
+  color: var(--deep);
+  margin: 0 0 6px;
+  letter-spacing: 0.2px;
+}
+
+.how-it-works-content p {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0;
 }
 
 /* Features Grid */
@@ -5090,7 +5093,8 @@ label {
   .marketing-nav-links { display: none; }
   .marketing-hero { padding: 60px 20px 48px; }
   .how-it-works { padding: 48px 20px; }
-  .how-it-works-grid { grid-template-columns: 1fr; gap: 16px; }
+  .how-it-works-timeline { padding-left: 24px; gap: 32px; }
+  .how-it-works-number { font-size: 40px; min-width: 48px; margin-left: -24px; }
   .marketing-features { padding: 48px 20px; }
   .marketing-pricing-summary { padding: 48px 20px; }
   .marketing-pricing-section { padding: 0 20px 48px; }
