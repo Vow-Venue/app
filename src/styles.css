@@ -18,7 +18,16 @@
   --border: rgba(184, 151, 90, 0.25);
   --border-solid: #e8d9bf;
   --shadow: 0 2px 16px rgba(61, 44, 44, 0.08);
+  --shadow-tinted: 0 8px 32px rgba(61, 44, 44, 0.08);
+  --shadow-elevated: 0 16px 48px rgba(61, 44, 44, 0.12);
   --radius: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -63,6 +72,7 @@ body {
   justify-content: space-between;
   height: 72px;
   flex-shrink: 0;
+  position: relative;
   z-index: 100;
 }
 
@@ -282,34 +292,38 @@ body {
 /* ── Wedding Card ──────────────────────── */
 .wedding-card {
   background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  border: 1px solid rgba(184, 151, 90, 0.12);
+  border-radius: 16px;
   padding: 0;
   cursor: pointer;
-  transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s;
+  transition: all 0.4s var(--ease-spring);
   text-align: left;
   display: flex;
   flex-direction: column;
   font-family: 'Jost', sans-serif;
   width: 100%;
   overflow: hidden;
+  box-shadow: 0 2px 12px rgba(61, 44, 44, 0.05);
 }
 .wedding-card:hover {
-  box-shadow: 0 12px 40px rgba(61, 44, 44, 0.12);
-  border-color: var(--gold);
-  transform: translateY(-3px);
+  box-shadow: var(--shadow-elevated);
+  border-color: rgba(184, 151, 90, 0.2);
+  transform: translateY(-4px);
+}
+.wedding-card:active {
+  transform: scale(0.985);
+  box-shadow: var(--shadow-tinted);
 }
 
 /* ── Arch Photo Area ───────────────────── */
 .wedding-card-arch {
   position: relative;
   width: 100%;
-  height: 120px;
+  height: 140px;
   background-size: cover;
   background-position: center;
-  border-radius: 14px 14px 0 0;
-  /* Arch mask: rectangle on top, rounded bottom */
-  clip-path: ellipse(100% 100% at 50% 0%);
+  border-radius: 16px 16px 0 0;
+  clip-path: ellipse(110% 100% at 50% 0%);
   overflow: hidden;
 }
 
@@ -322,6 +336,7 @@ body {
     rgba(61, 44, 44, 0.1) 40%,
     transparent 70%
   );
+  box-shadow: inset 0 -20px 40px rgba(61, 44, 44, 0.1);
   pointer-events: none;
 }
 
@@ -380,11 +395,12 @@ body {
 
 .wedding-card-couple {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 400;
   font-style: italic;
   color: var(--deep);
   line-height: 1.25;
+  letter-spacing: -0.3px;
   margin-bottom: 4px;
 }
 
@@ -1870,6 +1886,8 @@ body {
   padding: 16px 0;
   overflow-y: auto;
   scrollbar-width: none;
+  position: relative;
+  z-index: 50;
 }
 
 .tabs::-webkit-scrollbar {
@@ -2008,8 +2026,12 @@ body {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s var(--ease-spring);
   white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.98) translateY(1px);
 }
 
 .btn-primary {
@@ -2019,6 +2041,13 @@ body {
 
 .btn-primary:hover {
   background: #5a3e3e;
+  box-shadow: 0 4px 16px rgba(61, 44, 44, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: scale(0.98) translateY(1px);
+  box-shadow: none;
 }
 
 .btn-ghost {
@@ -2030,6 +2059,7 @@ body {
 .btn-ghost:hover {
   border-color: var(--rose);
   color: var(--rose);
+  background: rgba(201, 132, 122, 0.04);
 }
 
 .btn-gold {
@@ -2043,11 +2073,17 @@ body {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.3s var(--ease-spring);
 }
 
 .btn-gold:hover {
-  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(184, 151, 90, 0.25);
+}
+
+.btn-gold:active {
+  transform: scale(0.98) translateY(1px);
+  box-shadow: none;
 }
 
 .btn-danger {
