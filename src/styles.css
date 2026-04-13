@@ -4147,15 +4147,21 @@ label {
 
 /* Nav */
 .marketing-nav {
-  background: var(--deep);
-  padding: 0 48px;
-  height: 72px;
+  background: rgba(61, 44, 44, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 0 32px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: sticky;
-  top: 0;
+  top: 12px;
   z-index: 100;
+  max-width: 1200px;
+  margin: 12px auto 0;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .marketing-nav-logo {
@@ -5074,7 +5080,7 @@ label {
   .landing-footer { padding: 20px; flex-direction: column; text-align: center; }
 
   /* Marketing */
-  .marketing-nav { padding: 0 20px; }
+  .marketing-nav { padding: 0 16px; margin: 8px 12px 0; border-radius: 12px; height: 56px; }
   .marketing-nav-links { display: none; }
   .marketing-hero { padding: 60px 20px 48px; }
   .how-it-works { padding: 48px 20px; }

@@ -24,6 +24,7 @@ export default function HomePage() {
   const [openFaq, setOpenFaq] = useState(null)
   const revealRefs = useRef([])
 
+  // Scroll reveal via IntersectionObserver
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -78,7 +79,7 @@ export default function HomePage() {
 
       <div className="marketing-divider" />
 
-      {/* ── How It Works — Timeline ──────────────────────── */}
+      {/* ── How It Works — Timeline Layout ────────────────── */}
       <section className="how-it-works" id="how-it-works" ref={addRevealRef}>
         <div className="marketing-section-label">HOW IT WORKS</div>
         <h2 className="marketing-section-title">Up and running in minutes</h2>
