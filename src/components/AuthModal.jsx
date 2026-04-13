@@ -192,10 +192,10 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
             disabled={loading}
             style={{
               width: '100%',
-              padding: '12px 16px',
+              padding: '13px 16px',
               background: 'var(--cream)',
               border: '1.5px solid var(--gold)',
-              borderRadius: 8,
+              borderRadius: 12,
               color: 'var(--deep)',
               fontSize: 14,
               fontWeight: 500,
@@ -206,10 +206,10 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 10,
-              transition: 'all 0.2s ease',
+              transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(184, 151, 90, 0.12)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--cream)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(184, 151, 90, 0.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(184, 151, 90, 0.15)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--cream)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -227,9 +227,9 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
             gap: 12,
             margin: '14px 0',
           }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--sand, #e0d5c1)' }} />
-            <span style={{ color: 'var(--muted)', fontSize: 12, fontFamily: "'Jost', sans-serif", letterSpacing: 1, textTransform: 'uppercase' }}>or</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--sand, #e0d5c1)' }} />
+            <div style={{ flex: 1, height: 1, background: 'rgba(184, 151, 90, 0.15)' }} />
+            <span style={{ color: 'var(--muted)', fontSize: 11, fontFamily: "'Jost', sans-serif", letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7 }}>or</span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(184, 151, 90, 0.15)' }} />
           </div>
 
           {/* Email */}

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
-import { Users, CreditCard, LayoutGrid, MessageSquare, UserPlus, CheckSquare } from 'lucide-react'
+import { Users, CreditCard, LayoutGrid, MessageSquare, UserPlus, CheckSquare, ChevronDown } from 'lucide-react'
 
 const FAQ_ITEMS = [
   { q: 'Is it really free?', a: 'Yes. The free plan includes all features with up to 2 weddings. No credit card required, no trial period, no hidden fees.' },
@@ -10,9 +10,39 @@ const FAQ_ITEMS = [
   { q: 'Can I manage multiple weddings?', a: 'Yes. Free accounts can manage up to 2 weddings. Pro accounts get unlimited weddings -- perfect for professional planners handling multiple clients.' },
 ]
 
+const FEATURES = [
+  { icon: <Users size={28} strokeWidth={1.5} />, title: 'Guest Management', desc: 'Track RSVPs, dietary needs, roles, and seating assignments. Import guests from CSV in seconds.', featured: true },
+  { icon: <LayoutGrid size={28} strokeWidth={1.5} />, title: 'Seating Chart', desc: 'Drag-and-drop table placement with round and long table support. Assign guests visually.', featured: true },
+  { icon: <CreditCard size={28} strokeWidth={1.5} />, title: 'Vendor Payments', desc: 'Manage vendor contacts, track payment status, and keep invoices organized in one place.' },
+  { icon: <MessageSquare size={28} strokeWidth={1.5} />, title: 'Team Messaging', desc: 'Slack-style channels and direct messages. Keep your entire team aligned without leaving the app.' },
+  { icon: <UserPlus size={28} strokeWidth={1.5} />, title: 'Collaborator Invites', desc: 'Role-based access for planners, family, and vendors. One-click magic link invites.' },
+  { icon: <CheckSquare size={28} strokeWidth={1.5} />, title: 'Task Management', desc: 'Assign tasks with due dates and priorities. Track progress across your entire team.' },
+]
+
 export default function HomePage() {
   const { onStartFree } = useOutletContext()
   const [openFaq, setOpenFaq] = useState(null)
+  const revealRefs = useRef([])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed')
+            observer.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+    )
+    revealRefs.current.forEach((el) => el && observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
+
+  const addRevealRef = (el) => {
+    if (el && !revealRefs.current.includes(el)) revealRefs.current.push(el)
+  }
 
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
@@ -48,25 +78,31 @@ export default function HomePage() {
 
       <div className="marketing-divider" />
 
-      {/* ── How It Works ─────────────────────────────────── */}
-      <section className="how-it-works" id="how-it-works">
+      {/* ── How It Works — Timeline ──────────────────────── */}
+      <section className="how-it-works" id="how-it-works" ref={addRevealRef}>
         <div className="marketing-section-label">HOW IT WORKS</div>
         <h2 className="marketing-section-title">Up and running in minutes</h2>
-        <div className="how-it-works-grid">
-          <div className="how-it-works-card">
+        <div className="how-it-works-timeline">
+          <div className="how-it-works-step">
             <div className="how-it-works-number">1</div>
-            <h3>Create Your Workspace</h3>
-            <p>Sign up in seconds. Add your couple&apos;s names, wedding date, and you&apos;re ready to go.</p>
+            <div className="how-it-works-content">
+              <h3>Create your workspace</h3>
+              <p>Sign up in seconds. Add your couple&apos;s names, wedding date, and you&apos;re ready to go.</p>
+            </div>
           </div>
-          <div className="how-it-works-card">
+          <div className="how-it-works-step">
             <div className="how-it-works-number">2</div>
-            <h3>Add Your Team</h3>
-            <p>Invite planners, family members, and vendors as collaborators with role-based access.</p>
+            <div className="how-it-works-content">
+              <h3>Add your team</h3>
+              <p>Invite planners, family members, and vendors as collaborators with role-based access.</p>
+            </div>
           </div>
-          <div className="how-it-works-card">
+          <div className="how-it-works-step">
             <div className="how-it-works-number">3</div>
-            <h3>Plan Everything</h3>
-            <p>Track guests, manage vendors, assign tasks, and message your team — all in one place.</p>
+            <div className="how-it-works-content">
+              <h3>Plan everything</h3>
+              <p>Track guests, manage vendors, assign tasks, and message your team — all in one place.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -74,19 +110,12 @@ export default function HomePage() {
       <div className="marketing-divider" />
 
       {/* ── Feature Highlights ───────────────────────────── */}
-      <section className="marketing-features">
+      <section className="marketing-features" ref={addRevealRef}>
         <div className="marketing-section-label">FEATURES</div>
         <h2 className="marketing-section-title">Everything you need, nothing you don&apos;t</h2>
         <div className="marketing-features-grid">
-          {[
-            { icon: <Users size={28} strokeWidth={1.5} />, title: 'Guest Management', desc: 'Track RSVPs, dietary needs, roles, and seating assignments. Import guests from CSV in seconds.' },
-            { icon: <CreditCard size={28} strokeWidth={1.5} />, title: 'Vendor Payments', desc: 'Manage vendor contacts, track payment status, and keep invoices organized in one place.' },
-            { icon: <LayoutGrid size={28} strokeWidth={1.5} />, title: 'Seating Chart', desc: 'Drag-and-drop table placement with round and long table support. Assign guests visually.' },
-            { icon: <MessageSquare size={28} strokeWidth={1.5} />, title: 'Team Messaging', desc: 'Slack-style channels and direct messages. Keep your entire team aligned without leaving the app.' },
-            { icon: <UserPlus size={28} strokeWidth={1.5} />, title: 'Collaborator Invites', desc: 'Role-based access for planners, family, and vendors. One-click magic link invites.' },
-            { icon: <CheckSquare size={28} strokeWidth={1.5} />, title: 'Task Management', desc: 'Assign tasks with due dates and priorities. Track progress across your entire team.' },
-          ].map((f) => (
-            <div key={f.title} className="marketing-feature-card">
+          {FEATURES.map((f) => (
+            <div key={f.title} className={`marketing-feature-card${f.featured ? ' featured' : ''}`}>
               <div className="marketing-feature-icon">{f.icon}</div>
               <h3>{f.title}</h3>
               <p>{f.desc}</p>
@@ -103,7 +132,7 @@ export default function HomePage() {
       <div className="marketing-divider" />
 
       {/* ── Pricing Summary ──────────────────────────────── */}
-      <section className="marketing-pricing-summary">
+      <section className="marketing-pricing-summary" ref={addRevealRef}>
         <div className="marketing-section-label">PRICING</div>
         <h2 className="marketing-section-title">Start free, upgrade when you&apos;re ready</h2>
         <div className="pricing-cards pricing-cards-summary">
@@ -112,10 +141,10 @@ export default function HomePage() {
             <div className="pricing-amount">$0</div>
             <div className="pricing-period">forever</div>
             <ul className="pricing-features">
-              <li><span className="pricing-check">✓</span> Up to 2 weddings</li>
-              <li><span className="pricing-check">✓</span> All features included</li>
-              <li><span className="pricing-check">✓</span> Unlimited guests</li>
-              <li><span className="pricing-check">✓</span> Team collaboration</li>
+              <li><span className="pricing-check">&#10003;</span> Up to 2 weddings</li>
+              <li><span className="pricing-check">&#10003;</span> All features included</li>
+              <li><span className="pricing-check">&#10003;</span> Unlimited guests</li>
+              <li><span className="pricing-check">&#10003;</span> Team collaboration</li>
             </ul>
             <button className="btn-gold" style={{ width: '100%' }} onClick={onStartFree}>
               START FREE
@@ -127,10 +156,10 @@ export default function HomePage() {
             <div className="pricing-amount">$39</div>
             <div className="pricing-period">per seat / month</div>
             <ul className="pricing-features">
-              <li><span className="pricing-check">✓</span> Unlimited weddings</li>
-              <li><span className="pricing-check">✓</span> Everything in Free</li>
-              <li><span className="pricing-check">✓</span> Priority support</li>
-              <li><span className="pricing-check">✓</span> Advanced exports</li>
+              <li><span className="pricing-check">&#10003;</span> Unlimited weddings</li>
+              <li><span className="pricing-check">&#10003;</span> Everything in Free</li>
+              <li><span className="pricing-check">&#10003;</span> Priority support</li>
+              <li><span className="pricing-check">&#10003;</span> Advanced exports</li>
             </ul>
             <button className="btn-gold" style={{ width: '100%' }} onClick={onStartFree}>
               START FREE, UPGRADE LATER
@@ -147,20 +176,21 @@ export default function HomePage() {
       <div className="marketing-divider" />
 
       {/* ── Testimonials ─────────────────────────────────── */}
-      <section className="testimonials">
+      <section className="testimonials" ref={addRevealRef}>
         <div className="marketing-section-label">TESTIMONIALS</div>
         <h2 className="marketing-section-title">Trusted by planners everywhere</h2>
         <div className="testimonials-grid">
           {[
             { quote: 'Finally, a tool that understands how wedding planners actually work. I switched from spreadsheets and never looked back.', name: 'Sarah M.', role: 'Wedding Planner, Austin TX' },
-            { quote: 'The seating chart alone saved me hours. Being able to invite my clients as collaborators is a game-changer.', name: 'Rachel K.', role: 'Event Coordinator, Nashville TN' },
+            { quote: 'The seating chart alone saved me hours. Being able to invite my clients as collaborators changed my workflow completely.', name: 'Rachel K.', role: 'Event Coordinator, Nashville TN' },
             { quote: 'I manage 15 weddings a year. Amorí keeps everything organized and my team on the same page.', name: 'David L.', role: 'Wedding Planner, Los Angeles CA' },
           ].map((t) => (
             <div key={t.name} className="testimonial-card">
-              <div className="testimonial-stars">★★★★★</div>
               <p className="testimonial-quote">&ldquo;{t.quote}&rdquo;</p>
-              <div className="testimonial-author">{t.name}</div>
-              <div className="testimonial-role">{t.role}</div>
+              <div className="testimonial-footer">
+                <div className="testimonial-author">{t.name}</div>
+                <div className="testimonial-role">{t.role}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -169,34 +199,36 @@ export default function HomePage() {
       <div className="marketing-divider" />
 
       {/* ── FAQ ──────────────────────────────────────────── */}
-      <section className="faq-section">
+      <section className="faq-section" ref={addRevealRef}>
         <div className="marketing-section-label">FAQ</div>
         <h2 className="marketing-section-title">Frequently asked questions</h2>
         <div className="faq-list">
           {FAQ_ITEMS.map((item, i) => (
-            <div key={i} className="faq-item">
+            <div key={i} className={`faq-item${openFaq === i ? ' open' : ''}`}>
               <button
                 className="faq-question"
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
               >
                 <span>{item.q}</span>
-                <span className="faq-chevron">{openFaq === i ? '−' : '+'}</span>
+                <ChevronDown size={18} className="faq-chevron-icon" />
               </button>
-              {openFaq === i && (
+              <div className="faq-answer-wrap">
                 <div className="faq-answer">{item.a}</div>
-              )}
+              </div>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── CTA Banner ───────────────────────────────────── */}
-      <section className="marketing-cta-banner">
-        <h2>Ready to simplify your wedding planning?</h2>
-        <p>Join professional planners who&apos;ve switched to a better way to work.</p>
-        <button className="btn-gold btn-gold-lg" onClick={onStartFree}>
-          START PLANNING FREE &rarr;
-        </button>
+      <section className="marketing-cta-section">
+        <div className="marketing-cta-banner">
+          <h2>Ready to simplify your wedding planning?</h2>
+          <p>Join professional planners who&apos;ve switched to a better way to work.</p>
+          <button className="btn-gold btn-gold-lg" onClick={onStartFree}>
+            START PLANNING FREE &rarr;
+          </button>
+        </div>
       </section>
     </div>
   )
