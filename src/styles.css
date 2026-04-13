@@ -32,17 +32,13 @@ body {
 /* ─── Layout ───────────────────────────────────── */
 
 .app {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  padding-top: 72px;
+  padding-left: 180px;
 }
 
 .app-body {
-  flex: 1;
   display: flex;
-  overflow: hidden;
-  min-height: 0;
+  flex: 1;
 }
 
 .main {
@@ -52,6 +48,7 @@ body {
   margin: 0 auto;
   width: 100%;
   overflow-y: auto;
+  height: calc(100vh - 72px);
 }
 
 /* ─── Header ────────────────────────────────────── */
@@ -62,10 +59,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 72px;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 100;
+  z-index: 200;
 }
 
 .logo {
@@ -1867,11 +1866,15 @@ body {
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  width: 180px;
-  min-width: 180px;
   padding: 16px 0;
-  overflow-y: auto;
   scrollbar-width: none;
+  position: fixed;
+  top: 72px;
+  left: 0;
+  bottom: 0;
+  width: 180px;
+  z-index: 100;
+  overflow-y: auto;
 }
 
 .tabs::-webkit-scrollbar {
@@ -5003,15 +5006,19 @@ label {
 /* ─── Responsive ────────────────────────────────── */
 
 @media (max-width: 768px) {
-  /* Layout */
-  .app { height: auto; min-height: 100vh; overflow: visible; }
-  .app-body { flex-direction: column; overflow: visible; }
-  .main { padding: 20px 16px; overflow-y: visible; }
-  .header { padding: 0 16px; }
+  /* Layout — undo fixed positioning on mobile */
+  .app { padding-top: 72px; padding-left: 0; }
+  .app-body { flex-direction: column; }
+  .main { padding: 20px 16px; height: auto; overflow-y: visible; }
+  .header { padding: 0 16px; position: fixed; }
   .tabs {
+    position: fixed;
+    top: 72px;
+    left: 0;
+    right: 0;
+    bottom: auto;
     flex-direction: row;
     width: 100%;
-    min-width: 0;
     padding: 0 8px;
     overflow-x: auto;
     overflow-y: hidden;
