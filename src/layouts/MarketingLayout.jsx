@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Outlet, useSearchParams } from 'react-router-dom'
+import { Outlet, useSearchParams, useLocation } from 'react-router-dom'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 import AuthModal from '../components/AuthModal'
@@ -8,6 +8,9 @@ export default function MarketingLayout() {
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState('signin')
   const [searchParams] = useSearchParams()
+  const { pathname } = useLocation()
+
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
 
   const handleSignIn = () => { setAuthMode('signin'); setAuthOpen(true) }
   const handleStartFree = () => { setAuthMode('signup'); setAuthOpen(true) }
