@@ -4344,8 +4344,6 @@ label {
   gap: 40px;
   max-width: 600px;
   margin: 0 auto;
-  padding-left: 30px;
-  border-left: 1px solid var(--gold-light);
 }
 
 .how-it-works-step {
@@ -4362,9 +4360,6 @@ label {
   color: var(--gold);
   line-height: 1;
   min-width: 60px;
-  margin-left: -30px;
-  background: var(--cream);
-  padding: 4px 0;
 }
 
 .how-it-works-content h3 {
@@ -5093,8 +5088,8 @@ label {
   .marketing-nav-links { display: none; }
   .marketing-hero { padding: 60px 20px 48px; }
   .how-it-works { padding: 48px 20px; }
-  .how-it-works-timeline { padding-left: 24px; gap: 32px; }
-  .how-it-works-number { font-size: 40px; min-width: 48px; margin-left: -24px; }
+  .how-it-works-timeline { gap: 32px; }
+  .how-it-works-number { font-size: 40px; min-width: 48px; }
   .marketing-features { padding: 48px 20px; }
   .marketing-pricing-summary { padding: 48px 20px; }
   .marketing-pricing-section { padding: 0 20px 48px; }
