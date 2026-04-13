@@ -3487,6 +3487,7 @@ label {
   text-transform: uppercase;
   color: var(--muted);
   margin: 0 0 10px;
+  text-align: center;
 }
 
 .upgrade-limit-comparison .plan-col.plan-pro h4 {
@@ -3501,6 +3502,15 @@ label {
   font-size: 13px;
   color: var(--deep);
   line-height: 1.9;
+  text-align: center;
+}
+
+.upgrade-limit-note {
+  font-family: 'Jost', sans-serif;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin: 0 0 20px;
+  line-height: 1.5;
 }
 
 .upgrade-limit-dismiss {

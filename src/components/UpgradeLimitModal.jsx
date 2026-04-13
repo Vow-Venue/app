@@ -19,20 +19,24 @@ export default function UpgradeLimitModal({ isOpen, onClose, onUpgrade }) {
             <h4>Free</h4>
             <ul>
               <li>2 weddings</li>
-              <li>Core features</li>
-              <li>2 collaborators</li>
+              <li>All planning features</li>
+              <li>Unlimited collaborators (always free)</li>
             </ul>
           </div>
           <div className="plan-col plan-pro">
             <h4>Pro</h4>
             <ul>
               <li>Unlimited weddings</li>
-              <li>All features</li>
-              <li>Unlimited collaborators</li>
+              <li>All planning features</li>
+              <li>Unlimited collaborators (always free)</li>
               <li>Priority support</li>
             </ul>
           </div>
         </div>
+
+        <p className="upgrade-limit-note">
+          Collaborators (couples, vendors, family) are always free and never need a seat.
+        </p>
 
         <button
           className="btn btn-gold"
