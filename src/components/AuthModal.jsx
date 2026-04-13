@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import Modal from './Modal'
 
@@ -27,6 +27,11 @@ export default function AuthModal({ isOpen, onClose, mode = 'signin' }) {
   const [confirmSent, setConfirmSent] = useState(false)
   const [showPw, setShowPw]           = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
+
+  // Sync isSignUp when modal opens with a different mode
+  useEffect(() => {
+    if (isOpen) setIsSignUp(mode === 'signup')
+  }, [isOpen, mode])
 
   const isDev = import.meta.env.VITE_DEV_MODE === 'true'
 
