@@ -180,7 +180,7 @@ Deno.serve(async (req: Request) => {
               Authorization: `Bearer ${RESEND_API_KEY}`,
             },
             body: JSON.stringify({
-              from: 'Amorí <onboarding@resend.dev>',
+              from: 'Amorí <noreply@amorisuite.com>',
               to: [customerEmail],
               subject: 'Your Amorí Pro plan has been renewed',
               html: renewalHtml,

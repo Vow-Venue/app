@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Amorí <onboarding@resend.dev>",
+        from: "Amorí <noreply@amorisuite.com>",
         to: [to],
         subject: `${inviterName || "Someone"} invited you to collaborate on ${title}`,
         html,
